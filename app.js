@@ -214,7 +214,7 @@ const CACHE_PROXIMO_PROVENTO_ABERTO = 1000 * 60 * 30;
 const CACHE_PROXIMO_PROVENTO_FECHADO = 1000 * 60 * 60 * 4;
 
 const DB_NAME = 'vestoCacheDB';
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 
 function toggleDrawer(symbol) {
     const drawer = document.getElementById(`drawer-${symbol}`);
@@ -596,6 +596,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                     const db = event.target.result;
                     if (!db.objectStoreNames.contains('apiCache')) {
                         db.createObjectStore('apiCache', { keyPath: 'key' });
+                    }
+                    if (!db.objectStoreNames.contains('userSettings')) {
+                        db.createObjectStore('userSettings', { keyPath: 'key' });
                     }
                 };
                 request.onsuccess = (event) => {
@@ -10936,4 +10939,146 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     [inPrincipal, inAporte, inTaxa, inAnos].forEach(el => el.addEventListener('input', calcular));
+});
+
+// ─── Perfil de Usuário ────────────────────────────────────────────────────────
+window.openProfileModal = function () {
+    const modal = document.getElementById('profile-settings-modal');
+    if (modal) {
+        modal.classList.remove('hidden');
+        // trigger animation
+        setTimeout(() => {
+            modal.querySelector('.modal-content').style.opacity = '1';
+            modal.querySelector('.modal-content').style.transform = 'scale(1)';
+        }, 10);
+    }
+};
+
+document.addEventListener('DOMContentLoaded', async () => {
+    const modal = document.getElementById('profile-settings-modal');
+    const btnClose = document.getElementById('close-profile-modal-btn');
+    const btnCancel = document.getElementById('btn-cancel-profile');
+    const btnSave = document.getElementById('btn-save-profile');
+
+    const uiProfileImg = document.getElementById('user-profile-img');
+    const uiProfileFallback = document.getElementById('user-profile-fallback');
+
+    const previewImg = document.getElementById('modal-preview-img');
+    const previewFallback = document.getElementById('modal-preview-fallback');
+
+    const btnUpload = document.getElementById('btn-upload-photo');
+    const fileInput = document.getElementById('profile-file-input');
+    const btnDelete = document.getElementById('btn-delete-photo');
+
+    const presetBtns = document.querySelectorAll('.preset-avatar-btn');
+
+    let currentSelectedImage = null; // DataURL or preset URL
+
+    function closeProfileModal() {
+        if (!modal) return;
+        modal.querySelector('.modal-content').style.opacity = '0';
+        modal.querySelector('.modal-content').style.transform = 'scale(0.95)';
+        setTimeout(() => {
+            modal.classList.add('hidden');
+        }, 200);
+    }
+
+    if (btnClose) btnClose.addEventListener('click', closeProfileModal);
+    if (btnCancel) btnCancel.addEventListener('click', closeProfileModal);
+
+    // Upload de Imagem (max 2MB)
+    if (btnUpload && fileInput) {
+        btnUpload.addEventListener('click', () => fileInput.click());
+
+        fileInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            if (file.size > 2 * 1024 * 1024) {
+                showToastError('A imagem excede 2MB. Escolha uma menor.');
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = (ev) => {
+                currentSelectedImage = ev.target.result;
+                updatePreview();
+            };
+            reader.readAsDataURL(file);
+        });
+    }
+
+    // Preset Avatars
+    presetBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+            currentSelectedImage = btn.dataset.avatar;
+            updatePreview();
+        });
+    });
+
+    // Remover Foto
+    if (btnDelete) {
+        btnDelete.addEventListener('click', () => {
+            currentSelectedImage = null;
+            updatePreview();
+        });
+    }
+
+    function updatePreview() {
+        if (currentSelectedImage) {
+            previewImg.src = currentSelectedImage;
+            previewImg.classList.remove('hidden');
+            previewFallback.classList.add('hidden');
+            btnDelete.classList.remove('hidden');
+        } else {
+            previewImg.src = '';
+            previewImg.classList.add('hidden');
+            previewFallback.classList.remove('hidden');
+            btnDelete.classList.add('hidden');
+        }
+    }
+
+    function applyProfileToUI(imgData) {
+        if (imgData) {
+            uiProfileImg.src = imgData;
+            uiProfileImg.classList.remove('hidden');
+            uiProfileFallback.classList.add('hidden');
+        } else {
+            uiProfileImg.src = '';
+            uiProfileImg.classList.add('hidden');
+            uiProfileFallback.classList.remove('hidden');
+        }
+    }
+
+    // Salvar Perfil
+    if (btnSave) {
+        btnSave.addEventListener('click', async () => {
+            try {
+                if (currentSelectedImage) {
+                    await vestoDB.put('userSettings', { key: 'profilePicture', data: currentSelectedImage });
+                } else {
+                    await vestoDB.delete('userSettings', 'profilePicture');
+                }
+                applyProfileToUI(currentSelectedImage);
+                showToast('Perfil atualizado!');
+                closeProfileModal();
+            } catch (error) {
+                console.error('Erro ao salvar foto de perfil:', error);
+                showToastError('Erro ao salvar perfil.');
+            }
+        });
+    }
+
+    // Load existing profile on start
+    try {
+        await vestoDB.init(); // Garante o DB inicializado
+        const stored = await vestoDB.get('userSettings', 'profilePicture');
+        if (stored && stored.data) {
+            currentSelectedImage = stored.data;
+            applyProfileToUI(currentSelectedImage);
+            updatePreview();
+        }
+    } catch (e) {
+        console.log('Sem foto salva ou DB falhou p/ foto.');
+    }
 });

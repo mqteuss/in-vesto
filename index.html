@@ -798,18 +798,40 @@
 
                 <div id="tab-config"
                     class="tab-content w-full flex-shrink-0 h-full overflow-y-auto pb-32 custom-scroll">
-                    <div class="px-4 pt-2 pb-4">
+                    <div class="px-4 pt-8 pb-4">
 
-                        <div class="flex items-center gap-4 p-4 card-bg mb-8">
-                            <div
-                                class="w-12 h-12 rounded-full bg-purple-600 flex items-center justify-center text-white font-bold text-lg border-2 border-[#151515] shadow-lg">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" viewBox="0 0 20 20"
-                                    fill="currentColor">
-                                    <path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z"
-                                        clip-rule="evenodd" />
-                                </svg>
+                        <div class="flex items-center gap-4 p-4 card-bg mb-8 rounded-3xl">
+                            <!-- Foto de Perfil Container -->
+                            <div id="profile-picture-container" onclick="openProfileModal()"
+                                class="w-14 h-14 rounded-full bg-[#1C1C1E] flex items-center justify-center text-white font-bold text-lg border-[3px] border-[#2C2C2E] shadow-xl shadow-black/50 cursor-pointer relative overflow-hidden group transition-transform active:scale-95">
+
+                                <img id="user-profile-img" src="" alt="Profile"
+                                    class="w-full h-full object-cover hidden" />
+
+                                <div id="user-profile-fallback"
+                                    class="w-full h-full flex items-center justify-center bg-gradient-to-br from-purple-500 to-indigo-600">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-7 w-7 opacity-90"
+                                        viewBox="0 0 20 20" fill="currentColor">
+                                        <path fill-rule="evenodd"
+                                            d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z"
+                                            clip-rule="evenodd" />
+                                    </svg>
+                                </div>
+
+                                <!-- Hover Overlay: Câmera -->
+                                <div
+                                    class="absolute inset-0 bg-black/60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-white" fill="none"
+                                        viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                        <path stroke-linecap="round" stroke-linejoin="round"
+                                            d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                                        <path stroke-linecap="round" stroke-linejoin="round"
+                                            d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                                    </svg>
+                                </div>
                             </div>
-                            <div>
+
+                            <div class="flex-1">
                                 <span class="text-white font-bold text-base block leading-tight">Minha Conta</span>
                                 <span id="user-email-display" class="text-xs text-gray-500 font-medium">Usuário
                                     Vesto</span>
@@ -2043,6 +2065,108 @@
                     <button type="submit" id="change-password-submit-btn" class="btn-purple w-full mt-6">Atualizar
                         Senha</button>
                 </form>
+            </div>
+        </div>
+
+        <!-- Perfil Settings Modal -->
+        <div id="profile-settings-modal"
+            class="custom-modal fixed inset-0 z-[80] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md hidden"
+            aria-labelledby="modal-title" role="dialog" aria-modal="true">
+            <div
+                class="modal-content card-bg rounded-[2rem] p-6 w-full max-w-sm shadow-2xl border border-white/5 transition-all transform scale-95 opacity-0">
+                <div class="flex justify-between items-center mb-6">
+                    <h3 class="text-lg font-bold text-white tracking-wide">Foto de Perfil</h3>
+                    <button id="close-profile-modal-btn" class="text-gray-500 hover:text-white transition-colors">
+                        <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                </div>
+
+                <div class="flex flex-col items-center mb-6 relative">
+                    <div id="modal-preview-avatar"
+                        class="w-24 h-24 rounded-full bg-[#1C1C1E] border-[3px] border-[#2C2C2E] overflow-hidden flex items-center justify-center mb-4 shadow-lg shrink-0">
+                        <img id="modal-preview-img" src="" class="w-full h-full object-cover hidden" />
+                        <div id="modal-preview-fallback"
+                            class="w-full h-full bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 text-white opacity-80"
+                                viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z"
+                                    clip-rule="evenodd" />
+                            </svg>
+                        </div>
+                    </div>
+
+                    <div class="flex gap-2">
+                        <button id="btn-upload-photo"
+                            class="text-xs font-semibold px-4 py-2 bg-[#1C1C1E] text-white rounded-full border border-white/10 hover:bg-[#2C2C2E] transition-colors flex items-center gap-2">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24"
+                                stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                            </svg>
+                            Fazer Upload
+                        </button>
+                        <input type="file" id="profile-file-input" accept="image/png, image/jpeg, image/jpg, image/webp"
+                            class="hidden" />
+
+                        <button id="btn-delete-photo"
+                            class="text-xs font-semibold px-4 py-2 bg-red-500/10 text-red-500 rounded-full border border-red-500/20 hover:bg-red-500/20 transition-colors hidden">
+                            Remover
+                        </button>
+                    </div>
+                    <p class="text-[10px] text-gray-500 mt-3 text-center px-4">Tamanho máximo: 2MB. A imagem será salva
+                        localmente no seu dispositivo.</p>
+                </div>
+
+                <div class="pt-4 border-t border-white/5">
+                    <p class="text-[11px] font-bold text-gray-500 mb-3 text-center uppercase tracking-wider">Avatares
+                        Pré-definidos</p>
+                    <div class="grid grid-cols-3 gap-4 px-2">
+                        <button type="button"
+                            class="preset-avatar-btn w-16 h-16 mx-auto rounded-full border-[3px] border-transparent hover:border-purple-500 focus:border-purple-500 focus:outline-none transition-all overflow-hidden bg-[#1C1C1E] shadow-md relative group"
+                            data-avatar="https://api.dicebear.com/9.x/glass/svg?seed=Vesto1&backgroundColor=151515">
+                            <img src="https://api.dicebear.com/9.x/glass/svg?seed=Vesto1&backgroundColor=151515"
+                                alt="Avatar 1" class="w-full h-full object-cover pointer-events-none" />
+                        </button>
+                        <button type="button"
+                            class="preset-avatar-btn w-16 h-16 mx-auto rounded-full border-[3px] border-transparent hover:border-purple-500 focus:border-purple-500 focus:outline-none transition-all overflow-hidden bg-[#1C1C1E] shadow-md relative group"
+                            data-avatar="https://api.dicebear.com/9.x/glass/svg?seed=Vesto2&backgroundColor=151515">
+                            <img src="https://api.dicebear.com/9.x/glass/svg?seed=Vesto2&backgroundColor=151515"
+                                alt="Avatar 2" class="w-full h-full object-cover pointer-events-none" />
+                        </button>
+                        <button type="button"
+                            class="preset-avatar-btn w-16 h-16 mx-auto rounded-full border-[3px] border-transparent hover:border-purple-500 focus:border-purple-500 focus:outline-none transition-all overflow-hidden bg-[#1C1C1E] shadow-md relative group"
+                            data-avatar="https://api.dicebear.com/9.x/glass/svg?seed=Vesto3&backgroundColor=151515">
+                            <img src="https://api.dicebear.com/9.x/glass/svg?seed=Vesto3&backgroundColor=151515"
+                                alt="Avatar 3" class="w-full h-full object-cover pointer-events-none" />
+                        </button>
+                        <button type="button"
+                            class="preset-avatar-btn w-16 h-16 mx-auto rounded-full border-[3px] border-transparent hover:border-purple-500 focus:border-purple-500 focus:outline-none transition-all overflow-hidden bg-[#1C1C1E] shadow-md relative group"
+                            data-avatar="https://api.dicebear.com/9.x/glass/svg?seed=Vesto4&backgroundColor=151515">
+                            <img src="https://api.dicebear.com/9.x/glass/svg?seed=Vesto4&backgroundColor=151515"
+                                alt="Avatar 4" class="w-full h-full object-cover pointer-events-none" />
+                        </button>
+                        <button type="button"
+                            class="preset-avatar-btn w-16 h-16 mx-auto rounded-full border-[3px] border-transparent hover:border-purple-500 focus:border-purple-500 focus:outline-none transition-all overflow-hidden bg-[#1C1C1E] shadow-md relative group"
+                            data-avatar="https://api.dicebear.com/9.x/glass/svg?seed=Vesto5&backgroundColor=151515">
+                            <img src="https://api.dicebear.com/9.x/glass/svg?seed=Vesto5&backgroundColor=151515"
+                                alt="Avatar 5" class="w-full h-full object-cover pointer-events-none" />
+                        </button>
+                        <button type="button"
+                            class="preset-avatar-btn w-16 h-16 mx-auto rounded-full border-[3px] border-transparent hover:border-purple-500 focus:border-purple-500 focus:outline-none transition-all overflow-hidden bg-[#1C1C1E] shadow-md relative group"
+                            data-avatar="https://api.dicebear.com/9.x/glass/svg?seed=Vesto6&backgroundColor=151515">
+                            <img src="https://api.dicebear.com/9.x/glass/svg?seed=Vesto6&backgroundColor=151515"
+                                alt="Avatar 6" class="w-full h-full object-cover pointer-events-none" />
+                        </button>
+                    </div>
+                </div>
+
+                <div class="mt-8 flex gap-3">
+                    <button id="btn-cancel-profile" class="btn-cancel w-1/3">Cancelar</button>
+                    <button id="btn-save-profile" class="btn-purple flex-1">Salvar</button>
+                </div>
             </div>
         </div>
 

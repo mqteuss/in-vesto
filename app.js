@@ -5332,16 +5332,17 @@ document.addEventListener('DOMContentLoaded', async () => {
                         ${window.gerarBotaoFiltro('Tudo', symbol)}
                     </div>
                     
-                    <div class="flex gap-1 p-1 ${filterBg} backdrop-blur-md rounded-xl flex-shrink-0 border shadow-lg" id="chart-type-toggle">
+                    <div class="relative flex gap-1 p-1 ${filterBg} backdrop-blur-md rounded-xl flex-shrink-0 border shadow-lg" id="chart-type-toggle">
+                        <div id="chart-type-slider" class="absolute top-1 bottom-1 bg-[#2C2C2E] rounded-lg shadow-sm transition-all duration-300 ease-out pointer-events-none z-0" style="width: 0px;"></div>
                         <button id="btn-type-line" onclick="window.mudarTipoGrafico('line', '${symbol}')"
-                            class="chart-type-btn px-2.5 py-1.5 rounded-lg text-[10px] font-bold uppercase transition-colors duration-200 select-none ${btnTypeLineBg}"
+                            class="chart-type-btn px-2.5 py-1.5 rounded-lg text-[10px] font-bold uppercase transition-colors duration-200 select-none relative z-10 text-white"
                             title="Gráfico de Linha">
                             <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
                                 <polyline points="1,11 4,7 7,9 10,4 13,3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
                             </svg>
                         </button>
                         <button id="btn-type-candlestick" onclick="window.mudarTipoGrafico('candlestick', '${symbol}')"
-                            class="chart-type-btn px-2.5 py-1.5 rounded-lg text-[10px] font-bold uppercase transition-colors duration-200 select-none text-gray-500 hover:text-gray-300"
+                            class="chart-type-btn px-2.5 py-1.5 rounded-lg text-[10px] font-bold uppercase transition-colors duration-200 select-none relative z-10 text-gray-500"
                             title="Gráfico de Velas">
                             <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
                                 <line x1="2.5" y1="1" x2="2.5" y2="3" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
@@ -5373,6 +5374,18 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (activeBtn && slider) {
                 slider.style.width = `${activeBtn.offsetWidth}px`;
                 slider.style.transform = `translateX(${activeBtn.offsetLeft}px)`;
+            }
+            // Initialize chart type slider on the 'line' button
+            const typeSlider = document.getElementById('chart-type-slider');
+            const btnLine = document.getElementById('btn-type-line');
+            const toggleBar = document.getElementById('chart-type-toggle');
+            if (typeSlider && btnLine && toggleBar) {
+                typeSlider.style.transition = 'none';
+                const barRect = toggleBar.getBoundingClientRect();
+                const btnRect = btnLine.getBoundingClientRect();
+                typeSlider.style.left = (btnRect.left - barRect.left) + 'px';
+                typeSlider.style.width = btnRect.width + 'px';
+                requestAnimationFrame(() => { typeSlider.style.transition = ''; });
             }
         }, 50);
 
@@ -5447,15 +5460,24 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         const btnLine = document.getElementById('btn-type-line');
         const btnCandle = document.getElementById('btn-type-candlestick');
+        const typeSlider = document.getElementById('chart-type-slider');
+        const toggleBar = document.getElementById('chart-type-toggle');
+
         if (btnLine && btnCandle) {
-            const activeCls = ['bg-[#2C2C2E]', 'text-white'];
-            const inactiveCls = ['text-gray-500', 'hover:text-gray-300'];
-            if (tipo === 'line') {
-                btnLine.classList.add(...activeCls); btnLine.classList.remove(...inactiveCls);
-                btnCandle.classList.remove(...activeCls); btnCandle.classList.add(...inactiveCls);
-            } else {
-                btnCandle.classList.add(...activeCls); btnCandle.classList.remove(...inactiveCls);
-                btnLine.classList.remove(...activeCls); btnLine.classList.add(...inactiveCls);
+            const activeBtn = tipo === 'line' ? btnLine : btnCandle;
+            const inactiveBtn = tipo === 'line' ? btnCandle : btnLine;
+
+            activeBtn.classList.add('text-white');
+            activeBtn.classList.remove('text-gray-500');
+            inactiveBtn.classList.remove('text-white');
+            inactiveBtn.classList.add('text-gray-500');
+
+            // Move slider
+            if (typeSlider && toggleBar) {
+                const barRect = toggleBar.getBoundingClientRect();
+                const btnRect = activeBtn.getBoundingClientRect();
+                typeSlider.style.left = (btnRect.left - barRect.left) + 'px';
+                typeSlider.style.width = btnRect.width + 'px';
             }
         }
 

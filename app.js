@@ -5317,10 +5317,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                 </div>
             </div>
 
-            <div id="chart-wrapper-cotacao" class="relative w-full ${wrapperBg} rounded-2xl border shadow-inner overflow-hidden" style="height: 320px;">
+            <div id="chart-wrapper-cotacao" class="relative w-full ${wrapperBg} rounded-2xl shadow-inner overflow-hidden" style="height: 320px;">
                 
                 <div class="absolute top-2 left-2 right-2 z-20 flex justify-between items-center gap-2 pointer-events-auto">
-                    <div class="relative flex items-center gap-0.5 p-1 ${filterBg} backdrop-blur-md rounded-xl overflow-x-auto no-scrollbar flex-1 border shadow-lg" id="chart-filters">
+                    <div class="relative flex items-center gap-0.5 p-1 ${filterBg} backdrop-blur-md rounded-xl overflow-x-auto no-scrollbar flex-1" id="chart-filters">
                         <div id="cotacao-slider" class="absolute top-1 bottom-1 left-0 bg-[#2C2C2E] rounded-lg shadow-sm transition-all duration-300 ease-out z-0" style="width: 0px;"></div>
                         ${window.gerarBotaoFiltro('1D', symbol, true)}
                         ${window.gerarBotaoFiltro('5D', symbol)}
@@ -5332,7 +5332,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                         ${window.gerarBotaoFiltro('Tudo', symbol)}
                     </div>
                     
-                    <div class="relative flex gap-1 p-1 ${filterBg} backdrop-blur-md rounded-xl flex-shrink-0 border shadow-lg" id="chart-type-toggle">
+                    <div class="relative flex gap-1 p-1 ${filterBg} backdrop-blur-md rounded-xl flex-shrink-0" id="chart-type-toggle">
                         <div id="chart-type-slider" class="absolute top-1 bottom-1 bg-[#2C2C2E] rounded-lg shadow-sm transition-all duration-300 ease-out pointer-events-none z-0" style="width: 0px;"></div>
                         <button id="btn-type-line" onclick="window.mudarTipoGrafico('line', '${symbol}')"
                             class="chart-type-btn px-2.5 py-1.5 rounded-lg text-[10px] font-bold uppercase transition-colors duration-200 select-none relative z-10 text-white"
@@ -7678,10 +7678,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                     </div>
                 </div>
 
-                <div id="chart-wrapper-proventos" class="relative w-full ${isLight ? 'bg-white border-gray-200' : 'bg-[#0f0f0f] border-[#1a1a1a]'} rounded-2xl border shadow-inner overflow-hidden" style="height:320px;">
+                <div id="chart-wrapper-proventos" class="relative w-full ${isLight ? 'bg-white border-gray-200' : 'bg-[#0f0f0f] border-[#1a1a1a]'} rounded-2xl shadow-inner overflow-hidden" style="height:320px;">
                     
                     <div class="absolute top-2 left-2 right-2 z-20 flex justify-center pointer-events-auto">
-                        <div class="relative flex items-center gap-1 p-1 ${isLight ? 'bg-white/90 border-gray-200' : 'bg-[#151515]/90 border-white/5'} backdrop-blur-md rounded-xl overflow-x-auto no-scrollbar w-full snap-x border shadow-lg" id="proventos-filters-container">
+                        <div class="relative flex items-center gap-1 p-1 ${isLight ? 'bg-white/90 border-gray-200' : 'bg-[#151515]/90 border-white/5'} backdrop-blur-md rounded-xl overflow-x-auto no-scrollbar w-full snap-x" id="proventos-filters-container">
                             <div id="proventos-slider" class="absolute top-1 bottom-1 left-0 bg-[#2C2C2E] rounded-lg shadow-sm transition-all duration-300 ease-out z-0" style="width: 0px;"></div>
                             <button id="btn-prov-12m" onclick="window.mudarFiltroProventos('12m')" class="${getBtnClass('12m')} snap-start">1A</button>
                             <button id="btn-prov-5y" onclick="window.mudarFiltroProventos('5y')" class="${getBtnClass('5y')} snap-start">5A</button>

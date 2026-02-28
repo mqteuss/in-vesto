@@ -2123,7 +2123,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             const mainIconHtml = isVenda ? arrowUpRed : arrowDownGreen;
 
             return `
-            <div class="history-card flex items-center justify-between py-2 px-3 mb-1 rounded-xl relative group h-full w-full bg-black border border-transparent" data-action="edit-row" data-id="${t.id}">
+            <div class="history-card flex items-center justify-between py-2 px-0 mb-1 rounded-xl relative group h-full w-full bg-black border border-transparent" data-action="edit-row" data-id="${t.id}">
                 <div class="flex items-center gap-3 flex-1 min-w-0">
 
                     <div class="w-10 h-10 rounded-full bg-[#1C1C1E] flex items-center justify-center flex-shrink-0 relative overflow-hidden">
@@ -2246,7 +2246,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             tagHtml = `<span class="text-[9px] font-extrabold text-gray-300 bg-gray-700/40 border border-gray-600/50 px-1.5 py-[1px] rounded-[4px] uppercase tracking-wider leading-none">${label}</span>`;
 
             return `
-            <div class="history-card flex items-center justify-between py-2 px-3 mb-1 rounded-xl relative group h-full w-full bg-black border border-transparent">
+            <div class="history-card flex items-center justify-between py-2 px-0 mb-1 rounded-xl relative group h-full w-full bg-black border border-transparent">
                 <div class="flex items-center gap-3 flex-1 min-w-0">
 
                     <div class="w-10 h-10 rounded-full bg-[#1C1C1E] flex items-center justify-center flex-shrink-0 shadow-sm relative overflow-hidden">

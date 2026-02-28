@@ -9644,8 +9644,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                 'julho': '07', 'agosto': '08', 'setembro': '09', 'outubro': '10', 'novembro': '11', 'dezembro': '12'
             };
 
-            if (!isNaN(m)) return `${y} -${m.padStart(2, '0')} `;
-            if (monthMap[m]) return `${y} -${monthMap[m]} `;
+            if (!isNaN(m)) return `${y}-${m.padStart(2, '0')}`;
+            if (monthMap[m]) return `${y}-${monthMap[m]}`;
             return null;
         };
 
@@ -9666,8 +9666,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const item = historicoFiltrado[i];
                 const ymKey = getYearMonthKey(item.mes);
                 if (ymKey) {
-                    const cleanYmKey = ymKey.replace(/\s+/g, ''); // Fixes internal "2023 -01 " formatting of getYearMonthKey
-                    if (cleanYmKey.localeCompare(earliestKey.replace(/\s+/g, '')) >= 0) {
+                    if (ymKey >= earliestKey) {
                         tempFiltrado.push(item);
                     }
                 }
@@ -9778,8 +9777,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (ipcaChartInstance) ipcaChartInstance.destroy();
 
         const ctx = canvas.getContext('2d');
-        const labels = dados.historico.map(d => d.mes.split('/')[0].substring(0, 3));
-        const values = dados.historico.map(d => d.valor);
+        const labels = historicoFiltrado.map(d => d.mes.split('/')[0].substring(0, 3));
+        const values = historicoFiltrado.map(d => d.valor);
         const backgroundColors = values.map(v => v < 0 ? '#10B981' : '#F97316');
 
         const gradientFill = ctx.createLinearGradient(0, 0, 0, 400);

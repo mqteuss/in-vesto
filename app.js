@@ -1997,9 +1997,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                             el.innerHTML = `<div class="virtual-header-row">${pos.item.htmlContent}</div>`;
                             // Headers não precisam de padding lateral extra
                         } else {
-                            // Cards precisam de padding lateral
-                            el.style.paddingLeft = '20px';
-                            el.style.paddingRight = '20px';
+                            // Cards precisam de padding lateral (px-4 = 16px, igual à aba Início)
+                            el.style.paddingLeft = '16px';
+                            el.style.paddingRight = '16px';
                             el.innerHTML = this.renderRowFn(pos.item.data);
                         }
 
@@ -2457,9 +2457,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         let isGlobalFirstItem = true;
 
         Object.keys(grupos).forEach(dataLabel => {
-            // Header sticky — estilo unificado com Extrato
+            // Header de data — estilo unificado com Extrato (inline, não sticky)
             const header = document.createElement('div');
-            header.className = 'sticky top-0 z-10 bg-[#0a0a0a] py-3 px-5 mb-0 -mx-4 border-b border-[#1F1F1F]';
+            header.className = 'z-10 bg-black py-3 px-5 mb-0 -mx-4 border-b border-[#1F1F1F]';
             header.innerHTML = `<h3 class="text-[11px] font-bold text-neutral-500 uppercase tracking-widest">${dataLabel}</h3>`;
             fragment.appendChild(header);
 

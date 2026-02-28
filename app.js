@@ -10942,21 +10942,85 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 // ─── Perfil de Usuário ────────────────────────────────────────────────────────
+// Self-contained module — não depende de vestoDB nem showToast (ambos estão
+// dentro da closure principal e são inacessíveis neste escopo).
+
+const profileDB = {
+    _db: null,
+    open() {
+        return new Promise((resolve, reject) => {
+            if (this._db) { resolve(this._db); return; }
+            const req = indexedDB.open('vestoCacheDB', 2);
+            req.onupgradeneeded = (e) => {
+                const db = e.target.result;
+                if (!db.objectStoreNames.contains('apiCache'))
+                    db.createObjectStore('apiCache', { keyPath: 'key' });
+                if (!db.objectStoreNames.contains('userSettings'))
+                    db.createObjectStore('userSettings', { keyPath: 'key' });
+            };
+            req.onsuccess = (e) => { this._db = e.target.result; resolve(this._db); };
+            req.onerror = (e) => reject(e.target.error);
+        });
+    },
+    async get(key) {
+        const db = await this.open();
+        return new Promise((resolve, reject) => {
+            const tx = db.transaction('userSettings', 'readonly');
+            const req = tx.objectStore('userSettings').get(key);
+            req.onsuccess = () => resolve(req.result);
+            req.onerror = (e) => reject(e.target.error);
+        });
+    },
+    async put(value) {
+        const db = await this.open();
+        return new Promise((resolve, reject) => {
+            const tx = db.transaction('userSettings', 'readwrite');
+            const req = tx.objectStore('userSettings').put(value);
+            req.onsuccess = () => resolve();
+            req.onerror = (e) => reject(e.target.error);
+        });
+    },
+    async remove(key) {
+        const db = await this.open();
+        return new Promise((resolve, reject) => {
+            const tx = db.transaction('userSettings', 'readwrite');
+            const req = tx.objectStore('userSettings').delete(key);
+            req.onsuccess = () => resolve();
+            req.onerror = (e) => reject(e.target.error);
+        });
+    }
+};
+
+function _profileToast(msg, isError) {
+    const toastEl = document.getElementById('toast-notification');
+    const msgEl = document.getElementById('toast-message');
+    const errIcon = document.getElementById('toast-icon-error');
+    const okIcon = document.getElementById('toast-icon-success');
+    if (!toastEl || !msgEl) return;
+    msgEl.textContent = msg;
+    if (errIcon) errIcon.classList.toggle('hidden', !isError);
+    if (okIcon) okIcon.classList.toggle('hidden', isError);
+    toastEl.style.background = isError ? '#991b1b' : '#166534';
+    toastEl.style.opacity = '1';
+    toastEl.style.transform = 'translateY(0)';
+    clearTimeout(window._profileToastTimer);
+    window._profileToastTimer = setTimeout(() => {
+        toastEl.style.opacity = '0';
+        toastEl.style.transform = 'translateY(-20px)';
+    }, 2500);
+}
+
 window.openProfileModal = function () {
     const modal = document.getElementById('profile-settings-modal');
-    if (modal) {
-        modal.classList.remove('hidden');
-        modal.classList.add('flex');
-
-        // Trigger animation
-        setTimeout(() => {
-            const content = modal.querySelector('.modal-content');
-            if (content) {
-                content.classList.remove('opacity-0', 'scale-95');
-                content.classList.add('opacity-100', 'scale-100');
-            }
-        }, 10);
-    }
+    if (!modal) return;
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+    requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+            const c = modal.querySelector('.modal-content');
+            if (c) { c.classList.remove('opacity-0', 'scale-95'); c.classList.add('opacity-100', 'scale-100'); }
+        });
+    });
 };
 
 document.addEventListener('DOMContentLoaded', async () => {
@@ -10977,79 +11041,73 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     const presetBtns = document.querySelectorAll('.preset-avatar-btn');
 
-    let currentSelectedImage = null; // DataURL or preset URL
+    let currentSelectedImage = null;
 
+    // ── Close ────────────────────────────────────────────────────────────────
     function closeProfileModal() {
         if (!modal) return;
-        const content = modal.querySelector('.modal-content');
-        if (content) {
-            content.classList.remove('opacity-100', 'scale-100');
-            content.classList.add('opacity-0', 'scale-95');
-        }
-        setTimeout(() => {
-            modal.classList.add('hidden');
-            modal.classList.remove('flex');
-        }, 200);
+        const c = modal.querySelector('.modal-content');
+        if (c) { c.classList.remove('opacity-100', 'scale-100'); c.classList.add('opacity-0', 'scale-95'); }
+        setTimeout(() => { modal.classList.add('hidden'); modal.classList.remove('flex'); }, 200);
     }
 
-    // Fallback binding mapping for when the inline onclick triggers before script is active
-    const container = document.getElementById('profile-picture-container');
-    if (container) {
-        container.addEventListener('click', window.openProfileModal);
-    }
-
+    const profileContainer = document.getElementById('profile-picture-container');
+    if (profileContainer) profileContainer.addEventListener('click', window.openProfileModal);
     if (btnClose) btnClose.addEventListener('click', closeProfileModal);
     if (btnCancel) btnCancel.addEventListener('click', closeProfileModal);
+    // Fecha no backdrop
+    if (modal) modal.addEventListener('click', (e) => { if (e.target === modal) closeProfileModal(); });
 
-    // Upload de Imagem (max 2MB)
+    // ── Upload (max 2 MB) ────────────────────────────────────────────────────
     if (btnUpload && fileInput) {
         btnUpload.addEventListener('click', () => fileInput.click());
-
         fileInput.addEventListener('change', (e) => {
             const file = e.target.files[0];
             if (!file) return;
-
             if (file.size > 2 * 1024 * 1024) {
-                showToastError('A imagem excede 2MB. Escolha uma menor.');
+                _profileToast('A imagem excede 2 MB. Escolha uma menor.', true);
+                fileInput.value = '';
                 return;
             }
-
             const reader = new FileReader();
-            reader.onload = (ev) => {
-                currentSelectedImage = ev.target.result;
-                updatePreview();
-            };
+            reader.onload = (ev) => { currentSelectedImage = ev.target.result; updatePreview(); };
             reader.readAsDataURL(file);
+            fileInput.value = ''; // permite re-selecionar o mesmo arquivo
         });
     }
 
-    // Preset Avatars
+    // ── Preset Avatars ───────────────────────────────────────────────────────
     presetBtns.forEach(btn => {
         btn.addEventListener('click', () => {
+            // Remove seleção visual anterior
+            presetBtns.forEach(b => b.classList.remove('border-purple-500'));
+            btn.classList.add('border-purple-500');
             currentSelectedImage = btn.dataset.avatar;
             updatePreview();
         });
     });
 
-    // Remover Foto
+    // ── Remover Foto ─────────────────────────────────────────────────────────
     if (btnDelete) {
         btnDelete.addEventListener('click', () => {
             currentSelectedImage = null;
+            presetBtns.forEach(b => b.classList.remove('border-purple-500'));
             updatePreview();
         });
     }
 
+    // ── Helpers visuais ──────────────────────────────────────────────────────
     function updatePreview() {
         if (currentSelectedImage) {
             previewImg.src = currentSelectedImage;
             previewImg.classList.remove('hidden');
             previewFallback.classList.add('hidden');
-            btnDelete.classList.remove('hidden');
+            if (btnDelete) btnDelete.classList.remove('hidden');
         } else {
             previewImg.src = '';
             previewImg.classList.add('hidden');
             previewFallback.classList.remove('hidden');
-            btnDelete.classList.add('hidden');
+            if (btnDelete) btnDelete.classList.add('hidden');
         }
     }
 
@@ -11065,35 +11123,34 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
 
-    // Salvar Perfil
+    // ── Salvar ───────────────────────────────────────────────────────────────
     if (btnSave) {
         btnSave.addEventListener('click', async () => {
             try {
                 if (currentSelectedImage) {
-                    await vestoDB.put('userSettings', { key: 'profilePicture', data: currentSelectedImage });
+                    await profileDB.put({ key: 'profilePicture', data: currentSelectedImage });
                 } else {
-                    await vestoDB.delete('userSettings', 'profilePicture');
+                    await profileDB.remove('profilePicture');
                 }
                 applyProfileToUI(currentSelectedImage);
-                showToast('Perfil atualizado!');
+                _profileToast('Perfil atualizado!', false);
                 closeProfileModal();
-            } catch (error) {
-                console.error('Erro ao salvar foto de perfil:', error);
-                showToastError('Erro ao salvar perfil.');
+            } catch (err) {
+                console.error('[Profile] Erro ao salvar:', err);
+                _profileToast('Erro ao salvar perfil.', true);
             }
         });
     }
 
-    // Load existing profile on start
+    // ── Carregar perfil salvo ────────────────────────────────────────────────
     try {
-        await vestoDB.init(); // Garante o DB inicializado
-        const stored = await vestoDB.get('userSettings', 'profilePicture');
+        const stored = await profileDB.get('profilePicture');
         if (stored && stored.data) {
             currentSelectedImage = stored.data;
             applyProfileToUI(currentSelectedImage);
             updatePreview();
         }
     } catch (e) {
-        console.log('Sem foto salva ou DB falhou p/ foto.');
+        console.log('[Profile] Sem foto salva ou DB indisponível.');
     }
 });

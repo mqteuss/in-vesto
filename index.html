@@ -1455,26 +1455,27 @@
                     <!-- ── TAB 3: ANÁLISE ── -->
                     <div id="detalhe-tab-analise" class="detalhe-tab-panel hidden p-4 pt-3">
                         <div id="detalhes-rentabilidade-container" class="hidden w-full mb-8">
-                            <!-- Header: Título e Filtro de Range -->
-                            <div class="flex justify-between items-center mb-4">
-                                <h4 class="text-[10px] font-bold text-gray-300 uppercase tracking-widest pl-1">
-                                    Rentabilidade</h4>
-
-                                <!-- Botoes de filtro 2Y, 5Y, MAX -->
-                                <div id="rentabilidade-chart-filters"
-                                    class="flex bg-[#151515] rounded-lg p-1 border border-[#2C2C2E] shadow-sm">
-                                    <button data-range="24" onclick="window.mudarRentabilidadeRange(24)"
-                                        class="rentabilidade-range-btn px-3 py-1.5 rounded-md text-[10px] font-bold text-white bg-[#2c2c2e] transition-all active:scale-95">2A</button>
-                                    <button data-range="60" onclick="window.mudarRentabilidadeRange(60)"
-                                        class="rentabilidade-range-btn px-3 py-1.5 rounded-md text-[10px] font-bold text-gray-500 hover:text-white transition-all active:scale-95">5A</button>
-                                    <button data-range="120" onclick="window.mudarRentabilidadeRange(120)"
-                                        class="rentabilidade-range-btn px-3 py-1.5 rounded-md text-[10px] font-bold text-gray-500 hover:text-white transition-all">10A</button>
+                            <!-- Gráfico com filtros integrados -->
+                            <div class="relative w-full h-[380px] bg-[#121212] rounded-xl overflow-hidden">
+                                <div class="flex justify-between items-center mx-3 mt-3 z-20 relative">
+                                    <h4 class="text-[10px] font-bold text-gray-400 uppercase tracking-widest pl-1">
+                                        Rentabilidade</h4>
+                                    <div id="rentabilidade-chart-filters"
+                                        class="relative flex bg-[#1a1a1a] rounded-lg p-1">
+                                        <div id="rentabilidade-range-slider"
+                                            class="absolute top-1 bottom-1 rounded-md bg-[#2c2c2e] transition-all duration-300 ease-out pointer-events-none z-0">
+                                        </div>
+                                        <button data-range="24" onclick="window.mudarRentabilidadeRange(24)"
+                                            class="rentabilidade-range-btn flex-1 px-3 py-1.5 rounded-md text-[10px] font-bold text-white transition-colors duration-200 active:scale-95 relative z-10">2A</button>
+                                        <button data-range="60" onclick="window.mudarRentabilidadeRange(60)"
+                                            class="rentabilidade-range-btn flex-1 px-3 py-1.5 rounded-md text-[10px] font-bold text-gray-500 transition-colors duration-200 active:scale-95 relative z-10">5A</button>
+                                        <button data-range="120" onclick="window.mudarRentabilidadeRange(120)"
+                                            class="rentabilidade-range-btn flex-1 px-3 py-1.5 rounded-md text-[10px] font-bold text-gray-500 transition-colors duration-200 active:scale-95 relative z-10">10A</button>
+                                    </div>
                                 </div>
-                            </div>
-
-                            <!-- Gráfico Chart.js -->
-                            <div class="relative w-full h-[320px]">
-                                <canvas id="detalhes-rentabilidade-chart"></canvas>
+                                <div class="w-full absolute top-10 bottom-0">
+                                    <canvas id="detalhes-rentabilidade-chart"></canvas>
+                                </div>
                             </div>
                         </div>
 
@@ -1617,32 +1618,31 @@
                 <div class="overflow-y-auto h-[calc(85vh-90px)] p-4 pt-0 custom-scroll">
 
 
-                    <div class="relative flex mb-4 mt-4 p-1 bg-[#151515] rounded-xl shrink-0" id="patrimonio-range-bar">
-                        <div id="patrimonio-range-slider"
-                            class="absolute top-1 bottom-1 rounded-md bg-[#2c2c2e] transition-all duration-300 ease-out pointer-events-none z-0">
+                    <div class="relative w-full h-96 bg-[#121212] rounded-xl overflow-hidden shadow-sm mb-6 mt-4">
+                        <div class="relative flex p-1 mx-3 mt-3 bg-[#1a1a1a] rounded-xl shrink-0 z-20"
+                            id="patrimonio-range-bar">
+                            <div id="patrimonio-range-slider"
+                                class="absolute top-1 bottom-1 rounded-md bg-[#2c2c2e] transition-all duration-300 ease-out pointer-events-none z-0">
+                            </div>
+                            <button
+                                class="patrimonio-range-btn rentabilidade-range-btn flex-1 px-3 py-1.5 rounded-md text-[10px] font-bold text-gray-500 transition-colors duration-200 active:scale-95 relative z-10"
+                                data-range="7D">7D</button>
+                            <button
+                                class="patrimonio-range-btn rentabilidade-range-btn flex-1 px-3 py-1.5 rounded-md text-[10px] font-bold text-white transition-colors duration-200 active:scale-95 relative z-10"
+                                data-range="1M">1M</button>
+                            <button
+                                class="patrimonio-range-btn rentabilidade-range-btn flex-1 px-3 py-1.5 rounded-md text-[10px] font-bold text-gray-500 transition-colors duration-200 active:scale-95 relative z-10"
+                                data-range="6M">6M</button>
+                            <button
+                                class="patrimonio-range-btn rentabilidade-range-btn flex-1 px-3 py-1.5 rounded-md text-[10px] font-bold text-gray-500 transition-colors duration-200 active:scale-95 relative z-10"
+                                data-range="1Y">1A</button>
+                            <button
+                                class="patrimonio-range-btn rentabilidade-range-btn flex-1 px-3 py-1.5 rounded-md text-[10px] font-bold text-gray-500 transition-colors duration-200 active:scale-95 relative z-10"
+                                data-range="ALL">Tudo</button>
                         </div>
-                        <button
-                            class="patrimonio-range-btn rentabilidade-range-btn flex-1 px-3 py-1.5 rounded-md text-[10px] font-bold text-gray-500 transition-colors duration-200 active:scale-95 relative z-10"
-                            data-range="7D">7D</button>
-                        <button
-                            class="patrimonio-range-btn rentabilidade-range-btn flex-1 px-3 py-1.5 rounded-md text-[10px] font-bold text-white transition-colors duration-200 active:scale-95 relative z-10"
-                            data-range="1M">1M</button>
-                        <button
-                            class="patrimonio-range-btn rentabilidade-range-btn flex-1 px-3 py-1.5 rounded-md text-[10px] font-bold text-gray-500 transition-colors duration-200 active:scale-95 relative z-10"
-                            data-range="6M">6M</button>
-                        <button
-                            class="patrimonio-range-btn rentabilidade-range-btn flex-1 px-3 py-1.5 rounded-md text-[10px] font-bold text-gray-500 transition-colors duration-200 active:scale-95 relative z-10"
-                            data-range="1Y">1A</button>
-                        <button
-                            class="patrimonio-range-btn rentabilidade-range-btn flex-1 px-3 py-1.5 rounded-md text-[10px] font-bold text-gray-500 transition-colors duration-200 active:scale-95 relative z-10"
-                            data-range="ALL">Tudo</button>
-                    </div>
-
-                    <div class="relative w-full h-72 bg-[#121212] rounded-xl overflow-hidden shadow-sm mb-6">
-                        <div class="w-full h-full relative">
+                        <div class="w-full absolute top-12 bottom-0">
                             <canvas id="patrimonio-chart" class="w-full h-full block"></canvas>
                         </div>
-
                         <div id="patrimonio-loading"
                             class="hidden absolute inset-0 bg-[#121212] z-10 flex items-center justify-center">
                         </div>

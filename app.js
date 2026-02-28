@@ -997,29 +997,33 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
 
         const isLight = document.body.classList.contains('light-mode');
+        const rentSlider = document.getElementById('rentabilidade-range-slider');
+        const filterBar = document.getElementById('rentabilidade-chart-filters');
 
-        const botoes = document.querySelectorAll('.rentabilidade-range-btn');
+        const botoes = document.querySelectorAll('#rentabilidade-chart-filters .rentabilidade-range-btn');
         botoes.forEach(btn => {
             const btnRange = parseInt(btn.getAttribute('data-range'));
 
-            // Mantemos o estilo ativo no botao que o usuario clicou (originalRange),
-            // mesmo que o grafico por baixo mostre menos dados
             if (btnRange === originalRange) {
-                if (isLight) {
-                    btn.classList.add('text-[#1f2937]', 'bg-white', 'shadow-sm');
-                    btn.classList.remove('text-gray-400', 'text-white', 'bg-[#2c2c2e]');
-                } else {
-                    btn.classList.add('text-white', 'bg-[#2c2c2e]');
-                    btn.classList.remove('text-gray-500', 'text-[#1f2937]', 'bg-white', 'shadow-sm');
+                btn.classList.add(isLight ? 'text-[#1f2937]' : 'text-white');
+                btn.classList.remove('text-gray-500', isLight ? 'text-white' : 'text-[#1f2937]');
+
+                // Move slider
+                if (rentSlider && filterBar) {
+                    const barRect = filterBar.getBoundingClientRect();
+                    const btnRect = btn.getBoundingClientRect();
+                    rentSlider.style.left = (btnRect.left - barRect.left) + 'px';
+                    rentSlider.style.width = btnRect.width + 'px';
+
+                    if (isLight) {
+                        rentSlider.className = 'absolute top-1 bottom-1 rounded-md bg-white shadow-sm transition-all duration-300 ease-out pointer-events-none z-0';
+                    } else {
+                        rentSlider.className = 'absolute top-1 bottom-1 rounded-md bg-[#2c2c2e] transition-all duration-300 ease-out pointer-events-none z-0';
+                    }
                 }
             } else {
-                if (isLight) {
-                    btn.classList.add('text-gray-400');
-                    btn.classList.remove('text-[#1f2937]', 'bg-white', 'shadow-sm', 'text-white', 'bg-[#2c2c2e]');
-                } else {
-                    btn.classList.add('text-gray-500');
-                    btn.classList.remove('text-white', 'bg-[#2c2c2e]', 'text-[#1f2937]', 'bg-white', 'shadow-sm');
-                }
+                btn.classList.add('text-gray-500');
+                btn.classList.remove('text-white', 'text-[#1f2937]', 'bg-white', 'shadow-sm', 'bg-[#2c2c2e]');
             }
         });
 
@@ -7096,8 +7100,15 @@ document.addEventListener('DOMContentLoaded', async () => {
                     rentabilidadeContainer.classList.remove('hidden');
                     window.currentRentabilidadeDados = fundamentos.rentabilidade_chart;
 
-                    // Reset do botão para 2A
-                    window.mudarRentabilidadeRange(24);
+                    // Reset do botão para 2A — com delay para o container estar visível
+                    requestAnimationFrame(() => {
+                        const rentSlider = document.getElementById('rentabilidade-range-slider');
+                        if (rentSlider) rentSlider.style.transition = 'none';
+                        window.mudarRentabilidadeRange(24);
+                        requestAnimationFrame(() => {
+                            if (rentSlider) rentSlider.style.transition = '';
+                        });
+                    });
                 } else {
                     rentabilidadeContainer.classList.add('hidden');
                     window.currentRentabilidadeDados = null;

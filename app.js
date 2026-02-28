@@ -10946,10 +10946,15 @@ window.openProfileModal = function () {
     const modal = document.getElementById('profile-settings-modal');
     if (modal) {
         modal.classList.remove('hidden');
-        // trigger animation
+        modal.classList.add('flex');
+
+        // Trigger animation
         setTimeout(() => {
-            modal.querySelector('.modal-content').style.opacity = '1';
-            modal.querySelector('.modal-content').style.transform = 'scale(1)';
+            const content = modal.querySelector('.modal-content');
+            if (content) {
+                content.classList.remove('opacity-0', 'scale-95');
+                content.classList.add('opacity-100', 'scale-100');
+            }
         }, 10);
     }
 };
@@ -10976,11 +10981,21 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     function closeProfileModal() {
         if (!modal) return;
-        modal.querySelector('.modal-content').style.opacity = '0';
-        modal.querySelector('.modal-content').style.transform = 'scale(0.95)';
+        const content = modal.querySelector('.modal-content');
+        if (content) {
+            content.classList.remove('opacity-100', 'scale-100');
+            content.classList.add('opacity-0', 'scale-95');
+        }
         setTimeout(() => {
             modal.classList.add('hidden');
+            modal.classList.remove('flex');
         }, 200);
+    }
+
+    // Fallback binding mapping for when the inline onclick triggers before script is active
+    const container = document.getElementById('profile-picture-container');
+    if (container) {
+        container.addEventListener('click', window.openProfileModal);
     }
 
     if (btnClose) btnClose.addEventListener('click', closeProfileModal);

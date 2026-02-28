@@ -1998,8 +1998,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                             // Headers não precisam de padding lateral extra
                         } else {
                             // Cards precisam de padding lateral
-                            el.style.paddingLeft = '16px';
-                            el.style.paddingRight = '16px';
+                            el.style.paddingLeft = '20px';
+                            el.style.paddingRight = '20px';
                             el.innerHTML = this.renderRowFn(pos.item.data);
                         }
 
@@ -2051,10 +2051,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                 return acc + Number(item.value || 0);
             }, 0);
 
-            // HTML do Header (COM FUNDO CINZA NEUTRO)
+            // HTML do Header — estilo unificado com Mercado
             const headerHtml = `
-            <h3 class="text-xs font-bold text-neutral-400 uppercase tracking-widest pl-1">${mes}</h3>
-            <span class="text-[10px] font-mono font-bold text-gray-300 bg-[#1C1C1E] px-2 py-0.5 rounded-md border border-[#2C2C2E]">
+            <h3 class="text-[11px] font-bold text-neutral-500 uppercase tracking-widest">${mes}</h3>
+            <span class="text-[10px] font-mono font-bold text-gray-400 bg-[#1C1C1E] px-2 py-0.5 rounded-md">
                 Total: ${formatBRL(totalMes)}
             </span>
         `;
@@ -2457,10 +2457,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         let isGlobalFirstItem = true;
 
         Object.keys(grupos).forEach(dataLabel => {
-            // Header (Agora ponta a ponta com -mx-4 px-5 e fundo escuro opaco para camuflar)
+            // Header sticky — estilo unificado com Extrato
             const header = document.createElement('div');
-            header.className = 'sticky top-0 z-10 bg-[#0a0a0a] py-2 px-5 mb-0 -mx-4';
-            header.innerHTML = `<h3 class="text-[10px] font-bold text-neutral-500 uppercase tracking-widest">${dataLabel}</h3>`;
+            header.className = 'sticky top-0 z-10 bg-[#0a0a0a] py-3 px-5 mb-0 -mx-4 border-b border-[#1F1F1F]';
+            header.innerHTML = `<h3 class="text-[11px] font-bold text-neutral-500 uppercase tracking-widest">${dataLabel}</h3>`;
             fragment.appendChild(header);
 
             // Lista (Margem negativa total para borda ponta a ponta)

@@ -9695,7 +9695,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     erosaoPatHtml = `
                     <div class="flex items-center gap-3 justify-end mt-1" >
                         <span class="text-[10px] text-gray-500 font-medium tracking-wide">Patrimônio</span>
-                        <span class="text-xs font-bold ${corErosao} w-20 text-right tabular-nums">${sinal} R$ ${abbrevNum(Math.abs(impactoReais))}</span>
+                        <span class="text-xs font-bold ${corErosao} w-20 text-right tabular-nums">${sinal} ${Math.abs(impactoReais).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
                     </div>`;
                 } else {
                     erosaoPatHtml = `
@@ -9718,7 +9718,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     erosaoDivHtml = `
                     <div class="flex items-center gap-3 justify-end mt-1 mb-1" >
                         <span class="text-[10px] text-gray-500 font-medium tracking-wide">Proventos</span>
-                        <span class="text-xs font-bold ${corErosaoDiv} w-20 text-right tabular-nums">${sinalDiv} R$ ${abbrevNum(Math.abs(impactoDiv))}</span>
+                        <span class="text-xs font-bold ${corErosaoDiv} w-20 text-right tabular-nums">${sinalDiv} ${Math.abs(impactoDiv).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
                     </div>`;
                 } else {
                     erosaoDivHtml = `

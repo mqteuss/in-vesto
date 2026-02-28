@@ -10648,6 +10648,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         const scrollContainerObj = objetivosContent.querySelector('.overflow-y-auto');
 
         objetivosContent.addEventListener('touchstart', (e) => {
+            // Skip drag-to-close if touching a horizontally scrollable area (e.g. filters)
+            if (e.target.closest('.overflow-x-auto')) return;
             if (scrollContainerObj && scrollContainerObj.scrollTop === 0) {
                 touchStartObjetivosY = e.touches[0].clientY;
                 touchMoveObjetivosY = touchStartObjetivosY;

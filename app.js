@@ -3679,7 +3679,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             const item = document.createElement('div');
             // Formato 'Squarish' do screenshot sem bordas e conditionally snappable
-            item.className = `w-32 h-32 flex-shrink-0 ${isScrollable ? 'snap-start' : ''} bg-[#151515] rounded-3xl p-4 flex flex-col justify-between cursor-pointer active:scale-95 transition-transform`;
+            item.className = `w-28 h-28 flex-shrink-0 ${isScrollable ? 'snap-start' : ''} bg-[#151515] rounded-3xl p-3.5 flex flex-col justify-between cursor-pointer active:scale-95 transition-transform`;
 
             item.onclick = () => {
                 window.abrirDetalhesAtivo?.(prov.symbol);
@@ -3691,10 +3691,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             const isFundo = typeof isFII === 'function' ? isFII(prov.symbol) : prov.symbol.endsWith('11');
 
             const iconSvg = isFundo
-                ? `<svg class="w-7 h-7 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+                ? `<svg class="w-6 h-6 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
                      <path stroke-linecap="round" stroke-linejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
                    </svg>`
-                : `<svg class="w-7 h-7 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+                : `<svg class="w-6 h-6 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
                      <path stroke-linecap="round" stroke-linejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-4-6l3-3m0 0l3 3m-3-3v8" />
                    </svg>`; // Casa com seta pra cima ou ícone de ação
 
@@ -3703,8 +3703,11 @@ document.addEventListener('DOMContentLoaded', async () => {
                     ${iconSvg}
                 </div>
                 <div class="flex flex-col">
-                    <span class="text-sm font-bold text-white tracking-wide truncate">${prov.symbol}</span>
-                    <span class="text-[11px] text-gray-400 mt-0.5 truncate">${dia} ${mes} <span class="text-green-400 font-semibold ml-1">+${valorFormatado}</span></span>
+                    <span class="text-[13px] font-bold text-white tracking-wide truncate leading-tight">${prov.symbol}</span>
+                    <span class="text-[10px] text-gray-400 mt-1 flex items-center justify-between w-full">
+                        <span class="min-w-0 truncate mr-1">${dia} ${mes}</span>
+                        <span class="text-green-400 font-semibold whitespace-nowrap flex-shrink-0">+${valorFormatado}</span>
+                    </span>
                 </div>
             `;
             fragment.appendChild(item);

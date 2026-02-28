@@ -1617,21 +1617,24 @@
                 <div class="overflow-y-auto h-[calc(85vh-90px)] p-4 pt-0 custom-scroll">
 
 
-                    <div class="grid grid-cols-5 gap-2 mb-4 mt-4 p-1 bg-[#151515] rounded-xl shrink-0">
+                    <div class="relative flex mb-4 mt-4 p-1 bg-[#151515] rounded-xl shrink-0" id="patrimonio-range-bar">
+                        <div id="patrimonio-range-slider"
+                            class="absolute top-1 bottom-1 rounded-md bg-[#2c2c2e] transition-all duration-300 ease-out pointer-events-none z-0">
+                        </div>
                         <button
-                            class="patrimonio-range-btn rentabilidade-range-btn px-3 py-1.5 rounded-md text-[10px] font-bold text-gray-500 hover:text-white transition-all active:scale-95"
+                            class="patrimonio-range-btn rentabilidade-range-btn flex-1 px-3 py-1.5 rounded-md text-[10px] font-bold text-gray-500 transition-colors duration-200 active:scale-95 relative z-10"
                             data-range="7D">7D</button>
                         <button
-                            class="patrimonio-range-btn rentabilidade-range-btn px-3 py-1.5 rounded-md text-[10px] font-bold text-white bg-[#2c2c2e] transition-all active:scale-95"
+                            class="patrimonio-range-btn rentabilidade-range-btn flex-1 px-3 py-1.5 rounded-md text-[10px] font-bold text-white transition-colors duration-200 active:scale-95 relative z-10"
                             data-range="1M">1M</button>
                         <button
-                            class="patrimonio-range-btn rentabilidade-range-btn px-3 py-1.5 rounded-md text-[10px] font-bold text-gray-500 hover:text-white transition-all active:scale-95"
+                            class="patrimonio-range-btn rentabilidade-range-btn flex-1 px-3 py-1.5 rounded-md text-[10px] font-bold text-gray-500 transition-colors duration-200 active:scale-95 relative z-10"
                             data-range="6M">6M</button>
                         <button
-                            class="patrimonio-range-btn rentabilidade-range-btn px-3 py-1.5 rounded-md text-[10px] font-bold text-gray-500 hover:text-white transition-all active:scale-95"
+                            class="patrimonio-range-btn rentabilidade-range-btn flex-1 px-3 py-1.5 rounded-md text-[10px] font-bold text-gray-500 transition-colors duration-200 active:scale-95 relative z-10"
                             data-range="1Y">1A</button>
                         <button
-                            class="patrimonio-range-btn rentabilidade-range-btn px-3 py-1.5 rounded-md text-[10px] font-bold text-gray-500 hover:text-white transition-all active:scale-95"
+                            class="patrimonio-range-btn rentabilidade-range-btn flex-1 px-3 py-1.5 rounded-md text-[10px] font-bold text-gray-500 transition-colors duration-200 active:scale-95 relative z-10"
                             data-range="ALL">Tudo</button>
                     </div>
 

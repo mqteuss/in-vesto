@@ -774,32 +774,51 @@ document.addEventListener('DOMContentLoaded', async () => {
     const installSection = document.getElementById('install-section');
     const installBtn = document.getElementById('install-app-btn');
     const patrimonioRangeButtons = document.querySelectorAll('.patrimonio-range-btn');
+    const patrimonioSlider = document.getElementById('patrimonio-range-slider');
+
+    function movePatrimonioSlider(targetBtn) {
+        if (!patrimonioSlider || !targetBtn) return;
+        const bar = document.getElementById('patrimonio-range-bar');
+        if (!bar) return;
+        const barRect = bar.getBoundingClientRect();
+        const btnRect = targetBtn.getBoundingClientRect();
+        patrimonioSlider.style.left = (btnRect.left - barRect.left) + 'px';
+        patrimonioSlider.style.width = btnRect.width + 'px';
+    }
+
     patrimonioRangeButtons.forEach(btn => {
         btn.addEventListener('click', (e) => {
             const isLight = document.body.classList.contains('light-mode');
+            const target = e.target;
 
+            // Update text colors
             patrimonioRangeButtons.forEach(b => {
-                if (isLight) {
-                    b.classList.add('text-gray-400');
-                    b.classList.remove('text-[#1f2937]', 'bg-white', 'shadow-sm', 'text-white', 'bg-[#2c2c2e]');
-                } else {
-                    b.classList.add('text-gray-500');
-                    b.classList.remove('text-white', 'bg-[#2c2c2e]', 'text-[#1f2937]', 'bg-white', 'shadow-sm');
-                }
+                b.classList.add('text-gray-500');
+                b.classList.remove('text-white', 'text-[#1f2937]');
             });
 
-            const target = e.target;
             if (isLight) {
-                target.classList.add('text-[#1f2937]', 'bg-white', 'shadow-sm');
-                target.classList.remove('text-gray-400', 'text-white', 'bg-[#2c2c2e]');
+                target.classList.add('text-[#1f2937]');
+                target.classList.remove('text-gray-500');
+                patrimonioSlider.className = 'absolute top-1 bottom-1 rounded-md bg-white shadow-sm transition-all duration-300 ease-out pointer-events-none z-0';
             } else {
-                target.classList.add('text-white', 'bg-[#2c2c2e]');
-                target.classList.remove('text-gray-500', 'text-[#1f2937]', 'bg-white', 'shadow-sm');
+                target.classList.add('text-white');
+                target.classList.remove('text-gray-500');
+                patrimonioSlider.className = 'absolute top-1 bottom-1 rounded-md bg-[#2c2c2e] transition-all duration-300 ease-out pointer-events-none z-0';
             }
+
+            // Slide the indicator
+            movePatrimonioSlider(target);
 
             currentPatrimonioRange = target.dataset.range;
             renderizarGraficoPatrimonio();
         });
+    });
+
+    // Initialize slider position on the default active button (1M)
+    requestAnimationFrame(() => {
+        const defaultBtn = document.querySelector('.patrimonio-range-btn[data-range="1M"]');
+        if (defaultBtn) movePatrimonioSlider(defaultBtn);
     });
 
     // ─── NAVEGAÇÃO POR TABS DO MODAL DE DETALHES ─────────────────────────────
@@ -3126,6 +3145,15 @@ document.addEventListener('DOMContentLoaded', async () => {
             modalCustoValor.textContent = totalCarteiraCusto.textContent;
         }
         requestAnimationFrame(() => {
+            // Reposition the slider now that the modal is visible and measurable
+            const activeRangeBtn = document.querySelector('.patrimonio-range-btn[data-range="' + currentPatrimonioRange + '"]');
+            if (activeRangeBtn) {
+                patrimonioSlider.style.transition = 'none';
+                movePatrimonioSlider(activeRangeBtn);
+                // Re-enable transition after paint
+                requestAnimationFrame(() => { patrimonioSlider.style.transition = ''; });
+            }
+
             setTimeout(() => {
                 if (patrimonioChartInstance) {
                     // Força o Chart.js a reler o tamanho do container pai
@@ -3312,7 +3340,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             })
             .sort((a, b) => new Date(a.date) - new Date(b.date));
 
-        if (['6M', '1Y'].includes(currentPatrimonioRange)) {
+        if (['6M', '1Y', 'ALL'].includes(currentPatrimonioRange)) {
             const grupos = {};
             dadosOrdenados.forEach(p => {
                 const chaveMes = p.date.substring(0, 7);

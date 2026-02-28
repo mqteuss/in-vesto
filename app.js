@@ -11013,14 +11013,14 @@ function _profileToast(msg, isError) {
 window.openProfileModal = function () {
     const modal = document.getElementById('profile-settings-modal');
     if (!modal) return;
-    modal.classList.remove('hidden');
-    modal.classList.add('flex');
-    requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-            const c = modal.querySelector('.modal-content');
-            if (c) { c.classList.remove('opacity-0', 'scale-95'); c.classList.add('opacity-100', 'scale-100'); }
-        });
-    });
+    modal.classList.add('visible');
+    modal.classList.remove('hidden'); // Just in case it has hidden from previous code
+
+    // Opcional: reativar animação
+    const c = modal.querySelector('.modal-content');
+    if (c) {
+        c.classList.remove('modal-out');
+    }
 };
 
 document.addEventListener('DOMContentLoaded', async () => {
@@ -11047,8 +11047,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     function closeProfileModal() {
         if (!modal) return;
         const c = modal.querySelector('.modal-content');
-        if (c) { c.classList.remove('opacity-100', 'scale-100'); c.classList.add('opacity-0', 'scale-95'); }
-        setTimeout(() => { modal.classList.add('hidden'); modal.classList.remove('flex'); }, 200);
+        if (c) {
+            c.classList.add('modal-out');
+        }
+        setTimeout(() => {
+            modal.classList.remove('visible');
+        }, 200);
     }
 
     const profileContainer = document.getElementById('profile-picture-container');

@@ -8388,10 +8388,29 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     const btnExportExtratoFoto = document.getElementById('btn-export-extrato-foto');
     const btnExportExtratoPdf = document.getElementById('btn-export-extrato-pdf');
+    const btnExportTransacoesFoto = document.getElementById('btn-export-transacoes-foto');
+    const btnExportTransacoesPdf = document.getElementById('btn-export-transacoes-pdf');
+
+    const proventosMonthInput = document.getElementById('proventos-month-filter');
+    const transacoesMonthInput = document.getElementById('transacoes-month-filter');
+
+    if (proventosMonthInput) {
+        proventosMonthInput.addEventListener('change', (e) => {
+            provMonthFilter = e.target.value; // 'YYYY-MM'
+            if (window.renderizarHistoricoProventosGlobal) window.renderizarHistoricoProventosGlobal();
+        });
+    }
+
+    if (transacoesMonthInput) {
+        transacoesMonthInput.addEventListener('change', (e) => {
+            histMonthFilter = e.target.value; // 'YYYY-MM'
+            if (window.renderizarHistoricoGlobal) window.renderizarHistoricoGlobal();
+        });
+    }
 
     if (btnExportExtratoFoto) {
         btnExportExtratoFoto.addEventListener('click', async () => {
-            await handleExportExtrato('foto');
+            await handleExportExtrato('foto', 'proventos');
         });
     }
 

@@ -2810,11 +2810,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         btnOk.textContent = 'Fechar';
 
         btnOk.onclick = () => {
-            // Inicia chamadas assíncronas do dashboard que não bloqueiam a UI
-            setTimeout(() => {
-                carregarMarketIndices();
-                carregarRankings();
-            }, 50);
             modal.classList.remove('visible');
             setTimeout(() => {
                 if (modalContent) {
@@ -8650,7 +8645,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             // Renderiza a watchlist (leve)
             renderizarWatchlist();
 
-            // Carrega rankings Maiores Altas (não bloqueia)
+            // Carrega índices de mercado e rankings (não bloqueiam)
+            carregarMarketIndices();
             carregarRankings();
 
             // Inicia cálculos pesados e chamadas externas

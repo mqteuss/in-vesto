@@ -8434,13 +8434,13 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     async function handleExportExtrato(formato, tipo) {
         const isProventos = tipo === 'proventos';
-        const listaId = isProventos ? 'lista-historico-proventos' : 'lista-historico';
         const emptyMessage = isProventos ? 'Nenhum provento efetivado' : 'Nenhum registro encontrado';
         const filePrefix = isProventos ? 'extrato_proventos' : 'extrato_transacoes';
         const titleShare = isProventos ? 'Extrato de Proventos' : 'Extrato de Transações';
+        const currentVirtualizer = isProventos ? proventosVirtualizer : historicoVirtualizer;
 
-        const listaEmExibicao = document.getElementById(listaId);
-        if (!listaEmExibicao || listaEmExibicao.children.length === 0 || listaEmExibicao.innerHTML.includes(emptyMessage)) {
+        // Verifica se há dados na instância do VirtualScroller
+        if (!currentVirtualizer || !currentVirtualizer.positions || currentVirtualizer.positions.length === 0) {
             showToast(`Sem dados de ${tipo} para exportar.`);
             return;
         }
@@ -8461,17 +8461,67 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (formato === 'foto' && btnFoto) {
                 btnFoto.innerHTML = `<span class="loader-sm"></span>`;
                 btnFoto.disabled = true;
-                await loadHtml2Canvas();
+            } else if (formato === 'pdf' && btnPdf) {
+                btnPdf.innerHTML = `<span class="loader-sm"></span>`;
+                btnPdf.disabled = true;
+            }
 
-                const canvas = await html2canvas(listaEmExibicao, {
-                    backgroundColor: '#000000',
-                    scale: 2
-                });
+            // 1. Constrói um contêiner temporário off-screen com TODOS os itens
+            const tempContainer = document.createElement('div');
+            tempContainer.style.position = 'absolute';
+            tempContainer.style.left = '-9999px';
+            tempContainer.style.top = '0';
+            tempContainer.style.width = '400px'; // Largura fixa razoável para mobile
+            tempContainer.style.backgroundColor = '#000000';
+            tempContainer.style.padding = '16px';
+            tempContainer.style.boxSizing = 'border-box';
 
-                const dataUrl = canvas.toDataURL('image/png');
+            // Adiciona um título ao export
+            const headerTitle = document.createElement('div');
+            headerTitle.style.color = '#fff';
+            headerTitle.style.fontSize = '18px';
+            headerTitle.style.fontWeight = 'bold';
+            headerTitle.style.marginBottom = '16px';
+            headerTitle.style.textAlign = 'center';
+            headerTitle.innerText = titleShare;
+            tempContainer.appendChild(headerTitle);
 
+            // Popula com todos os itens do virtualizer
+            currentVirtualizer.positions.forEach(pos => {
+                const itemEl = document.createElement('div');
+                itemEl.style.position = 'relative'; // Remove absolute do virtualizer original
+                itemEl.style.marginBottom = '8px'; // Espaçamento normal
+                itemEl.style.width = '100%';
+
+                if (pos.item.type === 'header') {
+                    itemEl.innerHTML = `<div class="virtual-header-row">${pos.item.htmlContent}</div>`;
+                } else {
+                    itemEl.innerHTML = currentVirtualizer.renderRowFn(pos.item.data);
+                }
+                tempContainer.appendChild(itemEl);
+            });
+
+            document.body.appendChild(tempContainer);
+
+            // 2. Carrega as bibliotecas e gera o Canvas
+            await loadHtml2Canvas();
+            if (formato === 'pdf') await loadJsPDF();
+
+            const canvas = await html2canvas(tempContainer, {
+                backgroundColor: '#000000',
+                scale: 2,
+                logging: false,
+                windowWidth: 400
+            });
+
+            // Limpa o DOM temporário imediatamente
+            document.body.removeChild(tempContainer);
+
+            const imgData = canvas.toDataURL('image/png');
+
+            if (formato === 'foto') {
                 try {
-                    const blob = await (await fetch(dataUrl)).blob();
+                    const blob = await (await fetch(imgData)).blob();
                     const file = new File([blob], `${filePrefix}.png`, { type: 'image/png' });
                     if (navigator.canShare && navigator.canShare({ files: [file] })) {
                         await navigator.share({
@@ -8483,22 +8533,11 @@ document.addEventListener('DOMContentLoaded', async () => {
                     }
                 } catch (e) {
                     console.error('Erro ao compartilhar', e);
-                    const blob = await (await fetch(dataUrl)).blob();
+                    const blob = await (await fetch(imgData)).blob();
                     downloadBlob(blob, `${filePrefix}.png`);
                 }
                 showToast(`Extrato (${tipo}) em foto gerado!`, "success");
-            } else if (formato === 'pdf' && btnPdf) {
-                btnPdf.innerHTML = `<span class="loader-sm"></span>`;
-                btnPdf.disabled = true;
-                await loadHtml2Canvas();
-                await loadJsPDF();
-
-                const canvas = await html2canvas(listaEmExibicao, {
-                    backgroundColor: '#000000',
-                    scale: 2
-                });
-
-                const imgData = canvas.toDataURL('image/png');
+            } else if (formato === 'pdf') {
                 const pdf = new window.jspdf.jsPDF({
                     orientation: 'portrait',
                     unit: 'px',

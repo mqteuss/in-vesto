@@ -531,9 +531,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     let lastHistoricoProventosSignature = '';
     let lastAlocacaoData = '';
     let currentPatrimonioRange = '1M';
-    let histFilterType = 'all';
+    let histFilterType = 'all'; // 'all', 'buy', 'sell'
     let histSearchTerm = '';
     let provSearchTerm = '';
+    let histMonthFilter = ''; // Formato 'YYYY-MM'
+    let provMonthFilter = ''; // Formato 'YYYY-MM'
     let currentUserId = null;
     let transacoes = [];
     let carteiraCalculada = [];
@@ -2119,7 +2121,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         let dadosFiltrados = transacoes.filter(t => {
             const matchType = histFilterType === 'all' || t.type === histFilterType;
             const matchSearch = histSearchTerm === '' || t.symbol.includes(histSearchTerm);
-            return matchType && matchSearch;
+            const matchMonth = histMonthFilter === '' || t.date.startsWith(histMonthFilter);
+            return matchType && matchSearch && matchMonth;
         });
 
         if (dadosFiltrados.length === 0) {
@@ -2211,7 +2214,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (dataPag > hoje) return false;
 
             const buscaValida = termoBusca === '' || p.symbol.includes(termoBusca);
-            return buscaValida;
+            const dataRef = p.dataCom || p.paymentDate;
+            const mesValido = provMonthFilter === '' || dataRef.startsWith(provMonthFilter);
+            return buscaValida && mesValido;
         }).sort((a, b) => new Date(b.paymentDate) - new Date(a.paymentDate));
 
         if (proventosIniciais.length === 0) {
@@ -8392,27 +8397,54 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     if (btnExportExtratoPdf) {
         btnExportExtratoPdf.addEventListener('click', async () => {
-            await handleExportExtrato('pdf');
+            await handleExportExtrato('pdf', 'proventos');
         });
     }
 
-    async function handleExportExtrato(formato) {
-        const proventosEmExibicao = document.getElementById('lista-historico-proventos');
-        if (!proventosEmExibicao || proventosEmExibicao.children.length === 0 || proventosEmExibicao.innerHTML.includes('Nenhum provento efetivado')) {
-            showToast("Sem dados de proventos para exportar.");
+    if (btnExportTransacoesFoto) {
+        btnExportTransacoesFoto.addEventListener('click', async () => {
+            await handleExportExtrato('foto', 'transacoes');
+        });
+    }
+
+    if (btnExportTransacoesPdf) {
+        btnExportTransacoesPdf.addEventListener('click', async () => {
+            await handleExportExtrato('pdf', 'transacoes');
+        });
+    }
+
+    async function handleExportExtrato(formato, tipo) {
+        const isProventos = tipo === 'proventos';
+        const listaId = isProventos ? 'lista-historico-proventos' : 'lista-historico';
+        const emptyMessage = isProventos ? 'Nenhum provento efetivado' : 'Nenhum registro encontrado';
+        const filePrefix = isProventos ? 'extrato_proventos' : 'extrato_transacoes';
+        const titleShare = isProventos ? 'Extrato de Proventos' : 'Extrato de Transações';
+
+        const listaEmExibicao = document.getElementById(listaId);
+        if (!listaEmExibicao || listaEmExibicao.children.length === 0 || listaEmExibicao.innerHTML.includes(emptyMessage)) {
+            showToast(`Sem dados de ${tipo} para exportar.`);
             return;
         }
 
-        const btnFotoOriginalHTML = btnExportExtratoFoto ? btnExportExtratoFoto.innerHTML : '';
-        const btnPdfOriginalHTML = btnExportExtratoPdf ? btnExportExtratoPdf.innerHTML : '';
+        let btnFoto, btnPdf;
+        if (isProventos) {
+            btnFoto = btnExportExtratoFoto;
+            btnPdf = btnExportExtratoPdf;
+        } else {
+            btnFoto = btnExportTransacoesFoto;
+            btnPdf = btnExportTransacoesPdf;
+        }
+
+        const btnFotoOriginalHTML = btnFoto ? btnFoto.innerHTML : '';
+        const btnPdfOriginalHTML = btnPdf ? btnPdf.innerHTML : '';
 
         try {
-            if (formato === 'foto' && btnExportExtratoFoto) {
-                btnExportExtratoFoto.innerHTML = `<span class="loader-sm"></span>`;
-                btnExportExtratoFoto.disabled = true;
+            if (formato === 'foto' && btnFoto) {
+                btnFoto.innerHTML = `<span class="loader-sm"></span>`;
+                btnFoto.disabled = true;
                 await loadHtml2Canvas();
 
-                const canvas = await html2canvas(proventosEmExibicao, {
+                const canvas = await html2canvas(listaEmExibicao, {
                     backgroundColor: '#000000',
                     scale: 2
                 });
@@ -8421,28 +8453,28 @@ document.addEventListener('DOMContentLoaded', async () => {
 
                 try {
                     const blob = await (await fetch(dataUrl)).blob();
-                    const file = new File([blob], 'extrato_proventos.png', { type: 'image/png' });
+                    const file = new File([blob], `${filePrefix}.png`, { type: 'image/png' });
                     if (navigator.canShare && navigator.canShare({ files: [file] })) {
                         await navigator.share({
                             files: [file],
-                            title: 'Extrato de Proventos',
+                            title: titleShare,
                         });
                     } else {
-                        downloadBlob(blob, 'extrato_proventos.png');
+                        downloadBlob(blob, `${filePrefix}.png`);
                     }
                 } catch (e) {
                     console.error('Erro ao compartilhar', e);
                     const blob = await (await fetch(dataUrl)).blob();
-                    downloadBlob(blob, 'extrato_proventos.png');
+                    downloadBlob(blob, `${filePrefix}.png`);
                 }
-                showToast("Extrato em foto gerado com sucesso!", "success");
-            } else if (formato === 'pdf' && btnExportExtratoPdf) {
-                btnExportExtratoPdf.innerHTML = `<span class="loader-sm"></span>`;
-                btnExportExtratoPdf.disabled = true;
+                showToast(`Extrato (${tipo}) em foto gerado!`, "success");
+            } else if (formato === 'pdf' && btnPdf) {
+                btnPdf.innerHTML = `<span class="loader-sm"></span>`;
+                btnPdf.disabled = true;
                 await loadHtml2Canvas();
                 await loadJsPDF();
 
-                const canvas = await html2canvas(proventosEmExibicao, {
+                const canvas = await html2canvas(listaEmExibicao, {
                     backgroundColor: '#000000',
                     scale: 2
                 });
@@ -8458,31 +8490,31 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const pdfBlob = pdf.output('blob');
 
                 try {
-                    const file = new File([pdfBlob], 'extrato_proventos.pdf', { type: 'application/pdf' });
+                    const file = new File([pdfBlob], `${filePrefix}.pdf`, { type: 'application/pdf' });
                     if (navigator.canShare && navigator.canShare({ files: [file] })) {
                         await navigator.share({
                             files: [file],
-                            title: 'Extrato de Proventos PDF',
+                            title: `${titleShare} PDF`,
                         });
                     } else {
-                        downloadBlob(pdfBlob, 'extrato_proventos.pdf');
+                        downloadBlob(pdfBlob, `${filePrefix}.pdf`);
                     }
                 } catch (e) {
                     console.error('Erro ao compartilhar PDF', e);
-                    downloadBlob(pdfBlob, 'extrato_proventos.pdf');
+                    downloadBlob(pdfBlob, `${filePrefix}.pdf`);
                 }
-                showToast("Extrato em PDF gerado com sucesso!", "success");
+                showToast(`Extrato (${tipo}) em PDF gerado!`, "success");
             }
         } catch (e) {
             console.error("Erro ao gerar extrato:", e);
             showToast("Erro ao gerar arquivo: " + e.message);
         } finally {
-            if (formato === 'foto' && btnExportExtratoFoto) {
-                btnExportExtratoFoto.innerHTML = btnFotoOriginalHTML;
-                btnExportExtratoFoto.disabled = false;
-            } else if (formato === 'pdf' && btnExportExtratoPdf) {
-                btnExportExtratoPdf.innerHTML = btnPdfOriginalHTML;
-                btnExportExtratoPdf.disabled = false;
+            if (formato === 'foto' && btnFoto) {
+                btnFoto.innerHTML = btnFotoOriginalHTML;
+                btnFoto.disabled = false;
+            } else if (formato === 'pdf' && btnPdf) {
+                btnPdf.innerHTML = btnPdfOriginalHTML;
+                btnPdf.disabled = false;
             }
         }
     }

@@ -2810,6 +2810,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         btnOk.textContent = 'Fechar';
 
         btnOk.onclick = () => {
+            // Inicia chamadas assíncronas do dashboard que não bloqueiam a UI
+            setTimeout(() => {
+                carregarMarketIndices();
+                carregarRankings();
+            }, 50);
             modal.classList.remove('visible');
             setTimeout(() => {
                 if (modalContent) {
@@ -4557,11 +4562,14 @@ document.addEventListener('DOMContentLoaded', async () => {
                 }
 
                 return `
-                    <div class="px-3 py-1.5 rounded-full border ${colorClass} flex items-center justify-center gap-1.5 shadow-sm whitespace-nowrap flex-shrink-0 cursor-default">
-                        <span class="text-[10px] font-bold tracking-wider text-gray-200">${item.nome}</span>
-                        <div class="flex items-center gap-0.5">
-                           ${iconHtml}
-                           <span class="text-[11px] font-bold tabular-nums tracking-wide">${item.variacao}</span>
+                    <div class="px-3 py-1.5 rounded-full border ${colorClass} flex items-center justify-center gap-2 shadow-sm whitespace-nowrap flex-shrink-0 cursor-default">
+                        <span class="text-[10px] font-bold tracking-wider text-gray-400">${item.nome}</span>
+                        <div class="flex items-center gap-1.5">
+                            <span class="text-[11px] font-bold text-gray-200 tracking-wide">${item.valor}</span>
+                            <div class="flex items-center gap-0.5 opacity-90">
+                               ${iconHtml}
+                               <span class="text-[11px] font-bold tabular-nums tracking-wide">${item.variacao}</span>
+                            </div>
                         </div>
                     </div>
                 `;
@@ -8644,7 +8652,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             // Carrega rankings Maiores Altas (não bloqueia)
             carregarRankings();
-            carregarMarketIndices();
 
             // Inicia cálculos pesados e chamadas externas
             atualizarTodosDados(false);

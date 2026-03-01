@@ -14,7 +14,6 @@ const httpsAgent = new https.Agent({
 
 const client = axios.create({
     httpsAgent,
-    decompress: true,
     headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
         'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
@@ -23,59 +22,6 @@ const client = axios.create({
     },
     timeout: 8000
 });
-
-/**
- * fetchWithRetry: Tenta fazer a requisição via Axios.
- * Se falhar (timeout, erro 500, etc), tenta novamente usando backoff exponencial.
- */
-async function fetchWithRetry(url, options = {}, retries = 3, baseBackoff = 1000) {
-    // Caso a chamada só passe retries no lugar de options
-    if (typeof options === 'number') {
-        baseBackoff = retries === 3 ? 1000 : retries;
-        retries = options;
-        options = {};
-    }
-
-    for (let i = 0; i < retries; i++) {
-        try {
-            return await client.get(url, options);
-        } catch (err) {
-            const status = err.response ? err.response.status : null;
-            // Se for 404, não adianta tentar novamente (página inexistente)
-            if (status === 404 || i === retries - 1) {
-                throw err;
-            }
-            // Espera antes da próxima tentativa (backoff exponencial: 1s, 2s, 4s...)
-            const delay = baseBackoff * Math.pow(2, i);
-            console.log(`[RETRY] Tentativa ${i + 1} falhou para ${url}: ${err.message}. Retentando em ${delay}ms...`);
-            await new Promise(res => setTimeout(res, delay));
-        }
-    }
-}
-
-// Heurística: tickers que terminam em 11/12 são FIIs, EXCETO Units conhecidas
-const KNOWN_UNITS = new Set([
-    'BPAC11', 'BIDI11', 'ENGI11', 'TAEE11', 'KLBN11', 'SANB11', 'ALUP11', 'BBAS11',
-    'MODL11', 'BRBI11', 'SULA11', 'SAPR11', 'IGTI11', 'CPLE11', 'ABEV11', 'PETR11',
-    'ITUB11', 'BBDC11', 'VALE11', 'AMER11', 'MGLU11', 'VIIA11', 'WEGE11', 'EMBR11',
-    'SUZB11', 'ELET11', 'CSNA11', 'GGBR11', 'GOAU11', 'USIM11', 'CSAN11', 'RRRP11',
-    'PRIO11', 'ENAT11', 'VBBR11', 'UGPA11', 'BBSE11', 'CXSE11', 'PSSA11', 'IRBR11',
-    'MULT11', 'CYRE11', 'LREN11', 'SBFG11', 'ASAI11', 'CRFB11', 'NTCO11', 'CASH11',
-    'TOTS11', 'LWSA11', 'AERI11', 'INTB11', 'VIVT11', 'TIMS11', 'EQTL11', 'NEOE11',
-    'HYPE11', 'RDOR11', 'RADL11', 'FLRY11', 'MDIA11', 'SMTO11', 'JBSS11', 'MRFG11',
-    'BEEF11', 'BRFS11', 'CMIN11', 'CBAV11', 'FESA11', 'POMO11', 'RANI11',
-    'SLCE11', 'AGRO11', 'TTEN11', 'HBSA11', 'YDUQ11', 'COGN11', 'SEER11', 'ANIM11',
-    'CVCB11', 'GOLL11', 'AZUL11', 'RAIL11', 'STBP11', 'CCRO11', 'ECOR11', 'JSLG11',
-    'SIMH11', 'RENT11', 'AMAR11', 'ARZZ11', 'CEAB11', 'SGPS11', 'VAMO11', 'VIVA11',
-    'VULC11', 'ALPA11', 'DXCO11', 'LEVE11', 'MYPK11', 'RCSL11', 'TUPY11', 'WIZC11',
-    'AESB11'
-]);
-const guessType = (ticker) => {
-    const t = ticker.toUpperCase();
-    if (KNOWN_UNITS.has(t)) return 'acao';
-    if (t.endsWith('11') || t.endsWith('12')) return 'fii';
-    return 'acao';
-};
 
 // ---------------------------------------------------------
 // HELPERS (FUNÇÕES AUXILIARES)
@@ -134,36 +80,23 @@ function cleanDoubledString(str) {
 async function scrapeFundamentos(ticker) {
     try {
         let html;
-        const guess = guessType(ticker);
-        let tipoAtivo = guess;
+        let tipoAtivo = 'fii'; // default
         const urlFii = `https://investidor10.com.br/fiis/${ticker.toLowerCase()}/`;
         const urlAcao = `https://investidor10.com.br/acoes/${ticker.toLowerCase()}/`;
 
         const fetchHtml = async (url, tipo) => {
-            const res = await fetchWithRetry(url);
+            const res = await client.get(url);
             if (res.status !== 200) throw new Error(`HTTP ${res.status}`);
             if (!res.data.includes('cotacao') && !res.data.includes('Cotação')) throw new Error('Página inválida');
             return { html: res.data, tipo };
         };
 
-        // Smart URL: tenta a mais provável primeiro, fallback se falhar (evita 1 request desnecessário)
-        const primaryUrl = guess === 'fii' ? urlFii : urlAcao;
-        const fallbackUrl = guess === 'fii' ? urlAcao : urlFii;
-        const primaryTipo = guess;
-        const fallbackTipo = guess === 'fii' ? 'acao' : 'fii';
-
         try {
-            const result = await fetchHtml(primaryUrl, primaryTipo);
+            const result = await Promise.any([fetchHtml(urlFii, 'fii'), fetchHtml(urlAcao, 'acao')]);
             html = result.html;
             tipoAtivo = result.tipo;
         } catch (e) {
-            try {
-                const result = await fetchHtml(fallbackUrl, fallbackTipo);
-                html = result.html;
-                tipoAtivo = result.tipo;
-            } catch (e2) {
-                throw new Error('Ativo não encontrado no Investidor10');
-            }
+            throw new Error('Ativo não encontrado no Investidor10');
         }
 
         const $ = cheerio.load(html);
@@ -180,8 +113,7 @@ async function scrapeFundamentos(ticker) {
             payout: 'N/A', cagr_receita_5a: 'N/A', cagr_lucros_5a: 'N/A',
             imoveis: [],
             sobre: '',
-            comparacao: [],
-            logo_url: ''
+            comparacao: []
         };
 
         let cotacao_atual = 0;
@@ -322,15 +254,6 @@ async function scrapeFundamentos(ticker) {
             }
         });
 
-        const logoImg = $('.header-company img, #header-container img, .brand-company img').first();
-        if (logoImg.length) {
-            dados.logo_url = logoImg.attr('src') || '';
-            // Se for URL relativa, transforma em absoluta
-            if (dados.logo_url.startsWith('/')) {
-                dados.logo_url = 'https://investidor10.com.br' + dados.logo_url;
-            }
-        }
-
         let sobreTexto = '';
         $('#about-section p, .profile-description p, #description p, .text-description p').each((i, el) => {
             sobreTexto += $(el).text().trim() + ' ';
@@ -441,8 +364,8 @@ async function scrapeFundamentos(ticker) {
         if (revenueGeography) dados.revenue_geography = revenueGeography;
         if (revenueSegment) dados.revenue_segment = revenueSegment;
 
-        // ─── OTIMIZADO: Lança chart APIs + comparação API em PARALELO (não bloqueia) ───
-        // Extrai companyId e tickerId do HTML (via regex, sem cheerio)
+        // ─── NOVO: Gráficos Financeiros (Receitas, Lucro x Cotação, Patrimônio, Payout) ───
+        // Extrai companyId e tickerId do HTML (estão embutidos nas URLs de API)
         let companyId = null;
         let tickerId = null;
         try {
@@ -452,43 +375,63 @@ async function scrapeFundamentos(ticker) {
             if (tickerMatch) tickerId = tickerMatch[1];
         } catch (e) { }
 
-        // Lança chart promises AGORA — resolve depois junto com a comparação
-        let chartPromise = Promise.resolve(null);
         if (companyId && tipoAtivo === 'acao') {
             const baseUrl = 'https://investidor10.com.br';
-            const chartRequests = [
+            const chartPromises = [];
+
+            // 1. Receitas e Lucros (anual, 10 anos)
+            chartPromises.push(
                 client.get(`${baseUrl}/api/balancos/receitaliquida/chart/${companyId}/3650/false/`)
-                    .then(r => ({ tipo: 'receitas_lucros', data: r.data })).catch(() => null),
+                    .then(r => ({ tipo: 'receitas_lucros', data: r.data }))
+                    .catch(() => null)
+            );
+
+            // 2. Lucro x Cotação
+            chartPromises.push(
                 client.get(`${baseUrl}/api/cotacao-lucro/${ticker.toLowerCase()}/adjusted/`)
-                    .then(r => ({ tipo: 'lucro_cotacao', data: r.data })).catch(() => null),
+                    .then(r => ({ tipo: 'lucro_cotacao', data: r.data }))
+                    .catch(() => null)
+            );
+
+            // 3. Evolução do Patrimônio (ativospassivos, 10 anos)
+            chartPromises.push(
                 client.get(`${baseUrl}/api/balancos/ativospassivos/chart/${companyId}/3650/`)
-                    .then(r => ({ tipo: 'evolucao_patrimonio', data: r.data })).catch(() => null),
-            ];
+                    .then(r => ({ tipo: 'evolucao_patrimonio', data: r.data }))
+                    .catch(() => null)
+            );
+
+            // 4. Payout
             if (tickerId) {
-                chartRequests.push(
+                chartPromises.push(
                     client.get(`${baseUrl}/api/acoes/payout-chart/${companyId}/${tickerId}/${ticker.toUpperCase()}/3650`)
-                        .then(r => ({ tipo: 'payout', data: r.data })).catch(() => null)
+                        .then(r => ({ tipo: 'payout', data: r.data }))
+                        .catch(() => null)
                 );
             }
-            chartPromise = Promise.all(chartRequests);
+
+            try {
+                const results = await Promise.all(chartPromises);
+                const charts = {};
+                results.filter(r => r && r.data).forEach(r => {
+                    charts[r.tipo] = r.data;
+                });
+                if (Object.keys(charts).length > 0) {
+                    dados.charts_financeiros = charts;
+                }
+            } catch (e) {
+                console.error('Erro ao buscar gráficos financeiros:', e.message);
+            }
         }
 
-        // Lança comparação API em paralelo (não espera)
-        const apiUrl = $('#table-compare-fiis').attr('data-url') || $('#table-compare-segments').attr('data-url');
-        let comparacaoApiPromise = Promise.resolve(null);
-        if (apiUrl) {
-            const fullUrl = apiUrl.startsWith('http') ? apiUrl : `https://investidor10.com.br${apiUrl}`;
-            comparacaoApiPromise = client.get(fullUrl).catch(() => null);
-        }
-
-        // ─── Aguarda comparação API + charts em paralelo enquanto parseia HTML abaixo ───
         dados.comparacao = [];
         const tickersVistos = new Set();
 
-        // Resolver comparação API (já lançada acima)
-        try {
-            const resApi = await comparacaoApiPromise;
-            if (resApi && resApi.data) {
+        // TENTATIVA 1: API Oculta (Mais confiável para extrair Segmento, Tipo e Patrimônio que o HTML omite)
+        const apiUrl = $('#table-compare-fiis').attr('data-url') || $('#table-compare-segments').attr('data-url');
+        if (apiUrl) {
+            try {
+                const fullUrl = apiUrl.startsWith('http') ? apiUrl : `https://investidor10.com.br${apiUrl}`;
+                const resApi = await client.get(fullUrl);
                 let arrayComparacao = resApi.data.data || resApi.data || [];
 
                 if (Array.isArray(arrayComparacao)) {
@@ -520,8 +463,8 @@ async function scrapeFundamentos(ticker) {
                         }
                     });
                 }
-            }
-        } catch (err) { /* Falhou API, segue pro HTML abaixo */ }
+            } catch (err) { /* Falhou API, segue pro HTML abaixo */ }
+        }
 
         // TENTATIVA 2: SEU CÓDIGO HTML (Fallback se a API falhar)
         if (dados.comparacao.length === 0) {
@@ -604,22 +547,6 @@ async function scrapeFundamentos(ticker) {
             });
         }
 
-        // ─── Resolver chart promises (lançadas em paralelo acima) ───
-        try {
-            const chartResults = await chartPromise;
-            if (chartResults) {
-                const charts = {};
-                chartResults.filter(r => r && r.data).forEach(r => {
-                    charts[r.tipo] = r.data;
-                });
-                if (Object.keys(charts).length > 0) {
-                    dados.charts_financeiros = charts;
-                }
-            }
-        } catch (e) {
-            console.error('Erro ao buscar gráficos financeiros:', e.message);
-        }
-
         dados.tipo_ativo = tipoAtivo;
         return dados;
     } catch (error) {
@@ -629,71 +556,6 @@ async function scrapeFundamentos(ticker) {
 }
 
 // ---------------------------------------------------------
-// PARTE 1.5: RANKINGS (Maiores Altas + Baixas) -> INVESTIDOR10
-// ---------------------------------------------------------
-async function scrapeRankings() {
-    const resultados = { altas: [], baixas: [] };
-
-    const extractItems = ($, container, limit = 6) => {
-        const items = [];
-        if (!container) return items;
-        container.find('a[href*="/acoes/"]').each((i, el) => {
-            if (i >= limit) return false;
-            const fullText = $(el).text().replace(/\s+/g, ' ').trim();
-            const tickerMatch = fullText.match(/([A-Z]{4}\d{1,2})/);
-            const varMatch = fullText.match(/([+-]?\d+[,.]\d+\s*%)/);
-            const precoMatch = fullText.match(/R\$\s*([\d.,]+)/);
-
-            let logo_url = '';
-            const imgEl = $(el).find('img').first();
-            if (imgEl.length) {
-                logo_url = imgEl.attr('src') || '';
-                if (logo_url.startsWith('/')) logo_url = 'https://investidor10.com.br' + logo_url;
-            }
-
-            if (tickerMatch) {
-                items.push({
-                    ticker: tickerMatch[1],
-                    variacao: varMatch ? varMatch[1].replace(/\s/g, '') : '',
-                    preco: precoMatch ? `R$ ${precoMatch[1]}` : '',
-                    logo_url: logo_url
-                });
-            }
-        });
-        return items;
-    };
-
-    const findSection = ($, titulo) => {
-        let container = null;
-        $('h2').each((_, el) => {
-            if ($(el).text().trim() === titulo) {
-                container = $(el).parent();
-                if (container.find('a[href*="/acoes/"]').length === 0) {
-                    container = container.parent();
-                }
-                return false;
-            }
-        });
-        return container;
-    };
-
-    try {
-        const res = await fetchWithRetry('https://investidor10.com.br/');
-        if (res.status !== 200) return resultados;
-        const $ = cheerio.load(res.data);
-
-        resultados.altas = extractItems($, findSection($, 'Maiores Altas'), 6);
-        resultados.baixas = extractItems($, findSection($, 'Maiores Baixas'), 6);
-
-    } catch (e) {
-        console.error('Erro rankings:', e.message);
-    }
-
-    return resultados;
-}
-
-
-// ---------------------------------------------------------
 // PARTE 2: PROVENTOS -> STATUSINVEST
 // ---------------------------------------------------------
 
@@ -701,11 +563,7 @@ async function scrapeAsset(ticker) {
     try {
         const t = ticker.toUpperCase();
         let type = 'acao';
-        if (KNOWN_UNITS.has(t)) {
-            type = 'acao';
-        } else if (/\d{2}B?$/.test(t) && t.endsWith('11') || t.endsWith('11B')) {
-            type = 'fii';
-        }
+        if (/\d{2}B?$/.test(t) && t.endsWith('11') || t.endsWith('11B')) type = 'fii';
 
         const parseDateJSON = (dStr) => {
             if (!dStr || dStr.trim() === '' || dStr.trim() === '-') return null;
@@ -716,7 +574,7 @@ async function scrapeAsset(ticker) {
 
         const url = `https://statusinvest.com.br/${type}/companytickerprovents?ticker=${t}&chartProventsType=2`;
 
-        const { data } = await fetchWithRetry(url, {
+        const { data } = await client.get(url, {
             headers: {
                 'X-Requested-With': 'XMLHttpRequest',
                 'Referer': 'https://statusinvest.com.br/',
@@ -728,7 +586,7 @@ async function scrapeAsset(ticker) {
 
         if (earnings.length === 0 && type === 'acao') {
             const urlFii = `https://statusinvest.com.br/fii/companytickerprovents?ticker=${t}&chartProventsType=2`;
-            const { data: dataFii } = await fetchWithRetry(urlFii, {
+            const { data: dataFii } = await client.get(urlFii, {
                 headers: { 'X-Requested-With': 'XMLHttpRequest', 'Referer': 'https://statusinvest.com.br/' }
             }).catch(() => ({ data: {} }));
             if ((dataFii.assetEarningsModels || []).length > 0) {
@@ -770,7 +628,7 @@ async function scrapeAsset(ticker) {
 async function scrapeIpca() {
     try {
         const url = 'https://investidor10.com.br/indices/ipca/';
-        const { data } = await fetchWithRetry(url);
+        const { data } = await client.get(url);
         const $ = cheerio.load(data);
 
         const historico = [];
@@ -863,11 +721,11 @@ async function fetchYahooFinance(ticker, rangeFilter = '1A') {
 
         let data;
         try {
-            ({ data } = await fetchWithRetry(buildUrl('query1'), {
+            ({ data } = await client.get(buildUrl('query1'), {
                 headers: { 'Accept': 'application/json' }
             }));
         } catch (e) {
-            ({ data } = await fetchWithRetry(buildUrl('query2'), {
+            ({ data } = await client.get(buildUrl('query2'), {
                 headers: { 'Accept': 'application/json' }
             }));
         }
@@ -928,25 +786,8 @@ module.exports = async function handler(req, res) {
     res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,POST');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
-    // Cache diferenciado por mode (otimização: fundamentos mudam pouco, cotação muda sempre)
     if (req.method === 'GET' || req.method === 'POST') {
-        const mode = req.body?.mode;
-        if (mode === 'fundamentos') {
-            // Fundamentos mudam pouco — cache de 4h, stale até 24h
-            res.setHeader('Cache-Control', 's-maxage=14400, stale-while-revalidate=86400');
-        } else if (mode === 'cotacao_historica') {
-            // Cotação muda durante o pregão — cache de 5min, stale até 1h
-            res.setHeader('Cache-Control', 's-maxage=300, stale-while-revalidate=3600');
-        } else if (mode === 'proximo_provento' || mode === 'historico_12m') {
-            // Proventos mudam ocasionalmente — cache de 2h
-            res.setHeader('Cache-Control', 's-maxage=7200, stale-while-revalidate=43200');
-        } else if (mode === 'rankings') {
-            // Rankings mudam durante o pregão — cache de 15min
-            res.setHeader('Cache-Control', 's-maxage=900, stale-while-revalidate=3600');
-        } else {
-            // Default: 1h
-            res.setHeader('Cache-Control', 's-maxage=3600, stale-while-revalidate=86400');
-        }
+        res.setHeader('Cache-Control', 's-maxage=3600, stale-while-revalidate=86400');
     }
 
     if (req.method === 'OPTIONS') { res.status(200).end(); return; }
@@ -955,11 +796,6 @@ module.exports = async function handler(req, res) {
     try {
         if (!req.body || !req.body.mode) throw new Error("Payload inválido");
         const { mode, payload } = req.body;
-
-        if (mode === 'rankings') {
-            const dados = await scrapeRankings();
-            return res.status(200).json({ json: dados });
-        }
 
         if (mode === 'ipca') {
             const dados = await scrapeIpca();

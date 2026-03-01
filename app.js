@@ -8466,15 +8466,18 @@ document.addEventListener('DOMContentLoaded', async () => {
                 btnPdf.disabled = true;
             }
 
-            // 1. Constrói um contêiner temporário off-screen com TODOS os itens
+            // 1. Constrói um wrapper oculto off-screen para o html2canvas conseguir renderizar tudo sem que o usuário veja
+            const exportWrapper = document.createElement('div');
+            exportWrapper.style.position = 'fixed';
+            exportWrapper.style.top = '0';
+            exportWrapper.style.left = '0';
+            exportWrapper.style.width = '1px';
+            exportWrapper.style.height = '1px';
+            exportWrapper.style.overflow = 'hidden';
+            exportWrapper.style.zIndex = '-9999';
+            exportWrapper.style.pointerEvents = 'none';
+
             const tempContainer = document.createElement('div');
-            // Usando position absolute mas sem left -9999px para evitar que o iOS/Android descarte a renderização extra viewport
-            tempContainer.style.position = 'absolute';
-            tempContainer.style.top = '0';
-            tempContainer.style.left = '0';
-            tempContainer.style.zIndex = '-9999';
-            tempContainer.style.opacity = '0'; // Esconde visualmente mas mantém no fluxo de renderização local
-            tempContainer.style.pointerEvents = 'none';
             tempContainer.style.width = '400px';
             tempContainer.style.backgroundColor = '#000000';
             tempContainer.style.padding = '16px';
@@ -8505,7 +8508,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                 tempContainer.appendChild(itemEl);
             });
 
-            document.body.appendChild(tempContainer);
+            exportWrapper.appendChild(tempContainer);
+            document.body.appendChild(exportWrapper);
 
             // 2. Carrega as bibliotecas e gera o Canvas
             await loadHtml2Canvas();
@@ -8515,17 +8519,11 @@ document.addEventListener('DOMContentLoaded', async () => {
                 backgroundColor: '#000000',
                 scale: 2,
                 logging: false,
-                windowWidth: 400,
-                x: 0,
-                y: 0,
-                scrollX: 0,
-                scrollY: 0,
-                width: 400,
-                height: tempContainer.scrollHeight
+                windowWidth: 400
             });
 
             // Limpa o DOM temporário imediatamente
-            document.body.removeChild(tempContainer);
+            document.body.removeChild(exportWrapper);
 
             const imgData = canvas.toDataURL('image/png');
 

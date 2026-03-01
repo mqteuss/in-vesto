@@ -1,6 +1,6 @@
 import * as supabaseDB from './supabase.js';
 
-window.dismissNotificationGlobal = function(id, btnElement) {
+window.dismissNotificationGlobal = function (id, btnElement) {
     // Usa o Set em RAM — localStorage só é escrito aqui, nunca relido
     if (typeof dismissedNotifsSet !== 'undefined') {
         dismissedNotifsSet.add(id);
@@ -25,14 +25,14 @@ window.dismissNotificationGlobal = function(id, btnElement) {
     }
 };
 
-let currentProventosFilter = '12m'; 
+let currentProventosFilter = '12m';
 let customRangeStart = ''; // Formato: 'YYYY-MM'
 let customRangeEnd = '';   // Formato: 'YYYY-MM'
 
 const CHART_COLORS = {
-    JCP:  { bg: '#fbbf24', border: '#d97706' }, 
-    TRIB: { bg: '#fb7185', border: '#e11d48' }, 
-    DIV:  { bg: '#c084fc', border: '#9333ea' }  
+    JCP: { bg: '#fbbf24', border: '#d97706' },
+    TRIB: { bg: '#fb7185', border: '#e11d48' },
+    DIV: { bg: '#c084fc', border: '#9333ea' }
 };
 
 function checkEmptyState() {
@@ -45,13 +45,13 @@ function checkEmptyState() {
     if (!list || list.children.length === 0) {
         badge.classList.add('hidden');
         emptyState.classList.remove('hidden');
-        if(btnClear) btnClear.classList.add('hidden');
-        if(btnBell) btnBell.classList.remove('bell-ringing');
+        if (btnClear) btnClear.classList.add('hidden');
+        if (btnBell) btnBell.classList.remove('bell-ringing');
     } else {
         badge.classList.remove('hidden');
         emptyState.classList.add('hidden');
-        if(btnClear) btnClear.classList.remove('hidden');
-        if(btnBell) btnBell.classList.add('bell-ringing');
+        if (btnClear) btnClear.classList.remove('hidden');
+        if (btnBell) btnBell.classList.add('bell-ringing');
     }
 }
 
@@ -93,8 +93,8 @@ window.addEventListener('beforeinstallprompt', (e) => {
     deferredPrompt = e;
 });
 
-Chart.defaults.color = '#9ca3af'; 
-Chart.defaults.borderColor = '#374151'; 
+Chart.defaults.color = '#9ca3af';
+Chart.defaults.borderColor = '#374151';
 
 function bufferToBase64(buffer) {
     return btoa(String.fromCharCode(...new Uint8Array(buffer)));
@@ -106,11 +106,12 @@ function base64ToBuffer(base64) {
 
 // OTIMIZAÇÃO: Intl.NumberFormat instanciado UMA vez e reutilizado.
 // Evita criar um novo objeto de formatação a cada chamada (até 10x mais rápido em loops).
-const _fmtBRL     = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
-const _fmtNumber  = new Intl.NumberFormat('pt-BR');
+const _fmtBRL = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
+const _fmtNumber = new Intl.NumberFormat('pt-BR');
 
-const formatBRL     = (value) => value != null ? _fmtBRL.format(value) : 'N/A';
-const formatNumber  = (value) => value != null ? _fmtNumber.format(value) : 'N/A';
+const formatBRL = (value) => value != null ? _fmtBRL.format(value) : 'N/A';
+const formatNumber = (value) => value != null ? _fmtNumber.format(value) : 'N/A';
+const formatCurrencyShort = (value) => value != null ? _fmtNumber.format(value) : 'N/A';
 const formatPercent = (value) => `${(value ?? 0).toFixed(2)}%`;
 const formatDate = (dateString, includeTime = false) => {
     if (!dateString) return 'N/A';
@@ -139,16 +140,39 @@ const formatDateToInput = (dateString) => {
     }
 };
 
-const isFII = (symbol) => symbol && (symbol.endsWith('11') || symbol.endsWith('12'));
+// Lista principal de grandes BDRs e Units da B3 que terminam com 11, mas NÃO SÃO FIIs e devem receber logos
+const KNOWN_UNITS_BDRS = [
+    'BPAC11', 'BIDI11', 'ENGI11', 'TAEE11', 'KLBN11', 'SANB11', 'ALUP11', 'BBAS11',
+    'MODL11', 'BRBI11', 'SULA11', 'SAPR11', 'IGTI11', 'CPLE11', 'ABEV11', 'PETR11',
+    'ITUB11', 'BBDC11', 'VALE11', 'AMER11', 'MGLU11', 'VIIA11', 'WEGE11', 'EMBR11',
+    'SUZB11', 'ELET11', 'CSNA11', 'GGBR11', 'GOAU11', 'USIM11', 'CSAN11', 'RRRP11',
+    'Prio11', 'ENAT11', 'VBBR11', 'UGPA11', 'BBSE11', 'CXSE11', 'PSSA11', 'IRBR11',
+    'MULT11', 'CYRE11', 'LREN11', 'SBFG11', 'ASAI11', 'CRFB11', 'NTCO11', 'CASH11',
+    'TOTS11', 'LWSA11', 'AERI11', 'INTB11', 'VIVT11', 'TIMS11', 'EQTL11', 'NEOE11',
+    'HYPE11', 'RDOR11', 'RADL11', 'FLRY11', 'MDIA11', 'SMTO11', 'JBSS11', 'MRFG11',
+    'BEEF11', 'BRFS11', 'CMIN11', 'CBAV11', 'FESA11', 'KLBN11', 'POMO11', 'RANI11',
+    'SLCE11', 'AGRO11', 'TTEN11', 'HBSA11', 'YDUQ11', 'COGN11', 'SEER11', 'ANIM11',
+    'CVCB11', 'GOLL11', 'AZUL11', 'RAIL11', 'STBP11', 'CCRO11', 'ECOR11', 'JSLG11',
+    'SIMH11', 'RENT11', 'AMAR11', 'ARZZ11', 'CEAB11', 'SGPS11', 'VAMO11', 'VIVA11',
+    'VULC11', 'ALPA11', 'DXCO11', 'LEVE11', 'MYPK11', 'RCSL11', 'TUPY11', 'WIZC11',
+    'AESB11'
+];
+
+const isFII = (symbol) => {
+    if (!symbol) return false;
+    const symUpper = symbol.toUpperCase();
+    if (KNOWN_UNITS_BDRS.includes(symUpper)) return false;
+    return symUpper.endsWith('11') || symUpper.endsWith('12');
+};
 const isAcao = (symbol) => !!(symbol && !isFII(symbol));
 
-function parseMesAno(mesAnoStr) { 
+function parseMesAno(mesAnoStr) {
     try {
         const [mesStr, anoStr] = mesAnoStr.split('/');
-        const mes = parseInt(mesStr, 10) - 1; 
-        const ano = parseInt("20" + anoStr, 10); 
+        const mes = parseInt(mesStr, 10) - 1;
+        const ano = parseInt("20" + anoStr, 10);
         if (!isNaN(mes) && !isNaN(ano) && mes >= 0 && mes <= 11) {
-            return new Date(ano, mes, 1); 
+            return new Date(ano, mes, 1);
         }
         return null;
     } catch (e) {
@@ -160,7 +184,7 @@ function getSaoPauloDateTime() {
     try {
         const spTimeStr = new Date().toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' });
         const spDate = new Date(spTimeStr);
-        const dayOfWeek = spDate.getDay(); 
+        const dayOfWeek = spDate.getDay();
         const hour = spDate.getHours();
         return { dayOfWeek, hour };
     } catch (e) {
@@ -171,26 +195,26 @@ function getSaoPauloDateTime() {
 
 function isB3Open() {
     const { dayOfWeek, hour } = getSaoPauloDateTime();
-    if (dayOfWeek === 0 || dayOfWeek === 6) { return false; } 
-    if (hour >= 10 && hour < 18) { return true; } 
+    if (dayOfWeek === 0 || dayOfWeek === 6) { return false; }
+    if (hour >= 10 && hour < 18) { return true; }
     return false;
 }
 
-const REFRESH_INTERVAL = 300000; 
-const CACHE_PRECO_MERCADO_ABERTO = 1000 * 60 * 5; 
-const CACHE_PRECO_MERCADO_FECHADO = 1000 * 60 * 60 * 12; 
-const CACHE_NOTICIAS = 1000 * 60 * 15; 
-const CACHE_IA_HISTORICO = 1000 * 60 * 60 * 24; 
-const CACHE_PROVENTOS = 1000 * 60 * 60 * 12; 
+const REFRESH_INTERVAL = 300000;
+const CACHE_PRECO_MERCADO_ABERTO = 1000 * 60 * 5;
+const CACHE_PRECO_MERCADO_FECHADO = 1000 * 60 * 60 * 12;
+const CACHE_NOTICIAS = 1000 * 60 * 15;
+const CACHE_IA_HISTORICO = 1000 * 60 * 60 * 24;
+const CACHE_PROVENTOS = 1000 * 60 * 60 * 12;
 // Fundamentos mudam pouco durante o dia — cache de 4h no mercado aberto, 24h no fechado
-const CACHE_FUNDAMENTOS_ABERTO  = 1000 * 60 * 60 * 4;
+const CACHE_FUNDAMENTOS_ABERTO = 1000 * 60 * 60 * 4;
 const CACHE_FUNDAMENTOS_FECHADO = 1000 * 60 * 60 * 24;
 // Próximo provento — 30min no mercado aberto, 4h no fechado
-const CACHE_PROXIMO_PROVENTO_ABERTO  = 1000 * 60 * 30;
+const CACHE_PROXIMO_PROVENTO_ABERTO = 1000 * 60 * 30;
 const CACHE_PROXIMO_PROVENTO_FECHADO = 1000 * 60 * 60 * 4;
 
 const DB_NAME = 'vestoCacheDB';
-const DB_VERSION = 1; 
+const DB_VERSION = 2;
 
 function toggleDrawer(symbol) {
     const drawer = document.getElementById(`drawer-${symbol}`);
@@ -272,26 +296,26 @@ function criarCardElemento(ativo, dados) {
     const {
         dadoPreco, precoFormatado, variacaoFormatada, corVariacao,
         totalPosicao, custoTotal, lucroPrejuizo, lucroPrejuizoPercent,
-        corPL, dadoProvento, percentWallet, 
-        listaProventos = [] 
+        corPL, dadoProvento, percentWallet,
+        listaProventos = []
     } = dados;
 
     const sigla = ativo.symbol.substring(0, 2);
     const ehFii = isFII(ativo.symbol);
     const bgIcone = ehFii ? 'bg-black' : 'bg-[#151515]';
 
-    const iconUrl = `https://raw.githubusercontent.com/thefintz/icones-b3/main/icones/${ativo.symbol}.png`;
-    const iconHtml = !ehFii 
+    const iconUrl = `https://raw.githubusercontent.com/mqteuss/logos_b3/main/${ativo.symbol}.png`;
+    const iconHtml = !ehFii
         ? `<img src="${iconUrl}" alt="${ativo.symbol}" class="w-full h-full object-contain p-0.5 rounded-xl relative z-10" onerror="this.style.display='none'; this.nextElementSibling.classList.remove('hidden');" />
-           <span class="hidden w-full h-full flex items-center justify-center text-xs font-bold text-white tracking-wider absolute inset-0 z-0">${sigla}</span>`
-        : `<span class="text-xs font-bold text-white tracking-wider">${sigla}</span>`;
+           <div class="hidden w-full h-full flex items-center justify-center bg-[#0a0a0a] border border-[#222] rounded-xl text-xs font-bold text-gray-200 tracking-wider absolute inset-0 z-0">${sigla}</div>`
+        : `<div class="w-full h-full flex items-center justify-center bg-[#0a0a0a] border border-[#222] rounded-xl text-xs font-bold text-gray-200 tracking-wider">${sigla}</div>`;
 
     const bgBadge = lucroPrejuizo >= 0 ? 'bg-green-500/10 text-green-500' : 'bg-red-500/10 text-red-500';
     const plArrow = lucroPrejuizo >= 0 ? '▲' : '▼';
-    const plTagHtml = dadoPreco 
+    const plTagHtml = dadoPreco
         ? `<span class="px-1.5 py-0.5 rounded text-[10px] font-bold ${bgBadge} border border-white/5 flex items-center gap-1">
              ${plArrow} ${Math.abs(lucroPrejuizoPercent).toFixed(1)}%
-           </span>` 
+           </span>`
         : '';
 
     let proventosHtml = '';
@@ -305,7 +329,7 @@ function criarCardElemento(ativo, dados) {
     card.className = 'wallet-card group cursor-pointer select-none';
     card.setAttribute('data-symbol', ativo.symbol);
 
-    card.onclick = function(e) {
+    card.onclick = function (e) {
         if (e.target.closest('button')) return;
 
         // 1. Identifica a seta deste card
@@ -328,12 +352,23 @@ function criarCardElemento(ativo, dados) {
         }
     };
 
+    const isLight = document.body.classList.contains('light-mode');
+    const bgPill = isLight ? 'bg-gray-100' : 'bg-[#1A1A1C]';
+    const borderPill = isLight ? 'border-gray-200' : 'border-[#2C2C2E]';
+    const hoverBgPill = isLight ? 'group-hover:bg-gray-200' : 'group-hover:bg-[#252525]';
+    const hoverBorderPill = isLight ? 'group-hover:border-gray-300' : 'group-hover:border-gray-600';
+
+    const bgDrawer = isLight ? 'bg-[#f9fafb]' : 'bg-[#0f0f0f]';
+    const borderDrawer = isLight ? 'border-gray-200' : 'border-[#2C2C2E]';
+    const btnDetalhesClass = isLight ? 'text-gray-700 bg-gray-100 border-gray-200 hover:bg-gray-200' : 'text-gray-300 bg-[#1C1C1E] border-[#2C2C2E] hover:bg-[#252525]';
+    const textDrawerVal = isLight ? 'text-gray-700' : 'text-gray-300';
+
     card.innerHTML = `
         <div class="p-3 pb-1"> 
             <div class="flex justify-between items-center">
 
                 <div class="flex items-center gap-3">
-                    <div class="w-10 h-10 rounded-xl ${bgIcone} border border-[#2C2C2E] flex items-center justify-center flex-shrink-0 shadow-sm relative overflow-hidden">
+                    <div class="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 relative overflow-hidden">
                         ${iconHtml}
                     </div>
 
@@ -361,8 +396,8 @@ function criarCardElemento(ativo, dados) {
             </div>
 
             <div class="flex justify-center mt-2 mb-1">
-                <div class="bg-[#1A1A1C] border border-[#2C2C2E] rounded-full px-3 py-0.5 flex items-center justify-center group-hover:bg-[#252525] group-hover:border-gray-600 transition-colors duration-300">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="drawer-arrow h-3 w-3 text-gray-600 group-hover:text-gray-300 transition-transform duration-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <div class="${bgPill} border ${borderPill} rounded-full px-3 py-0.5 flex items-center justify-center ${hoverBgPill} ${hoverBorderPill} transition-colors duration-300">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="drawer-arrow h-3 w-3 text-gray-500 transition-transform duration-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
                     </svg>
                 </div>
@@ -370,23 +405,23 @@ function criarCardElemento(ativo, dados) {
         </div>
 
         <div id="drawer-${ativo.symbol}" class="card-drawer">
-             <div class="drawer-content px-4 pb-4 pt-1 bg-[#0f0f0f] border-t border-[#2C2C2E]">
+             <div class="drawer-content px-4 pb-4 pt-1 ${bgDrawer} border-t ${borderDrawer}">
                 <div class="grid grid-cols-2 gap-4 mt-3">
                     <div>
-                        <span class="text-[10px] text-gray-500 uppercase font-bold tracking-wider">Custo Total</span>
-                        <p data-field="custo-valor" class="text-sm text-gray-300 font-medium">${formatBRL(custoTotal)}</p>
+                        <span class="text-[10px] text-gray-400 uppercase font-bold tracking-wider">Custo Total</span>
+                        <p data-field="custo-valor" class="text-sm ${textDrawerVal} font-medium">${formatBRL(custoTotal)}</p>
                     </div>
                     <div class="text-right">
-                         <span class="text-[10px] text-gray-500 uppercase font-bold tracking-wider">Lucro/Prejuízo</span>
+                         <span class="text-[10px] text-gray-400 uppercase font-bold tracking-wider">Lucro/Prejuízo</span>
                          <p data-field="pl-valor" class="text-sm font-bold ${corPL}">${dadoPreco ? formatBRL(lucroPrejuizo) : '...'}</p>
                     </div>
                     <div>
-                        <span class="text-[10px] text-gray-500 uppercase font-bold tracking-wider">Preço Médio</span>
-                        <p class="text-sm text-gray-300 font-medium">${formatBRL(ativo.precoMedio)}</p>
+                        <span class="text-[10px] text-gray-400 uppercase font-bold tracking-wider">Preço Médio</span>
+                        <p class="text-sm ${textDrawerVal} font-medium">${formatBRL(ativo.precoMedio)}</p>
                     </div>
                     <div class="text-right">
-                         <span class="text-[10px] text-gray-500 uppercase font-bold tracking-wider">Peso Carteira</span>
-                         <p data-field="peso-valor" class="text-sm text-gray-300 font-medium">${formatPercent(percentWallet)}</p>
+                         <span class="text-[10px] text-gray-400 uppercase font-bold tracking-wider">Peso Carteira</span>
+                         <p data-field="peso-valor" class="text-sm ${textDrawerVal} font-medium">${formatPercent(percentWallet)}</p>
                     </div>
                 </div>
 
@@ -395,10 +430,10 @@ function criarCardElemento(ativo, dados) {
                 </div>
 
                 <div class="flex gap-2 mt-4 pt-2">
-                     <button class="flex-1 py-2 text-xs font-bold text-gray-300 bg-[#1C1C1E] border border-[#2C2C2E] rounded-lg hover:bg-[#252525]" onclick="window.abrirDetalhesAtivo('${ativo.symbol}')">
+                     <button class="flex-1 py-2 text-xs font-bold rounded-lg border ${btnDetalhesClass}" onclick="window.abrirDetalhesAtivo('${ativo.symbol}')">
                         Ver Detalhes
                      </button>
-                     <button class="py-2 px-3 text-red-400 bg-red-900/10 border border-red-900/20 rounded-lg hover:bg-red-900/20" onclick="window.confirmarExclusao('${ativo.symbol}')">
+                     <button class="py-2 px-3 text-red-500 bg-red-100 dark:bg-red-900/10 border border-red-500/20 dark:border-red-900/20 rounded-lg hover:bg-red-200 dark:hover:bg-red-900/20 transition-colors" onclick="window.confirmarExclusao('${ativo.symbol}')">
                         <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                      </button>
                 </div>
@@ -414,7 +449,7 @@ function atualizarCardElemento(card, ativo, dados) {
         dadoPreco, precoFormatado, variacaoFormatada, corVariacao,
         totalPosicao, custoTotal, lucroPrejuizo, lucroPrejuizoPercent,
         corPL, dadoProvento, percentWallet,
-        listaProventos = [] 
+        listaProventos = []
     } = dados;
 
     // Atualiza Cabeçalho
@@ -464,40 +499,41 @@ function atualizarCardElemento(card, ativo, dados) {
 
 document.addEventListener('DOMContentLoaded', async () => {
 
-	let historicoVirtualizer = null;
+    let historicoVirtualizer = null;
     let proventosVirtualizer = null;
     const ROW_HEIGHT_CARD = 84;   // Altura estimada do card de transação (pixels)
     const ROW_HEIGHT_HEADER = 50; // Altura estimada do cabeçalho do mês (pixels)
-	let lastTransacoesSignature = '';    
-    let lastPatrimonioCalcSignature = ''; 
+    let lastTransacoesSignature = '';
+    let lastPatrimonioCalcSignature = '';
     let lastHistoricoListSignature = '';
-    let lastHistoricoProventosSignature = '';	
+    let lastHistoricoProventosSignature = '';
     let lastAlocacaoData = '';
-	let currentPatrimonioRange = '1M';
-	let histFilterType = 'all';
+    let currentPatrimonioRange = '1M';
+    let histFilterType = 'all';
     let histSearchTerm = '';
-	let provSearchTerm = '';
+    let provSearchTerm = '';
     let currentUserId = null;
-    let transacoes = [];        
-    let carteiraCalculada = []; 
+    let transacoes = [];
+    let carteiraCalculada = [];
     let patrimonio = [];
     let saldoCaixa = 0;
     let proventosConhecidos = [];
-    let watchlist = []; 
+    let watchlist = [];
     // Set em memória para notificações dispensadas — populado uma única vez
     // em carregarDadosIniciais. Leituras usam RAM; escrita só ocorre no dismiss.
     let dismissedNotifsSet = new Set();
     let alocacaoChartInstance = null;
     let historicoChartInstance = null;
-    let patrimonioChartInstance = null; 
+    let patrimonioChartInstance = null;
     let detalhesChartInstance = null;
-    let onConfirmCallback = null; 
+    let detalhesRentabilidadeChartInstance = null;
+    let onConfirmCallback = null;
     let precosAtuais = [];
     let proventosAtuais = [];
     let mesesProcessados = [];
     const todayString = new Date().toLocaleDateString('pt-BR', { year: 'numeric', month: 'long', day: 'numeric' });
     let lastHistoricoData = null;
-    let lastPatrimonioData = null; 
+    let lastPatrimonioData = null;
     let toastTimer = null;
     let isToastShowing = false;
     let touchStartY = 0;
@@ -506,50 +542,50 @@ document.addEventListener('DOMContentLoaded', async () => {
     let newWorker;
     let transacaoEmEdicao = null;
     let currentDetalhesSymbol = null;
-    let currentDetalhesMeses = 3; 
-    let currentDetalhesHistoricoJSON = null; 
-    let lastNewsSignature = ''; 
-    let lastProventosCalcSignature = ''; 
+    let currentDetalhesMeses = 3;
+    let currentDetalhesHistoricoJSON = null;
+    let lastNewsSignature = '';
+    let lastProventosCalcSignature = '';
     let cachedSaldoCaixa = 0;
-	const btnOpenPatrimonio = document.getElementById('btn-open-patrimonio');
-const patrimonioPageModal = document.getElementById('patrimonio-page-modal');
-const patrimonioPageContent = document.getElementById('tab-patrimonio-content');
-const patrimonioVoltarBtn = document.getElementById('patrimonio-voltar-btn');
-const modalPatrimonioValor = document.getElementById('modal-patrimonio-valor');
-const modalCustoValor = document.getElementById('modal-custo-valor');
+    const btnOpenPatrimonio = document.getElementById('btn-open-patrimonio');
+    const patrimonioPageModal = document.getElementById('patrimonio-page-modal');
+    const patrimonioPageContent = document.getElementById('tab-patrimonio-content');
+    const patrimonioVoltarBtn = document.getElementById('patrimonio-voltar-btn');
+    const modalPatrimonioValor = document.getElementById('modal-patrimonio-valor');
+    const modalCustoValor = document.getElementById('modal-custo-valor');
 
-let isDraggingPatrimonio = false;
-let touchStartPatrimonioY = 0;
-let touchMovePatrimonioY = 0;
+    let isDraggingPatrimonio = false;
+    let touchStartPatrimonioY = 0;
+    let touchMovePatrimonioY = 0;
 
-const btnOpenProventos = document.getElementById('btn-open-proventos');
-const proventosPageModal = document.getElementById('proventos-page-modal');
-const proventosPageContent = document.getElementById('tab-proventos-content');
-const proventosVoltarBtn = document.getElementById('proventos-voltar-btn');
+    const btnOpenProventos = document.getElementById('btn-open-proventos');
+    const proventosPageModal = document.getElementById('proventos-page-modal');
+    const proventosPageContent = document.getElementById('tab-proventos-content');
+    const proventosVoltarBtn = document.getElementById('proventos-voltar-btn');
 
-let isDraggingProventos = false;
-let touchStartProventosY = 0;
-let touchMoveProventosY = 0;
+    let isDraggingProventos = false;
+    let touchStartProventosY = 0;
+    let touchMoveProventosY = 0;
 
-const btnOpenAlocacao = document.getElementById('btn-open-alocacao');
-const alocacaoPageModal = document.getElementById('alocacao-page-modal');
-const alocacaoPageContent = document.getElementById('tab-alocacao-content');
-const alocacaoVoltarBtn = document.getElementById('alocacao-voltar-btn');
+    const btnOpenAlocacao = document.getElementById('btn-open-alocacao');
+    const alocacaoPageModal = document.getElementById('alocacao-page-modal');
+    const alocacaoPageContent = document.getElementById('tab-alocacao-content');
+    const alocacaoVoltarBtn = document.getElementById('alocacao-voltar-btn');
 
-let isDraggingAlocacao = false;
-let touchStartAlocacaoY = 0;
-let touchMoveAlocacaoY = 0;
+    let isDraggingAlocacao = false;
+    let touchStartAlocacaoY = 0;
+    let touchMoveAlocacaoY = 0;
 
-const btnOpenIpca = document.getElementById('btn-open-ipca');
-const ipcaPageModal = document.getElementById('ipca-page-modal');
-const ipcaPageContent = document.getElementById('tab-ipca-content');
-const ipcaVoltarBtn = document.getElementById('ipca-voltar-btn');
-let ipcaChartInstance = null;
-let isDraggingIpca = false;
-let touchStartIpcaY = 0;
-let touchMoveIpcaY = 0;
-// Variável para armazenar cache simples do IPCA
-let ipcaCacheData = null;
+    const btnOpenIpca = document.getElementById('btn-open-ipca');
+    const ipcaPageModal = document.getElementById('ipca-page-modal');
+    const ipcaPageContent = document.getElementById('tab-ipca-content');
+    const ipcaVoltarBtn = document.getElementById('ipca-voltar-btn');
+    let ipcaChartInstance = null;
+    let isDraggingIpca = false;
+    let touchStartIpcaY = 0;
+    let touchMoveIpcaY = 0;
+    // Variável para armazenar cache simples do IPCA
+    let ipcaCacheData = null;
 
     const vestoDB = {
         db: null,
@@ -560,6 +596,9 @@ let ipcaCacheData = null;
                     const db = event.target.result;
                     if (!db.objectStoreNames.contains('apiCache')) {
                         db.createObjectStore('apiCache', { keyPath: 'key' });
+                    }
+                    if (!db.objectStoreNames.contains('userSettings')) {
+                        db.createObjectStore('userSettings', { keyPath: 'key' });
                     }
                 };
                 request.onsuccess = (event) => {
@@ -610,35 +649,35 @@ let ipcaCacheData = null;
         }
     };
 
-	const btnNotifications = document.getElementById('btn-notifications');
-	const updateNotification = document.getElementById('update-notification');
+    const btnNotifications = document.getElementById('btn-notifications');
+    const updateNotification = document.getElementById('update-notification');
     const notificationBadge = document.getElementById('notification-badge');
     const notificationsDrawer = document.getElementById('notifications-drawer');
     const notificationsList = document.getElementById('notifications-list');
     const notificationsEmpty = document.getElementById('notifications-empty');
     const authContainer = document.getElementById('auth-container');
-    const authLoading = document.getElementById('auth-loading');    
+    const authLoading = document.getElementById('auth-loading');
     const loginForm = document.getElementById('login-form');
     const loginEmailInput = document.getElementById('login-email');
     const loginPasswordInput = document.getElementById('login-password');
     const loginSubmitBtn = document.getElementById('login-submit-btn');
-    const loginError = document.getElementById('login-error');    
+    const loginError = document.getElementById('login-error');
     const signupForm = document.getElementById('signup-form');
     const signupEmailInput = document.getElementById('signup-email');
     const signupPasswordInput = document.getElementById('signup-password');
-    const signupConfirmPasswordInput = document.getElementById('signup-confirm-password'); 
+    const signupConfirmPasswordInput = document.getElementById('signup-confirm-password');
     const signupSubmitBtn = document.getElementById('signup-submit-btn');
     const signupError = document.getElementById('signup-error');
-    const signupSuccess = document.getElementById('signup-success');     
+    const signupSuccess = document.getElementById('signup-success');
     const recoverForm = document.getElementById('recover-form');
     const recoverEmailInput = document.getElementById('recover-email');
     const recoverSubmitBtn = document.getElementById('recover-submit-btn');
     const recoverError = document.getElementById('recover-error');
     const recoverMessage = document.getElementById('recover-message');
     const showRecoverBtn = document.getElementById('show-recover-btn');
-    const backToLoginBtn = document.getElementById('back-to-login-btn');    
+    const backToLoginBtn = document.getElementById('back-to-login-btn');
     const showSignupBtn = document.getElementById('show-signup-btn');
-    const showLoginBtn = document.getElementById('show-login-btn');   
+    const showLoginBtn = document.getElementById('show-login-btn');
     const newPasswordModal = document.getElementById('new-password-modal');
     const newPasswordForm = document.getElementById('new-password-form');
     const newPasswordInput = document.getElementById('new-password-input');
@@ -652,7 +691,7 @@ let ipcaCacheData = null;
     const openChangePasswordBtn = document.getElementById('open-change-password-btn');
     const closeChangePasswordBtn = document.getElementById('close-change-password-btn');
     const toggleBioBtn = document.getElementById('toggle-bio-btn');
-    const bioToggleKnob = document.getElementById('bio-toggle-knob'); 
+    const bioToggleKnob = document.getElementById('bio-toggle-knob');
     const bioStatusIcon = document.getElementById('bio-status-icon');
     const toggleThemeBtn = document.getElementById('toggle-theme-btn');
     const themeToggleKnob = document.getElementById('theme-toggle-knob');
@@ -662,7 +701,7 @@ let ipcaCacheData = null;
     const clearCacheBtn = document.getElementById('clear-cache-btn');
     const appWrapper = document.getElementById('app-wrapper');
     const logoutBtn = document.getElementById('logout-btn');
-    const passwordToggleButtons = document.querySelectorAll('.password-toggle'); 
+    const passwordToggleButtons = document.querySelectorAll('.password-toggle');
     const refreshButton = document.getElementById('refresh-button');
     const refreshNoticiasButton = document.getElementById('refresh-noticias-button');
     const tabButtons = document.querySelectorAll('.tab-button');
@@ -688,7 +727,7 @@ let ipcaCacheData = null;
     const totalCarteiraPL = document.getElementById('total-carteira-pl');
     const totalCaixaValor = document.getElementById('total-caixa-valor');
     const listaCarteira = document.getElementById('lista-carteira');
-    const carteiraSearchInput = document.getElementById('carteira-search-input');    
+    const carteiraSearchInput = document.getElementById('carteira-search-input');
     const carteiraStatus = document.getElementById('carteira-status');
     const skeletonListaCarteira = document.getElementById('skeleton-lista-carteira');
     const emptyStateAddBtn = document.getElementById('empty-state-add-btn');
@@ -722,29 +761,67 @@ let ipcaCacheData = null;
     const transacaoIdInput = document.getElementById('transacao-id-input');
     const tickerInput = document.getElementById('ticker-input');
     const quantityInput = document.getElementById('quantity-input');
-    const precoMedioInput = document.getElementById('preco-medio-input'); 
+    const precoMedioInput = document.getElementById('preco-medio-input');
     const dateInput = document.getElementById('date-input');
     const addButton = document.getElementById('add-button');
-	const listaHistoricoProventos = document.getElementById('lista-historico-proventos');
+    const listaHistoricoProventos = document.getElementById('lista-historico-proventos');
     const btnHistTransacoes = document.getElementById('btn-hist-transacoes');
     const btnHistProventos = document.getElementById('btn-hist-proventos');
     const detalhesFavoritoBtn = document.getElementById('detalhes-favorito-btn');
-	const detalhesShareBtn = document.getElementById('detalhes-share-btn');
-    const detalhesFavoritoIconEmpty = document.getElementById('detalhes-favorito-icon-empty'); 
-    const detalhesFavoritoIconFilled = document.getElementById('detalhes-favorito-icon-filled');  
+    const detalhesShareBtn = document.getElementById('detalhes-share-btn');
+    const detalhesFavoritoIconEmpty = document.getElementById('detalhes-favorito-icon-empty');
+    const detalhesFavoritoIconFilled = document.getElementById('detalhes-favorito-icon-filled');
     const biometricLockScreen = document.getElementById('biometric-lock-screen');
     const btnDesbloquear = document.getElementById('btn-desbloquear');
     const btnSairLock = document.getElementById('btn-sair-lock');
     const installSection = document.getElementById('install-section');
     const installBtn = document.getElementById('install-app-btn');
-	const patrimonioRangeButtons = document.querySelectorAll('.patrimonio-range-btn');
+    const patrimonioRangeButtons = document.querySelectorAll('.patrimonio-range-btn');
+    const patrimonioSlider = document.getElementById('patrimonio-range-slider');
+
+    function movePatrimonioSlider(targetBtn) {
+        if (!patrimonioSlider || !targetBtn) return;
+        const bar = document.getElementById('patrimonio-range-bar');
+        if (!bar) return;
+        const barRect = bar.getBoundingClientRect();
+        const btnRect = targetBtn.getBoundingClientRect();
+        patrimonioSlider.style.left = (btnRect.left - barRect.left) + 'px';
+        patrimonioSlider.style.width = btnRect.width + 'px';
+    }
+
     patrimonioRangeButtons.forEach(btn => {
         btn.addEventListener('click', (e) => {
-            patrimonioRangeButtons.forEach(b => b.classList.remove('active'));
-            e.target.classList.add('active');
-            currentPatrimonioRange = e.target.dataset.range;
+            const isLight = document.body.classList.contains('light-mode');
+            const target = e.target;
+
+            // Update text colors
+            patrimonioRangeButtons.forEach(b => {
+                b.classList.add('text-gray-500');
+                b.classList.remove('text-white', 'text-[#1f2937]');
+            });
+
+            if (isLight) {
+                target.classList.add('text-[#1f2937]');
+                target.classList.remove('text-gray-500');
+                patrimonioSlider.className = 'absolute top-1 bottom-1 rounded-md bg-white shadow-sm transition-all duration-300 ease-out pointer-events-none z-0';
+            } else {
+                target.classList.add('text-white');
+                target.classList.remove('text-gray-500');
+                patrimonioSlider.className = 'absolute top-1 bottom-1 rounded-md bg-[#2c2c2e] transition-all duration-300 ease-out pointer-events-none z-0';
+            }
+
+            // Slide the indicator
+            movePatrimonioSlider(target);
+
+            currentPatrimonioRange = target.dataset.range;
             renderizarGraficoPatrimonio();
         });
+    });
+
+    // Initialize slider position on the default active button (1M)
+    requestAnimationFrame(() => {
+        const defaultBtn = document.querySelector('.patrimonio-range-btn[data-range="1M"]');
+        if (defaultBtn) movePatrimonioSlider(defaultBtn);
     });
 
     // ─── NAVEGAÇÃO POR TABS DO MODAL DE DETALHES ─────────────────────────────
@@ -803,108 +880,385 @@ let ipcaCacheData = null;
         });
     }
 
-function updateThemeUI() {
-    const isLight = localStorage.getItem('vesto_theme') === 'light';
-    const metaTheme = document.querySelector('meta[name="theme-color"]');
+    window.renderizarGraficoRentabilidade = function (dadosChart, monthsRange = 24) {
+        if (!dadosChart || !dadosChart.profitabilities) return;
 
-    // 1. Alterna classe no Body
-    if (isLight) {
-        document.body.classList.add('light-mode');
-        if (metaTheme) metaTheme.setAttribute('content', '#f2f2f7');
-
-        // Cores globais do Chart.js para Light Mode
-        Chart.defaults.color = '#4b5563'; // Gray 600
-        Chart.defaults.borderColor = 'rgba(0,0,0,0.05)'; // Linhas de grade sutis
-    } else {
-        document.body.classList.remove('light-mode');
-        if (metaTheme) metaTheme.setAttribute('content', '#000000');
-
-        // Cores globais do Chart.js para Dark Mode
-        Chart.defaults.color = '#9ca3af'; // Gray 400
-        Chart.defaults.borderColor = 'rgba(255,255,255,0.05)';
-    }
-
-    if (toggleThemeBtn && themeToggleKnob) {
-        if (isLight) {
-            toggleThemeBtn.className = "relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none bg-purple-600";
-            themeToggleKnob.className = "inline-block h-4 w-4 transform rounded-full bg-white transition-transform translate-x-6 shadow-sm";
-        } else {
-            toggleThemeBtn.className = "relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none bg-gray-700";
-            themeToggleKnob.className = "inline-block h-4 w-4 transform rounded-full bg-white transition-transform translate-x-1";
+        if (detalhesRentabilidadeChartInstance) {
+            detalhesRentabilidadeChartInstance.destroy();
         }
-    }
 
-    // 2. Função para forçar atualização profunda nas instâncias já criadas
-    const updateChartColors = (chart) => {
-        if (!chart?.options) return;
+        const canvas = document.getElementById('detalhes-rentabilidade-chart');
+        if (!canvas) return;
+        canvas.style.touchAction = 'pan-y';
 
-        const textColor = isLight ? '#374151' : '#9ca3af';
-        const tooltipBg = isLight ? 'rgba(255, 255, 255, 0.98)' : 'rgba(28, 28, 30, 0.95)';
-        const tooltipText = isLight ? '#1f2937' : '#f3f4f6';
-        const tooltipBorder = isLight ? '#e5e7eb' : '#374151';
+        const ctx = canvas.getContext('2d');
 
-        // Borda do Donut: Branco no light mode para "cortar" as fatias, Preto no dark
-        const doughnutBorder = isLight ? '#ffffff' : '#121212'; 
+        let datasetsData = [];
+        let commonLabels = [];
 
-        if (chart.options.scales) {
-            Object.keys(chart.options.scales).forEach(key => {
-                const scale = chart.options.scales[key];
-                if (scale.ticks) scale.ticks.color = textColor;
-                if (scale.grid) {
-                    // Remove grade no eixo X geralmente, mantem sutil no Y
-                    scale.grid.color = 'transparent'; 
-                }
+        if (dadosChart.profitabilities.length > 0) {
+            const baseSeries = dadosChart.profitabilities[0];
+
+            // Tratativa: Se o range pedido for maior que o disponível, mostramos o maximo
+            const totalMeses = baseSeries.length;
+            const startIndex = Math.max(0, totalMeses - monthsRange);
+
+            commonLabels = baseSeries.slice(startIndex).map(item => item.date);
+
+            const colors = [
+                '#a855f7', // Roxo pro ativo principal
+                '#eab308', // CDI
+                '#ef4444', // IPCA
+                '#3b82f6', // IBOV
+                '#8b5cf6', // SMLL
+                '#10b981', // IFIX
+                '#f97316', // IDIV
+                '#ec4899', // IVVB11
+                '#64748b'
+            ];
+
+            datasetsData = dadosChart.profitabilities.map((serie, index) => {
+                const dataSlice = serie.slice(startIndex).map(item => item.profitability);
+
+                // Normaliza para o start val
+                const baseVal = dataSlice[0] || 0;
+                const normalizedData = dataSlice.map(val => val - baseVal);
+
+                const labelName = dadosChart.legend[index] || `Indice ${index}`;
+                const isMain = index === 0;
+
+                return {
+                    label: labelName,
+                    data: normalizedData,
+                    borderColor: isMain ? '#a855f7' : (colors[index] || '#64748b'),
+                    borderWidth: 1,
+                    borderDash: isMain ? [] : [4, 4],
+                    pointRadius: 0,
+                    pointHoverRadius: 4,
+                    tension: 0.3,
+                    fill: false
+                };
             });
         }
 
-        // Atualiza Legendas
-        if (chart.options.plugins && chart.options.plugins.legend && chart.options.plugins.legend.labels) {
-            chart.options.plugins.legend.labels.color = textColor;
-        }
+        const isLight = document.body.classList.contains('light-mode');
+        const gridColor = isLight ? 'rgba(0,0,0,0.05)' : 'rgba(255,255,255,0.05)';
+        const textColor = isLight ? '#6b7280' : '#9ca3af';
 
-        // Atualiza Tooltips (Sombra e Contraste)
-        if (chart.options.plugins && chart.options.plugins.tooltip) {
-            chart.options.plugins.tooltip.backgroundColor = tooltipBg;
-            chart.options.plugins.tooltip.titleColor = tooltipText;
-            chart.options.plugins.tooltip.bodyColor = tooltipText;
-            chart.options.plugins.tooltip.borderColor = tooltipBorder;
-            chart.options.plugins.tooltip.borderWidth = 1;
+        detalhesRentabilidadeChartInstance = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: commonLabels,
+                datasets: datasetsData
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: { mode: 'index', intersect: false },
+                plugins: {
+                    legend: {
+                        display: true,
+                        position: 'bottom',
+                        labels: {
+                            color: textColor, boxWidth: 10, boxHeight: 1, usePointStyle: true, pointStyle: 'line'
+                        }
+                    },
+                    tooltip: {
+                        backgroundColor: isLight ? 'rgba(255,255,255,0.95)' : 'rgba(0,0,0,0.8)',
+                        titleColor: isLight ? '#000' : '#fff',
+                        bodyColor: isLight ? '#333' : '#ccc',
+                        borderColor: isLight ? '#e5e7eb' : '#333',
+                        borderWidth: 1, padding: 10,
+                        callbacks: {
+                            label: function (context) { return context.dataset.label + ': ' + context.parsed.y.toFixed(2) + '%'; }
+                        }
+                    }
+                },
+                scales: {
+                    x: { grid: { display: false }, ticks: { maxTicksLimit: 6, color: textColor } },
+                    y: { grid: { color: gridColor }, ticks: { color: textColor, callback: function (value) { return value + '%' } } }
+                }
+            }
+        });
+    };
 
-            // Adiciona sombra no tooltip light mode via CSS (ChartJS não suporta shadow nativo fácil, mas o bg ajuda)
-        }
+    window.mudarRentabilidadeRange = function (range) {
+        if (!currentDetalhesSymbol || !window.currentRentabilidadeDados) return;
 
-        // Borda do Gráfico de Rosca (Alocação)
-        if (chart.config.type === 'doughnut') {
-            if (chart.data.datasets[0]) {
-                chart.data.datasets[0].borderColor = doughnutBorder;
-                chart.data.datasets[0].borderWidth = 2;
+        const dados = window.currentRentabilidadeDados;
+        let originalRange = range;
+
+        // Verifica se temos meses suficientes
+        if (dados && dados.profitabilities && dados.profitabilities.length > 0) {
+            const mesesDisponiveis = dados.profitabilities[0].length;
+            // Se pediu mais do que tem (ex: pediu 120 e tem 70) -> limita a 70
+            if (range > mesesDisponiveis && mesesDisponiveis > 1) {
+                const anosLms = (mesesDisponiveis / 12).toFixed(1).replace('.0', '');
+                showToast(`Exibindo máximo de ${anosLms} anos disponíveis.`);
+                range = mesesDisponiveis;
             }
         }
 
-        // Cores do Gráfico de Patrimônio (Linha)
-        if (chart.config.type === 'line' && chart.data.datasets.length > 1) {
-             // Linha de "Investido" (tracejada) precisa escurecer no light mode
-             const colorInvestido = isLight ? '#6b7280' : '#525252';
-             chart.data.datasets[1].borderColor = colorInvestido;
-        }
+        const isLight = document.body.classList.contains('light-mode');
+        const rentSlider = document.getElementById('rentabilidade-range-slider');
+        const filterBar = document.getElementById('rentabilidade-chart-filters');
 
-        chart.update();
+        const botoes = document.querySelectorAll('#rentabilidade-chart-filters .rentabilidade-range-btn');
+        botoes.forEach(btn => {
+            const btnRange = parseInt(btn.getAttribute('data-range'));
+
+            if (btnRange === originalRange) {
+                btn.classList.add(isLight ? 'text-[#1f2937]' : 'text-white');
+                btn.classList.remove('text-gray-500', isLight ? 'text-white' : 'text-[#1f2937]');
+
+                // Move slider
+                if (rentSlider && filterBar) {
+                    const barRect = filterBar.getBoundingClientRect();
+                    const btnRect = btn.getBoundingClientRect();
+                    rentSlider.style.left = (btnRect.left - barRect.left) + 'px';
+                    rentSlider.style.width = btnRect.width + 'px';
+
+                    if (isLight) {
+                        rentSlider.className = 'absolute top-1 bottom-1 rounded-md bg-white shadow-sm transition-all duration-300 ease-out pointer-events-none z-0';
+                    } else {
+                        rentSlider.className = 'absolute top-1 bottom-1 rounded-md bg-[#2c2c2e] transition-all duration-300 ease-out pointer-events-none z-0';
+                    }
+                }
+            } else {
+                btn.classList.add('text-gray-500');
+                btn.classList.remove('text-white', 'text-[#1f2937]', 'bg-white', 'shadow-sm', 'bg-[#2c2c2e]');
+            }
+        });
+
+        if (window.currentRentabilidadeDados) {
+            window.renderizarGraficoRentabilidade(window.currentRentabilidadeDados, range);
+        }
     };
 
-    // 3. Aplica a correção em todos os gráficos ativos
-    updateChartColors(alocacaoChartInstance);
-    updateChartColors(patrimonioChartInstance);
-    updateChartColors(historicoChartInstance);
-    updateChartColors(detalhesChartInstance);
-}
+    let _dynamicThemeReady = false;
+
+    function updateThemeUI() {
+        const isLight = localStorage.getItem('vesto_theme') === 'light';
+        const metaTheme = document.querySelector('meta[name="theme-color"]');
+
+        // 1. Alterna classe no Body
+        if (isLight) {
+            document.body.classList.add('light-mode');
+
+            // Cores globais do Chart.js para Light Mode
+            Chart.defaults.color = '#4b5563'; // Gray 600
+            Chart.defaults.borderColor = 'rgba(0,0,0,0.05)'; // Linhas de grade sutis
+        } else {
+            document.body.classList.remove('light-mode');
+
+            // Cores globais do Chart.js para Dark Mode
+            Chart.defaults.color = '#9ca3af'; // Gray 400
+            Chart.defaults.borderColor = 'rgba(255,255,255,0.05)';
+        }
+
+        // Delega a cor da status bar ao sistema dinâmico de scroll
+        if (_dynamicThemeReady) {
+            updateDynamicThemeColor();
+        } else if (metaTheme) {
+            metaTheme.setAttribute('content', isLight ? '#f2f2f7' : '#000000');
+        }
+
+        if (toggleThemeBtn && themeToggleKnob) {
+            if (isLight) {
+                toggleThemeBtn.className = "relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none bg-purple-600";
+                themeToggleKnob.className = "inline-block h-4 w-4 transform rounded-full bg-white transition-transform translate-x-6 shadow-sm";
+            } else {
+                toggleThemeBtn.className = "relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none bg-gray-700";
+                themeToggleKnob.className = "inline-block h-4 w-4 transform rounded-full bg-white transition-transform translate-x-1";
+            }
+        }
+
+        // 2. Função para forçar atualização profunda nas instâncias já criadas
+        const updateChartColors = (chart) => {
+            if (!chart?.options) return;
+
+            const textColor = isLight ? '#374151' : '#9ca3af';
+            const tooltipBg = isLight ? 'rgba(255, 255, 255, 0.98)' : 'rgba(28, 28, 30, 0.95)';
+            const tooltipText = isLight ? '#1f2937' : '#f3f4f6';
+            const tooltipBorder = isLight ? '#e5e7eb' : '#374151';
+
+            // Borda do Donut: Branco no light mode para "cortar" as fatias, Preto no dark
+            const doughnutBorder = isLight ? '#ffffff' : '#121212';
+
+            if (chart.options.scales) {
+                Object.keys(chart.options.scales).forEach(key => {
+                    const scale = chart.options.scales[key];
+                    if (scale.ticks) scale.ticks.color = textColor;
+                    if (scale.grid) {
+                        // Remove grade no eixo X geralmente, mantem sutil no Y
+                        scale.grid.color = 'transparent';
+                    }
+                });
+            }
+
+            // Atualiza Legendas
+            if (chart.options.plugins && chart.options.plugins.legend && chart.options.plugins.legend.labels) {
+                chart.options.plugins.legend.labels.color = textColor;
+            }
+
+            // Atualiza Tooltips (Sombra e Contraste)
+            if (chart.options.plugins && chart.options.plugins.tooltip) {
+                chart.options.plugins.tooltip.backgroundColor = tooltipBg;
+                chart.options.plugins.tooltip.titleColor = tooltipText;
+                chart.options.plugins.tooltip.bodyColor = tooltipText;
+                chart.options.plugins.tooltip.borderColor = tooltipBorder;
+                chart.options.plugins.tooltip.borderWidth = 1;
+
+                // Adiciona sombra no tooltip light mode via CSS (ChartJS não suporta shadow nativo fácil, mas o bg ajuda)
+            }
+
+            // Borda do Gráfico de Rosca (Alocação)
+            if (chart.config.type === 'doughnut') {
+                if (chart.data.datasets[0]) {
+                    chart.data.datasets[0].borderColor = doughnutBorder;
+                    chart.data.datasets[0].borderWidth = 2;
+                }
+            }
+
+            // Cores do Gráfico de Patrimônio (Linha)
+            if (chart.config.type === 'line' && chart.data.datasets.length > 1) {
+                // Linha de "Investido" (tracejada) precisa escurecer no light mode
+                const colorInvestido = isLight ? '#6b7280' : '#525252';
+                chart.data.datasets[1].borderColor = colorInvestido;
+            }
+
+            chart.update();
+        };
+
+        // 3. Aplica a correção em todos os gráficos ativos
+        updateChartColors(alocacaoChartInstance);
+        updateChartColors(patrimonioChartInstance);
+        updateChartColors(historicoChartInstance);
+        updateChartColors(detalhesChartInstance);
+        updateChartColors(detalhesRentabilidadeChartInstance);
+    }
 
     updateThemeUI();
+
+    // ─── DYNAMIC THEME-COLOR (Status Bar Imersiva) ─────────────────────
+    // Muda a cor da status bar do Android para combinar com o hero roxo
+    // do dashboard, dando impressão de app nativo imersivo.
+    const _metaThemeColor = document.querySelector('meta[name="theme-color"]');
+    const _dashboardTab = document.getElementById('tab-dashboard');
+    const _heroCard = document.getElementById('resumo-carteira-card')?.closest('.relative') || (_dashboardTab ? _dashboardTab.querySelector(':scope > .relative') : null);
+    let _isDashboardActive = true; // Dashboard é a tab inicial
+    _dynamicThemeReady = true;
+
+    function _lerpColor(a, b, t) {
+        // Interpola entre duas cores hex (ex: #2e154f -> #000000)
+        const ah = parseInt(a.replace('#', ''), 16);
+        const bh = parseInt(b.replace('#', ''), 16);
+        const ar = (ah >> 16) & 0xff, ag = (ah >> 8) & 0xff, ab = ah & 0xff;
+        const br = (bh >> 16) & 0xff, bg = (bh >> 8) & 0xff, bb = bh & 0xff;
+        const rr = Math.round(ar + (br - ar) * t);
+        const rg = Math.round(ag + (bg - ag) * t);
+        const rb = Math.round(ab + (bb - ab) * t);
+        return `#${((1 << 24) + (rr << 16) + (rg << 8) + rb).toString(16).slice(1)}`;
+    }
+
+    function _getDefaultThemeColor() {
+        return localStorage.getItem('vesto_theme') === 'light' ? '#f2f2f7' : '#000000';
+    }
+
+    function _getHeroThemeColor() {
+        // Cor do hero no dark mode é #2e154f, no light mode usa um tom mais claro
+        return localStorage.getItem('vesto_theme') === 'light' ? '#e8dff5' : '#2e154f';
+    }
+
+    function updateDynamicThemeColor() {
+        if (!_metaThemeColor) return;
+
+        // Fora do dashboard → sempre cor padrão
+        if (!_isDashboardActive) {
+            _metaThemeColor.setAttribute('content', _getDefaultThemeColor());
+            return;
+        }
+
+        // No dashboard mas sem hero → cor do hero fixa (topo)
+        if (!_dashboardTab || !_heroCard) {
+            _metaThemeColor.setAttribute('content', _getHeroThemeColor());
+            return;
+        }
+
+        const scrollTop = _dashboardTab.scrollTop;
+        const heroHeight = _heroCard.offsetHeight;
+        // Começa a transição quando o hero está 90% scrollado, completa quando 100% scrollado
+        const fadeStart = heroHeight * 0.95;
+        const fadeEnd = heroHeight * 1.0;
+
+        let t = 0; // 0 = hero color, 1 = default color
+        if (scrollTop <= fadeStart) {
+            t = 0;
+        } else if (scrollTop >= fadeEnd) {
+            t = 1;
+        } else {
+            t = (scrollTop - fadeStart) / (fadeEnd - fadeStart);
+        }
+
+        const color = _lerpColor(_getHeroThemeColor(), _getDefaultThemeColor(), t);
+        _metaThemeColor.setAttribute('content', color);
+    }
+
+    if (_dashboardTab) {
+        let _scrollTicking = false;
+        _dashboardTab.addEventListener('scroll', () => {
+            if (!_scrollTicking) {
+                requestAnimationFrame(() => {
+                    updateDynamicThemeColor();
+                    _scrollTicking = false;
+                });
+                _scrollTicking = true;
+            }
+        }, { passive: true });
+    }
+
+    // Detecta mudança de tab de forma infalível observando a classe "active" do dashboard
+    if (_dashboardTab) {
+        const observer = new MutationObserver((mutations) => {
+            mutations.forEach((mutation) => {
+                if (mutation.attributeName === 'class') {
+                    const wasActive = _isDashboardActive;
+                    _isDashboardActive = _dashboardTab.classList.contains('active');
+
+                    // Se mudou o estado de active, atualiza a cor imediatamente
+                    if (wasActive !== _isDashboardActive) {
+                        updateDynamicThemeColor();
+                    }
+                }
+            });
+        });
+
+        observer.observe(_dashboardTab, { attributes: true, attributeFilter: ['class'] });
+    }
+
+    // Seta a cor inicial ao carregar (dashboard no topo = hero roxo)
+    updateDynamicThemeColor();
+    // ─── FIM DYNAMIC THEME-COLOR ───────────────────────────────────────
 
     if (toggleThemeBtn) {
         toggleThemeBtn.addEventListener('click', () => {
             const current = localStorage.getItem('vesto_theme') === 'light';
             localStorage.setItem('vesto_theme', current ? 'dark' : 'light');
             updateThemeUI();
+
+            // Força a re-renderização imediata de componentes com caches de cor (como as listas virtuais)
+            if (typeof window.renderizarHistoricoGlobal === 'function') window.renderizarHistoricoGlobal();
+            if (typeof window.renderizarHistoricoProventosGlobal === 'function') window.renderizarHistoricoProventosGlobal();
+
+            // Re-pinta a lista de objetivos chamando a função do arquivo
+            if (typeof renderizarObjetivos === 'function') renderizarObjetivos();
+
+            // Para a carteira, chamamos o render direto da janela global
+            if (typeof window.renderizarCarteiraGlobal === 'function') {
+                // Remove todos os items do cache visual de classes Light
+                const drawers = document.querySelectorAll('.card-drawer.open');
+                window.renderizarCarteiraGlobal();
+            }
         });
     }
 
@@ -919,12 +1273,12 @@ function updateThemeUI() {
 
         if (type === 'success') {
             toastElement.classList.add('bg-green-700', 'border-green-500');
-            toastIconError.classList.add('hidden'); 
-            toastIconSuccess.classList.remove('hidden'); 
+            toastIconError.classList.add('hidden');
+            toastIconSuccess.classList.remove('hidden');
         } else {
             toastElement.classList.add('bg-red-800', 'border-red-600');
-            toastIconError.classList.remove('hidden'); 
-            toastIconSuccess.classList.add('hidden'); 
+            toastIconError.classList.remove('hidden');
+            toastIconSuccess.classList.add('hidden');
         }
 
         if (isToastShowing && toastElement.classList.contains('toast-visible')) {
@@ -945,17 +1299,17 @@ function updateThemeUI() {
         const bioEnabled = localStorage.getItem('vesto_bio_enabled') === 'true';
 
         if (toggleBioBtn && bioToggleKnob) {
-             if (bioEnabled) {
-                 toggleBioBtn.classList.remove('bg-gray-700');
-                 toggleBioBtn.classList.add('bg-purple-600');
-                 bioToggleKnob.classList.remove('translate-x-1');
-                 bioToggleKnob.classList.add('translate-x-6');
-             } else {
-                 toggleBioBtn.classList.remove('bg-purple-600');
-                 toggleBioBtn.classList.add('bg-gray-700');
-                 bioToggleKnob.classList.remove('translate-x-6');
-                 bioToggleKnob.classList.add('translate-x-1');
-             }
+            if (bioEnabled) {
+                toggleBioBtn.classList.remove('bg-gray-700');
+                toggleBioBtn.classList.add('bg-purple-600');
+                bioToggleKnob.classList.remove('translate-x-1');
+                bioToggleKnob.classList.add('translate-x-6');
+            } else {
+                toggleBioBtn.classList.remove('bg-purple-600');
+                toggleBioBtn.classList.add('bg-gray-700');
+                bioToggleKnob.classList.remove('translate-x-6');
+                bioToggleKnob.classList.add('translate-x-1');
+            }
         }
 
         if (bioStatusIcon) {
@@ -970,7 +1324,7 @@ function updateThemeUI() {
 
         if (bioEnabled && currentUserId && !biometricLockScreen.classList.contains('hidden')) {
             document.body.style.overflow = 'hidden';
-            setTimeout(() => autenticarBiometria(), 500);
+            setTimeout(() => autenticarBiometria(), 100);
         }
     }
 
@@ -999,8 +1353,8 @@ function updateThemeUI() {
                     { type: "public-key", alg: -7 },
                     { type: "public-key", alg: -257 }
                 ],
-                authenticatorSelection: { 
-                    authenticatorAttachment: "platform", 
+                authenticatorSelection: {
+                    authenticatorAttachment: "platform",
                     userVerification: "required"
                 },
                 timeout: 60000,
@@ -1014,7 +1368,8 @@ function updateThemeUI() {
                 localStorage.setItem('vesto_bio_id', credentialId);
                 localStorage.setItem('vesto_bio_enabled', 'true');
                 verificarStatusBiometria();
-                showToast('Biometria ativada com sucesso!', 'success');            }
+                showToast('Biometria ativada com sucesso!', 'success');
+            }
         } catch (e) {
             console.error("Erro biometria:", e);
             showToast(`Erro ao ativar: ${e.message || e.name}`);
@@ -1054,8 +1409,16 @@ function updateThemeUI() {
             }
         } catch (e) {
             console.warn("Biometria cancelada ou falhou:", e);
-            if (e.name !== 'NotAllowedError') {
-                 showToast("Falha na leitura biométrica.");
+            // NotAllowedError = Usuário cancelou
+            // SecurityError / InvalidStateError = Chamada fora de contexto seguro (ex: clique antes do load completo)
+            if (e.name !== 'NotAllowedError' && e.name !== 'SecurityError' && e.name !== 'InvalidStateError') {
+                showToast("Falha na leitura biométrica.");
+            }
+
+            // Se falhou ou cancelou, exibe o botão na tela para tentar de novo
+            const btnBox = document.getElementById('btn-desbloquear');
+            if (btnBox) {
+                btnBox.classList.remove('opacity-0', 'pointer-events-none');
             }
         }
     }
@@ -1081,7 +1444,7 @@ function updateThemeUI() {
         updateNotification.classList.remove('hidden');
         setTimeout(() => {
             updateNotification.style.opacity = '1';
-            updateNotification.style.transform = 'translateY(0) translateX(-50%)'; 
+            updateNotification.style.transform = 'translateY(0) translateX(-50%)';
         }, 10);
     }
 
@@ -1097,19 +1460,22 @@ function updateThemeUI() {
             });
         });
 
+        let refreshing = false;
         navigator.serviceWorker.addEventListener('controllerchange', () => {
+            if (refreshing) return;
+            refreshing = true;
             window.location.reload();
         });
     }
 
-    async function setCache(key, data, duration) { 
-        const finalDuration = duration || (1000 * 60 * 60); 
+    async function setCache(key, data, duration) {
+        const finalDuration = duration || (1000 * 60 * 60);
         const cacheItem = { key: key, timestamp: Date.now(), data: data, duration: finalDuration };
-        try { 
+        try {
             await vestoDB.put('apiCache', cacheItem);
-        } 
-        catch (e) { 
-            console.error("Erro ao salvar no cache IDB:", e); 
+        }
+        catch (e) {
+            console.error("Erro ao salvar no cache IDB:", e);
             await clearBrapiCache();
         }
     }
@@ -1119,11 +1485,11 @@ function updateThemeUI() {
             await vestoDB.delete('apiCache', `preco_${symbol}`);
             await vestoDB.delete('apiCache', `provento_ia_${symbol}`);
             await vestoDB.delete('apiCache', `detalhe_preco_${symbol}`);
-            await vestoDB.delete('apiCache', `hist_ia_${symbol}_12`); 
+            await vestoDB.delete('apiCache', `hist_ia_${symbol}_12`);
 
             if (isFII(symbol)) {
-                 const userKey = currentUserId ? `_${currentUserId}` : '';
-                 await vestoDB.delete('apiCache', `cache_grafico_historico${userKey}`);
+                const userKey = currentUserId ? `_${currentUserId}` : '';
+                await vestoDB.delete('apiCache', `cache_grafico_historico${userKey}`);
             }
 
         } catch (e) {
@@ -1145,15 +1511,15 @@ function updateThemeUI() {
             const cacheItem = await vestoDB.get('apiCache', key);
             if (!cacheItem) return null;
 
-            const duration = cacheItem.duration; 
+            const duration = cacheItem.duration;
             if (duration === -1) { return cacheItem.data; }
 
             const isExpired = (Date.now() - cacheItem.timestamp) > duration;
-            if (isExpired) { 
+            if (isExpired) {
                 await vestoDB.delete('apiCache', key).catch(err => {
                     console.warn(`Erro ao deletar cache expirado (${key}):`, err);
-                }); 
-                return null; 
+                });
+                return null;
             }
             return cacheItem.data;
         } catch (e) {
@@ -1168,30 +1534,30 @@ function updateThemeUI() {
 
     const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
-const PALETA_CORES = [
-    '#c084fc', '#7c3aed', '#a855f7', '#8b5cf6',
-    '#6d28d9', '#5b21b6', '#3b82f6', '#22c55e',
-    '#f97316', '#ef4444'
-];
-function gerarCores(num) {
-    return Array.from({ length: num }, (_, i) => PALETA_CORES[i % PALETA_CORES.length]);
-}
+    const PALETA_CORES = [
+        '#c084fc', '#7c3aed', '#a855f7', '#8b5cf6',
+        '#6d28d9', '#5b21b6', '#3b82f6', '#22c55e',
+        '#f97316', '#ef4444'
+    ];
+    function gerarCores(num) {
+        return Array.from({ length: num }, (_, i) => PALETA_CORES[i % PALETA_CORES.length]);
+    }
 
     function showModal(title, message, onConfirm) {
         customModalTitle.textContent = title;
         customModalMessage.textContent = message;
-        onConfirmCallback = onConfirm; 
+        onConfirmCallback = onConfirm;
         customModal.classList.add('visible');
         customModalContent.classList.remove('modal-out');
     }
 
     function hideModal() {
-        onConfirmCallback = null; 
+        onConfirmCallback = null;
         customModalContent.classList.add('modal-out');
         setTimeout(() => {
             customModal.classList.remove('visible');
             customModalContent.classList.remove('modal-out');
-        }, 200); 
+        }, 200);
     }
 
     function showAddModal() {
@@ -1204,48 +1570,48 @@ function gerarCores(num) {
         }
     }
 
-function hideAddModal() {
-    addAtivoModalContent.classList.add('modal-out');
-    setTimeout(() => {
-        addAtivoModal.classList.remove('visible');
-        addAtivoModalContent.classList.remove('modal-out');
+    function hideAddModal() {
+        addAtivoModalContent.classList.add('modal-out');
+        setTimeout(() => {
+            addAtivoModal.classList.remove('visible');
+            addAtivoModalContent.classList.remove('modal-out');
 
-        tickerInput.value = '';
-        quantityInput.value = '';
-        precoMedioInput.value = '';
-        dateInput.value = '';
-        transacaoIdInput.value = '';
+            tickerInput.value = '';
+            quantityInput.value = '';
+            precoMedioInput.value = '';
+            dateInput.value = '';
+            transacaoIdInput.value = '';
 
-        // Reset do Total
-        document.getElementById('total-transacao-preview').textContent = "R$ 0,00";
+            // Reset do Total
+            document.getElementById('total-transacao-preview').textContent = "R$ 0,00";
 
-        // Reset do Toggle para Compra
-        const btnCompra = document.getElementById('btn-opt-compra');
-        if(btnCompra) btnCompra.click(); // Simula clique para resetar animação e valor
+            // Reset do Toggle para Compra
+            const btnCompra = document.getElementById('btn-opt-compra');
+            if (btnCompra) btnCompra.click(); // Simula clique para resetar animação e valor
 
-        transacaoEmEdicao = null;
-        tickerInput.disabled = false;
-        addModalTitle.textContent = 'Nova Transação'; // Texto genérico melhor
-        addButton.textContent = 'Salvar';
+            transacaoEmEdicao = null;
+            tickerInput.disabled = false;
+            addModalTitle.textContent = 'Nova Transação'; // Texto genérico melhor
+            addButton.textContent = 'Salvar';
 
-        // Remove erros visuais
-        tickerInput.parentElement.classList.remove('ring-2', 'ring-red-500');
-    }, 200);
-}
+            // Remove erros visuais
+            tickerInput.parentElement.classList.remove('ring-2', 'ring-red-500');
+        }, 200);
+    }
 
     function showDetalhesModal(symbol) {
-        detalhesPageContent.style.transform = ''; 
-        detalhesPageContent.classList.remove('closing'); 
-        detalhesPageModal.classList.add('visible'); 
-        document.body.style.overflow = 'hidden'; 
-        detalhesConteudoScroll.scrollTop = 0; 
-        handleMostrarDetalhes(symbol); 
+        detalhesPageContent.style.transform = '';
+        detalhesPageContent.classList.remove('closing');
+        detalhesPageModal.classList.add('visible');
+        document.body.style.overflow = 'hidden';
+        detalhesConteudoScroll.scrollTop = 0;
+        handleMostrarDetalhes(symbol);
     }
 
     function hideDetalhesModal() {
-        detalhesPageContent.style.transform = ''; 
-        detalhesPageContent.classList.add('closing'); 
-        detalhesPageModal.classList.remove('visible'); 
+        detalhesPageContent.style.transform = '';
+        detalhesPageContent.classList.add('closing');
+        detalhesPageModal.classList.remove('visible');
         document.body.style.overflow = '';
 
         // CORRECAO REAL: os charts precisam ser destruidos AGORA, nao apos 400ms.
@@ -1262,6 +1628,10 @@ function hideAddModal() {
         if (detalhesChartInstance) {
             detalhesChartInstance.destroy();
             detalhesChartInstance = null;
+        }
+        if (detalhesRentabilidadeChartInstance) {
+            detalhesRentabilidadeChartInstance.destroy();
+            detalhesRentabilidadeChartInstance = null;
         }
         if (window.imoveisChartInstance) {
             window.imoveisChartInstance.destroy();
@@ -1286,8 +1656,8 @@ function hideAddModal() {
 
         // Limpeza visual (reset de textos, icones, estado) continua apos a animacao
         setTimeout(() => {
-            limparDetalhes(); 
-        }, 400); 
+            limparDetalhes();
+        }, 400);
     }
 
     async function carregarTransacoes() {
@@ -1295,30 +1665,30 @@ function hideAddModal() {
     }
 
     async function carregarPatrimonio() {
-         let allPatrimonio = await supabaseDB.getPatrimonio();
-         allPatrimonio.sort((a, b) => new Date(a.date) - new Date(b.date));
-         patrimonio = allPatrimonio.length > 365 ? allPatrimonio.slice(-365) : allPatrimonio;
+        let allPatrimonio = await supabaseDB.getPatrimonio();
+        allPatrimonio.sort((a, b) => new Date(a.date) - new Date(b.date));
+        patrimonio = allPatrimonio.length > 365 ? allPatrimonio.slice(-365) : allPatrimonio;
     }
 
-async function salvarSnapshotPatrimonio(totalValor) {
-    if (totalValor <= 0 && patrimonio.length === 0) return; 
+    async function salvarSnapshotPatrimonio(totalValor) {
+        if (totalValor <= 0 && patrimonio.length === 0) return;
 
-    // Pega a data local do usuário em formato YYYY-MM-DD
-    const today = new Date().toLocaleDateString('en-CA'); // en-CA produz YYYY-MM-DD
+        // Pega a data local do usuário em formato YYYY-MM-DD
+        const today = new Date().toLocaleDateString('en-CA'); // en-CA produz YYYY-MM-DD
 
-    const snapshot = { date: today, value: totalValor };
+        const snapshot = { date: today, value: totalValor };
 
-    // Salva no banco
-    await supabaseDB.savePatrimonioSnapshot(snapshot);
+        // Salva no banco
+        await supabaseDB.savePatrimonioSnapshot(snapshot);
 
-    // Atualiza o gráfico localmente sem precisar recarregar
-    const index = patrimonio.findIndex(p => p.date === today);
-    if (index > -1) {
-        patrimonio[index].value = totalValor;
-    } else {
-        patrimonio.push(snapshot);
+        // Atualiza o gráfico localmente sem precisar recarregar
+        const index = patrimonio.findIndex(p => p.date === today);
+        if (index > -1) {
+            patrimonio[index].value = totalValor;
+        } else {
+            patrimonio.push(snapshot);
+        }
     }
-}
 
     async function carregarCaixa() {
         const caixaState = await supabaseDB.getAppState('saldoCaixa');
@@ -1337,62 +1707,62 @@ async function salvarSnapshotPatrimonio(totalValor) {
         watchlist = await supabaseDB.getWatchlist();
     }
 
-function renderizarWatchlist() {
-    const carouselEl = document.getElementById('dashboard-favorites-list');
-    if (!carouselEl) return;
+    function renderizarWatchlist() {
+        const carouselEl = document.getElementById('dashboard-favorites-list');
+        if (!carouselEl) return;
 
-    carouselEl.innerHTML = '';
+        carouselEl.innerHTML = '';
 
-    // 1. ESTADO VAZIO (BOTÃO "ADD")
-    if (watchlist.length === 0) {
-        carouselEl.innerHTML = `
+        // 1. ESTADO VAZIO (BOTÃO "ADD")
+        if (watchlist.length === 0) {
+            carouselEl.innerHTML = `
             <div onclick="mudarAba('tab-carteira'); setTimeout(() => document.getElementById('carteira-search-input').focus(), 400);" 
                  class="w-16 h-16 rounded-full bg-[#151515] border border-dashed border-gray-700 flex flex-col items-center justify-center flex-shrink-0 cursor-pointer opacity-70 hover:opacity-100 transition-opacity active:scale-95">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-500 mb-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>
                 <span class="text-[8px] text-gray-500 font-bold uppercase tracking-wider">Add</span>
             </div>`;
-        return;
-    }
-
-    const precosMap = new Map(precosAtuais.map(p => [p.symbol, p]));
-
-    // Isso garante que os ícones fiquem sempre na mesma posição
-    watchlist.sort((a, b) => a.symbol.localeCompare(b.symbol));
-
-    watchlist.forEach(item => {
-        const symbol = item.symbol;
-        const dadoPreco = precosMap.get(symbol);
-
-        let preco = ''; 
-        let corTexto = 'text-gray-400';
-
-        if (dadoPreco && dadoPreco.regularMarketPrice) {
-            preco = formatBRL(dadoPreco.regularMarketPrice);
-            corTexto = 'text-gray-300';
+            return;
         }
 
-        const card = document.createElement('div');
+        const precosMap = new Map(precosAtuais.map(p => [p.symbol, p]));
 
-        card.className = 'w-16 h-16 rounded-full bg-[#151515] flex flex-col items-center justify-center flex-shrink-0 cursor-pointer active:scale-90 transition-all shadow-sm relative group overflow-hidden';
+        // Isso garante que os ícones fiquem sempre na mesma posição
+        watchlist.sort((a, b) => a.symbol.localeCompare(b.symbol));
 
-        card.onclick = () => window.abrirDetalhesAtivo(symbol);
+        watchlist.forEach(item => {
+            const symbol = item.symbol;
+            const dadoPreco = precosMap.get(symbol);
 
-        card.innerHTML = `
+            let preco = '';
+            let corTexto = 'text-gray-400';
+
+            if (dadoPreco && dadoPreco.regularMarketPrice) {
+                preco = formatBRL(dadoPreco.regularMarketPrice);
+                corTexto = 'text-gray-300';
+            }
+
+            const card = document.createElement('div');
+
+            card.className = 'w-16 h-16 rounded-full bg-[#151515] flex flex-col items-center justify-center flex-shrink-0 cursor-pointer active:scale-90 transition-all shadow-sm relative group overflow-hidden';
+
+            card.onclick = () => window.abrirDetalhesAtivo(symbol);
+
+            card.innerHTML = `
             <span class="text-[10px] font-bold text-white tracking-widest leading-none mb-0.5">${symbol}</span>
             <span class="text-[9px] font-medium ${corTexto} tracking-tighter scale-90">${preco}</span>
         `;
-        carouselEl.appendChild(card);
-    });
+            carouselEl.appendChild(card);
+        });
 
-    const btnAdd = document.createElement('div');
-    btnAdd.className = "w-16 h-16 rounded-full bg-[#1C1C1E] flex items-center justify-center flex-shrink-0 cursor-pointer active:scale-90 transition-all text-gray-500 hover:text-white hover:bg-gray-800";
-    btnAdd.onclick = () => {
-        mudarAba('tab-carteira'); 
-        setTimeout(() => document.getElementById('carteira-search-input').focus(), 400);
-    };
-    btnAdd.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>`;
-    carouselEl.appendChild(btnAdd);
-}
+        const btnAdd = document.createElement('div');
+        btnAdd.className = "w-16 h-16 rounded-full bg-[#1C1C1E] flex items-center justify-center flex-shrink-0 cursor-pointer active:scale-90 transition-all text-gray-500 hover:text-white hover:bg-gray-800";
+        btnAdd.onclick = () => {
+            mudarAba('tab-carteira');
+            setTimeout(() => document.getElementById('carteira-search-input').focus(), 400);
+        };
+        btnAdd.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>`;
+        carouselEl.appendChild(btnAdd);
+    }
 
     function atualizarIconeFavorito(symbol) {
         if (!symbol || !detalhesFavoritoBtn) return;
@@ -1401,7 +1771,7 @@ function renderizarWatchlist() {
 
         detalhesFavoritoIconEmpty.classList.toggle('hidden', isFavorite);
         detalhesFavoritoIconFilled.classList.toggle('hidden', !isFavorite);
-        detalhesFavoritoBtn.dataset.symbol = symbol; 
+        detalhesFavoritoBtn.dataset.symbol = symbol;
     }
 
     async function carregarHistoricoProcessado() {
@@ -1413,7 +1783,7 @@ function renderizarWatchlist() {
         await supabaseDB.saveAppState('historicoProcessado', { value: mesesProcessados });
     }
 
-async function processarDividendosPagos() {
+    async function processarDividendosPagos() {
         const hoje = new Date();
         hoje.setHours(0, 0, 0, 0);
         const hojeString = hoje.toISOString().split('T')[0];
@@ -1427,7 +1797,7 @@ async function processarDividendosPagos() {
             return;
         }
 
-        let novoSaldoCalculado = 0; 
+        let novoSaldoCalculado = 0;
         let proventosParaMarcarComoProcessado = [];
 
         // 1. Cálculo em Memória (Rápido, pode manter o loop síncrono)
@@ -1466,7 +1836,7 @@ async function processarDividendosPagos() {
         if (proventosParaMarcarComoProcessado.length > 0) {
             try {
                 // Promise.all executa todas as requisições de update em paralelo
-                await Promise.all(proventosParaMarcarComoProcessado.map(provento => 
+                await Promise.all(proventosParaMarcarComoProcessado.map(provento =>
                     supabaseDB.updateProventoProcessado(provento.id)
                 ));
             } catch (error) {
@@ -1476,290 +1846,290 @@ async function processarDividendosPagos() {
         }
     }
 
-function calcularCarteira() {
-    // 1. Snapshot: Verificamos o tamanho do array e o ID da última transação
-    const lastId = transacoes.length > 0 ? transacoes[transacoes.length - 1].id : 'none';
-    const currentSignature = `${transacoes.length}-${lastId}`;
+    function calcularCarteira() {
+        // 1. Snapshot: Verificamos o tamanho do array e o ID da última transação
+        const lastId = transacoes.length > 0 ? transacoes[transacoes.length - 1].id : 'none';
+        const currentSignature = `${transacoes.length}-${lastId}`;
 
-    // 2. Trava de Cache: Se a "assinatura" for idêntica, nada mudou desde o último cálculo
-    if (currentSignature === lastTransacoesSignature && carteiraCalculada.length > 0) {
-        return; // Interrompe a função aqui para economizar processamento
-    }
-
-    const ativosMap = new Map();
-    // OTIMIZAÇÃO: Comparação direta de strings ISO (YYYY-MM-DD) com localeCompare.
-    // Elimina a criação de milhares de objetos Date descartáveis no Garbage Collector.
-    const transacoesOrdenadas = [...transacoes].sort((a, b) => a.date.localeCompare(b.date));
-
-    for (const t of transacoesOrdenadas) {
-        const symbol = t.symbol;
-        let ativo = ativosMap.get(symbol) || { 
-            symbol: symbol, quantity: 0, totalCost: 0, dataCompra: t.date 
-        };
-
-        if (t.type === 'buy') {
-            ativo.quantity += t.quantity;
-            ativo.totalCost += t.quantity * t.price;
-        } else if (t.type === 'sell') {
-            if (ativo.quantity > 0) {
-                // O custo total é reduzido proporcionalmente ao Preço Médio atual
-                const pmAtual = ativo.totalCost / ativo.quantity;
-                ativo.quantity -= t.quantity;
-                ativo.totalCost -= t.quantity * pmAtual;
-            }
+        // 2. Trava de Cache: Se a "assinatura" for idêntica, nada mudou desde o último cálculo
+        if (currentSignature === lastTransacoesSignature && carteiraCalculada.length > 0) {
+            return; // Interrompe a função aqui para economizar processamento
         }
 
-        // Proteção contra dízimas periódicas (resíduos matemáticos do JS)
-        if (ativo.quantity < 0.0001) { ativo.quantity = 0; ativo.totalCost = 0; }
-        ativosMap.set(symbol, ativo);
+        const ativosMap = new Map();
+        // OTIMIZAÇÃO: Comparação direta de strings ISO (YYYY-MM-DD) com localeCompare.
+        // Elimina a criação de milhares de objetos Date descartáveis no Garbage Collector.
+        const transacoesOrdenadas = [...transacoes].sort((a, b) => a.date.localeCompare(b.date));
+
+        for (const t of transacoesOrdenadas) {
+            const symbol = t.symbol;
+            let ativo = ativosMap.get(symbol) || {
+                symbol: symbol, quantity: 0, totalCost: 0, dataCompra: t.date
+            };
+
+            if (t.type === 'buy') {
+                ativo.quantity += t.quantity;
+                ativo.totalCost += t.quantity * t.price;
+            } else if (t.type === 'sell') {
+                if (ativo.quantity > 0) {
+                    // O custo total é reduzido proporcionalmente ao Preço Médio atual
+                    const pmAtual = ativo.totalCost / ativo.quantity;
+                    ativo.quantity -= t.quantity;
+                    ativo.totalCost -= t.quantity * pmAtual;
+                }
+            }
+
+            // Proteção contra dízimas periódicas (resíduos matemáticos do JS)
+            if (ativo.quantity < 0.0001) { ativo.quantity = 0; ativo.totalCost = 0; }
+            ativosMap.set(symbol, ativo);
+        }
+
+        // Converte o Mapa consolidado em um array para a interface
+        carteiraCalculada = Array.from(ativosMap.values())
+            .filter(a => a.quantity > 0.0001)
+            .map(a => ({
+                symbol: a.symbol,
+                quantity: a.quantity,
+                precoMedio: a.quantity > 0 ? parseFloat((a.totalCost / a.quantity).toFixed(2)) : 0,
+                dataCompra: a.dataCompra
+            }));
+
+        // 3. Salva a nova assinatura para o próximo ciclo de atualização
+        lastTransacoesSignature = currentSignature;
     }
 
-    // Converte o Mapa consolidado em um array para a interface
-    carteiraCalculada = Array.from(ativosMap.values())
-        .filter(a => a.quantity > 0.0001)
-        .map(a => ({
-            symbol: a.symbol,
-            quantity: a.quantity,
-            precoMedio: a.quantity > 0 ? parseFloat((a.totalCost / a.quantity).toFixed(2)) : 0,
-            dataCompra: a.dataCompra
-        }));
 
-    // 3. Salva a nova assinatura para o próximo ciclo de atualização
-    lastTransacoesSignature = currentSignature;
-}
+    function agruparPorMes(itens, dateField) {
+        const grupos = {};
+        itens.forEach(item => {
+            if (!item[dateField]) return;
 
+            // Ajuste de fuso horário simples para garantir o mês correto
+            const dataObj = new Date(item[dateField]);
+            // Formata como "Dezembro 2025" com primeira letra maiúscula
+            const mesAno = dataObj.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+            const chave = mesAno[0].toUpperCase() + mesAno.slice(1);
 
-function agruparPorMes(itens, dateField) {
-    const grupos = {};
-    itens.forEach(item => {
-        if (!item[dateField]) return;
-
-        // Ajuste de fuso horário simples para garantir o mês correto
-        const dataObj = new Date(item[dateField]);
-        // Formata como "Dezembro 2025" com primeira letra maiúscula
-        const mesAno = dataObj.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
-        const chave = mesAno[0].toUpperCase() + mesAno.slice(1);
-
-        if (!grupos[chave]) grupos[chave] = [];
-        grupos[chave].push(item);
-    });
-    return grupos;
-}
-
-class VirtualScroller {
-    constructor(scrollContainer, listContainer, items, renderRowFn) {
-        // 1. Inicializa variáveis CRÍTICAS primeiro para evitar crash
-        this.visibleItems = new Map();
-        this.positions = [];
-        this.totalHeight = 0;
-
-        this.scrollContainer = scrollContainer;
-        this.listContainer = listContainer;
-        this.items = items;
-        this.renderRowFn = renderRowFn;
-
-        // Configurações de altura
-        this.headerHeight = 50; 
-        this.rowHeight = 72;
-
-        // Limpeza de estilos conflitantes do container original
-        this.listContainer.classList.remove('px-4', 'pt-2', 'pb-20');
-        this.listContainer.style.marginTop = '0px'; 
-
-        // Removemos qualquer lógica de header fixo/sticky aqui.
-        // O código fica muito mais leve.
-
-        this.init();
-    }
-
-init() {
-        let currentY = 0; 
-
-        // Mapeia posições de TODOS os itens
-        this.positions = this.items.map(item => {
-            const height = item.type === 'header' ? this.headerHeight : this.rowHeight; 
-            const pos = { top: currentY, height, item };
-            currentY += height;
-            return pos;
+            if (!grupos[chave]) grupos[chave] = [];
+            grupos[chave].push(item);
         });
-
-        // AUMENTEI DE 120 PARA 180 AQUI
-        // Isso garante que o último item suba acima da navbar
-        this.totalHeight = currentY + 100; 
-
-        this.listContainer.style.height = `${this.totalHeight}px`;
-        this.listContainer.classList.add('virtual-list-container');
-
-        this.boundOnScroll = this.onScroll.bind(this);
-        this.scrollContainer.addEventListener('scroll', this.boundOnScroll, { passive: true });
-
-        this.onScroll();
+        return grupos;
     }
 
-    onScroll() {
-        // Verificação de segurança: se a lista foi destruída ou não existe, para.
-        if (!this.listContainer.isConnected || !this.visibleItems) return;
+    class VirtualScroller {
+        constructor(scrollContainer, listContainer, items, renderRowFn) {
+            // 1. Inicializa variáveis CRÍTICAS primeiro para evitar crash
+            this.visibleItems = new Map();
+            this.positions = [];
+            this.totalHeight = 0;
 
-        const scrollTop = this.scrollContainer.scrollTop;
-        const viewportHeight = this.scrollContainer.clientHeight;
-        const buffer = 600; // Renderiza 600px a mais para cima e para baixo (scroll suave)
+            this.scrollContainer = scrollContainer;
+            this.listContainer = listContainer;
+            this.items = items;
+            this.renderRowFn = renderRowFn;
 
-        const startY = Math.max(0, scrollTop - buffer);
-        const endY = scrollTop + viewportHeight + buffer;
+            // Configurações de altura
+            this.headerHeight = 50;
+            this.rowHeight = 72;
 
-        const activeIndices = new Set();
+            // Limpeza de estilos conflitantes do container original
+            this.listContainer.classList.remove('px-4', 'pt-2', 'pb-20');
+            this.listContainer.style.marginTop = '0px';
 
-        // Loop principal: decide o que desenhar
-        for (let i = 0; i < this.positions.length; i++) {
-            const pos = this.positions[i];
-            const bottom = pos.top + pos.height;
+            // Removemos qualquer lógica de header fixo/sticky aqui.
+            // O código fica muito mais leve.
 
-            // Se o item está dentro da área visível (+ buffer)
-            if (bottom >= startY && pos.top <= endY) {
-                activeIndices.add(i);
+            this.init();
+        }
 
-                // Se ainda não está no DOM, cria
-                if (!this.visibleItems.has(i)) {
-                    const el = document.createElement('div');
-                    el.className = 'virtual-item';
-                    el.style.transform = `translateY(${pos.top}px)`;
-                    el.style.height = `${pos.height}px`;
+        init() {
+            let currentY = 0;
 
-                    if (pos.item.type === 'header') {
-                         // Renderiza o header como um item normal da lista
-                         el.innerHTML = `<div class="virtual-header-row">${pos.item.htmlContent}</div>`;
-                         // Headers não precisam de padding lateral extra
-                    } else {
-                        // Cards precisam de padding lateral
-                        el.style.paddingLeft = '16px';
-                        el.style.paddingRight = '16px';
-                        el.innerHTML = this.renderRowFn(pos.item.data);
+            // Mapeia posições de TODOS os itens
+            this.positions = this.items.map(item => {
+                const height = item.type === 'header' ? this.headerHeight : this.rowHeight;
+                const pos = { top: currentY, height, item };
+                currentY += height;
+                return pos;
+            });
+
+            // AUMENTEI DE 120 PARA 180 AQUI
+            // Isso garante que o último item suba acima da navbar
+            this.totalHeight = currentY + 100;
+
+            this.listContainer.style.height = `${this.totalHeight}px`;
+            this.listContainer.classList.add('virtual-list-container');
+
+            this.boundOnScroll = this.onScroll.bind(this);
+            this.scrollContainer.addEventListener('scroll', this.boundOnScroll, { passive: true });
+
+            this.onScroll();
+        }
+
+        onScroll() {
+            // Verificação de segurança: se a lista foi destruída ou não existe, para.
+            if (!this.listContainer.isConnected || !this.visibleItems) return;
+
+            const scrollTop = this.scrollContainer.scrollTop;
+            const viewportHeight = this.scrollContainer.clientHeight;
+            const buffer = 600; // Renderiza 600px a mais para cima e para baixo (scroll suave)
+
+            const startY = Math.max(0, scrollTop - buffer);
+            const endY = scrollTop + viewportHeight + buffer;
+
+            const activeIndices = new Set();
+
+            // Loop principal: decide o que desenhar
+            for (let i = 0; i < this.positions.length; i++) {
+                const pos = this.positions[i];
+                const bottom = pos.top + pos.height;
+
+                // Se o item está dentro da área visível (+ buffer)
+                if (bottom >= startY && pos.top <= endY) {
+                    activeIndices.add(i);
+
+                    // Se ainda não está no DOM, cria
+                    if (!this.visibleItems.has(i)) {
+                        const el = document.createElement('div');
+                        el.className = 'virtual-item';
+                        el.style.transform = `translateY(${pos.top}px)`;
+                        el.style.height = `${pos.height}px`;
+
+                        if (pos.item.type === 'header') {
+                            // Renderiza o header como um item normal da lista
+                            el.innerHTML = `<div class="virtual-header-row">${pos.item.htmlContent}</div>`;
+                            // Headers não precisam de padding lateral extra
+                        } else {
+                            // Cards precisam de padding lateral (px-4 = 16px, igual à aba Início)
+                            el.style.paddingLeft = '16px';
+                            el.style.paddingRight = '16px';
+                            el.innerHTML = this.renderRowFn(pos.item.data);
+                        }
+
+                        this.listContainer.appendChild(el);
+                        this.visibleItems.set(i, el);
                     }
+                }
+            }
 
-                    this.listContainer.appendChild(el);
-                    this.visibleItems.set(i, el);
+            // Limpeza: remove itens que saíram da tela
+            for (const [index, el] of this.visibleItems.entries()) {
+                if (!activeIndices.has(index)) {
+                    el.remove();
+                    this.visibleItems.delete(index);
                 }
             }
         }
 
-        // Limpeza: remove itens que saíram da tela
-        for (const [index, el] of this.visibleItems.entries()) {
-            if (!activeIndices.has(index)) {
-                el.remove();
-                this.visibleItems.delete(index);
+        destroy() {
+            if (this.scrollContainer) {
+                this.scrollContainer.removeEventListener('scroll', this.boundOnScroll);
             }
+
+            // Limpa DOM e Estilos
+            this.listContainer.innerHTML = '';
+            this.listContainer.style.height = '';
+            this.listContainer.classList.remove('virtual-list-container');
+            this.listContainer.style.marginTop = '';
+
+            // Restaura estilo original (Opcional, caso você desligue a virtualização)
+            this.listContainer.classList.add('px-4', 'pt-2', 'pb-20');
+
+            this.visibleItems.clear();
+            this.visibleItems = null; // Evita memory leak
         }
     }
+    function flattenHistoricoData(grupos) {
+        const flatList = [];
+        for (const [mes, itens] of Object.entries(grupos)) {
 
-    destroy() {
-        if (this.scrollContainer) {
-            this.scrollContainer.removeEventListener('scroll', this.boundOnScroll);
-        }
+            // SOMA DO CABEÇALHO
+            const totalMes = itens.reduce((acc, item) => {
+                if (item.totalCalculado !== undefined) {
+                    return acc + Number(item.totalCalculado);
+                }
+                if (item.price && item.quantity) {
+                    return acc + (Number(item.price) * Number(item.quantity));
+                }
+                return acc + Number(item.value || 0);
+            }, 0);
 
-        // Limpa DOM e Estilos
-        this.listContainer.innerHTML = '';
-        this.listContainer.style.height = '';
-        this.listContainer.classList.remove('virtual-list-container');
-        this.listContainer.style.marginTop = '';
-
-        // Restaura estilo original (Opcional, caso você desligue a virtualização)
-        this.listContainer.classList.add('px-4', 'pt-2', 'pb-20');
-
-        this.visibleItems.clear();
-        this.visibleItems = null; // Evita memory leak
-    }
-}
-function flattenHistoricoData(grupos) {
-    const flatList = [];
-    for (const [mes, itens] of Object.entries(grupos)) {
-
-        // SOMA DO CABEÇALHO
-        const totalMes = itens.reduce((acc, item) => {
-            if (item.totalCalculado !== undefined) {
-                return acc + Number(item.totalCalculado);
-            }
-            if (item.price && item.quantity) {
-                return acc + (Number(item.price) * Number(item.quantity));
-            }
-            return acc + Number(item.value || 0);
-        }, 0);
-
-        // HTML do Header (COM FUNDO VERDE E TEXTO VERDE)
-        const headerHtml = `
-            <h3 class="text-xs font-bold text-neutral-400 uppercase tracking-widest pl-1">${mes}</h3>
-            <span class="text-[10px] font-mono font-bold text-green-400 bg-green-500/10 px-2 py-0.5 rounded-md border border-green-500/20">
+            // HTML do Header — estilo unificado com Mercado
+            const headerHtml = `
+            <h3 class="text-[11px] font-bold text-neutral-500 uppercase tracking-widest">${mes}</h3>
+            <span class="text-[10px] font-mono font-bold text-gray-400 bg-[#1C1C1E] px-2 py-0.5 rounded-md">
                 Total: ${formatBRL(totalMes)}
             </span>
         `;
 
-        flatList.push({ type: 'header', month: mes, total: totalMes, htmlContent: headerHtml });
+            flatList.push({ type: 'header', month: mes, total: totalMes, htmlContent: headerHtml });
 
-        // Items
-        for (const item of itens) {
-            flatList.push({ type: 'row', data: item });
+            // Items
+            for (const item of itens) {
+                flatList.push({ type: 'row', data: item });
+            }
         }
-    }
-    return flatList;
-}
-
-function renderizarHistorico() {
-    const listaHistorico = document.getElementById('lista-historico');
-    const scrollContainer = document.getElementById('tab-historico'); 
-    const historicoStatus = document.getElementById('historico-status');
-    const historicoMensagem = document.getElementById('historico-mensagem');
-
-    if (!listaHistorico) return;
-
-    const lastId = transacoes.length > 0 ? transacoes[transacoes.length - 1].id : 'none';
-    const currentSignature = `${transacoes.length}-${lastId}-${histFilterType}-${histSearchTerm}`;
-
-    if (historicoVirtualizer) {
-        if (currentSignature === lastHistoricoListSignature) return;
-        historicoVirtualizer.destroy();
-        historicoVirtualizer = null;
+        return flatList;
     }
 
-    lastHistoricoListSignature = currentSignature;
+    window.renderizarHistoricoGlobal = function () {
+        const listaHistorico = document.getElementById('lista-historico');
+        const scrollContainer = document.getElementById('tab-historico');
+        const historicoStatus = document.getElementById('historico-status');
+        const historicoMensagem = document.getElementById('historico-mensagem');
 
-    let dadosFiltrados = transacoes.filter(t => {
-        const matchType = histFilterType === 'all' || t.type === histFilterType;
-        const matchSearch = histSearchTerm === '' || t.symbol.includes(histSearchTerm);
-        return matchType && matchSearch;
-    });
+        if (!listaHistorico) return;
 
-    if (dadosFiltrados.length === 0) {
-        historicoStatus.classList.remove('hidden');
-        historicoMensagem.textContent = transacoes.length > 0 ? "Nenhum resultado para o filtro." : "Nenhum registro encontrado.";
-        return;
-    }
+        const lastTransId = transacoes.length > 0 ? transacoes[transacoes.length - 1].id : 'none';
+        const currentSignature = `${transacoes.length}-${lastTransId}-${histFilterType}-${histSearchTerm}`;
 
-    historicoStatus.classList.add('hidden');
+        if (currentSignature === lastHistoricoListSignature && historicoVirtualizer) {
+            return;
+        }
 
-    // OTIMIZAÇÃO: localeCompare em strings ISO é equivalente e não cria objetos Date.
-    dadosFiltrados.sort((a, b) => b.date.localeCompare(a.date)); // desc: b antes de a
-    const grupos = agruparPorMes(dadosFiltrados, 'date');
+        if (historicoVirtualizer) {
+            historicoVirtualizer.destroy();
+            historicoVirtualizer = null;
+        }
 
-    // Flatten (calcula automaticamente price * quantity)
-    const flatItems = flattenHistoricoData(grupos);
+        lastHistoricoListSignature = currentSignature;
 
-    const rowRenderer = (t) => {
-        const isVenda = t.type === 'sell';
-        const totalTransacao = t.quantity * t.price;
-        const dia = new Date(t.date).getDate().toString().padStart(2, '0');
+        let dadosFiltrados = transacoes.filter(t => {
+            const matchType = histFilterType === 'all' || t.type === histFilterType;
+            const matchSearch = histSearchTerm === '' || t.symbol.includes(histSearchTerm);
+            return matchType && matchSearch;
+        });
 
-        // Ícones
-        const arrowDownGreen = `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 14l-7 7m0 0l-7-7m7 7V3" /></svg>`;
-        const arrowUpRed = `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 10l7-7m0 0l7 7m-7-7v18" /></svg>`;
+        if (dadosFiltrados.length === 0) {
+            historicoStatus.classList.remove('hidden');
+            historicoMensagem.textContent = transacoes.length > 0 ? "Nenhum resultado para o filtro." : "Nenhum registro encontrado.";
+            return;
+        }
 
-        const mainIconHtml = isVenda ? arrowUpRed : arrowDownGreen;
-        const iconBg = 'bg-[#1C1C1E]'; 
-        const cardBg = 'bg-black'; 
+        historicoStatus.classList.add('hidden');
 
-        return `
-            <div class="history-card flex items-center justify-between py-2 px-3 mb-1 rounded-xl relative group h-full w-full ${cardBg}" style="background-color: black !important;" data-action="edit-row" data-id="${t.id}">
+        // OTIMIZAÇÃO: localeCompare em strings ISO é equivalente e não cria objetos Date.
+        dadosFiltrados.sort((a, b) => b.date.localeCompare(a.date)); // desc: b antes de a
+        const grupos = agruparPorMes(dadosFiltrados, 'date');
+
+        // Flatten (calcula automaticamente price * quantity)
+        const flatItems = flattenHistoricoData(grupos);
+        const rowRenderer = (t) => {
+            const isVenda = t.type === 'sell';
+            const totalTransacao = t.quantity * t.price;
+            const dia = new Date(t.date).getDate().toString().padStart(2, '0');
+
+            // Ícones
+            const arrowDownGreen = `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 14l-7 7m0 0l-7-7m7 7V3" /></svg>`;
+            const arrowUpRed = `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 10l7-7m0 0l7 7m-7-7v18" /></svg>`;
+
+            const mainIconHtml = isVenda ? arrowUpRed : arrowDownGreen;
+
+            return `
+            <div class="history-card flex items-center justify-between py-2 px-0 mb-1 rounded-xl relative group h-full w-full bg-black border border-transparent" data-action="edit-row" data-id="${t.id}">
                 <div class="flex items-center gap-3 flex-1 min-w-0">
 
-                    <div class="w-10 h-10 rounded-full ${iconBg} flex items-center justify-center flex-shrink-0 relative overflow-hidden">
+                    <div class="w-10 h-10 rounded-full bg-[#1C1C1E] flex items-center justify-center flex-shrink-0 relative overflow-hidden">
                         ${mainIconHtml}
                     </div>
 
@@ -1780,105 +2150,109 @@ function renderizarHistorico() {
                 </div>
             </div>
         `;
-    };
+        };
 
-    historicoVirtualizer = new VirtualScroller(scrollContainer, listaHistorico, flatItems, rowRenderer);
-}
-
-function renderizarHistoricoProventos() {
-    const listaHistoricoProventos = document.getElementById('lista-historico-proventos');
-    const scrollContainer = document.getElementById('tab-historico');
-
-    const lastProvId = proventosConhecidos.length > 0 ? proventosConhecidos[proventosConhecidos.length - 1].id : 'none';
-    const termoBusca = provSearchTerm || ''; 
-    const currentSignature = `${proventosConhecidos.length}-${lastProvId}-${termoBusca}`;
-
-    if (currentSignature === lastHistoricoProventosSignature && proventosVirtualizer) {
-        return; 
-    }
-    lastHistoricoProventosSignature = currentSignature;
-
-    if (proventosVirtualizer) {
-        proventosVirtualizer.destroy();
-        proventosVirtualizer = null;
+        historicoVirtualizer = new VirtualScroller(scrollContainer, listaHistorico, flatItems, rowRenderer);
     }
 
-    const hoje = new Date();
-    hoje.setHours(0, 0, 0, 0);
+    // Mantém compatibilidade com chamadas originais
+    function renderizarHistorico() {
+        if (window.renderizarHistoricoGlobal) window.renderizarHistoricoGlobal();
+    }
 
-    const proventosIniciais = proventosConhecidos.filter(p => {
-        if (!p.paymentDate) return false;
-        const parts = p.paymentDate.split('-');
-        if(parts.length !== 3) return false;
-        const dataPag = new Date(parts[0], parts[1] - 1, parts[2]);
-        if (dataPag > hoje) return false;
+    window.renderizarHistoricoProventosGlobal = function () {
+        const listaHistoricoProventos = document.getElementById('lista-historico-proventos');
+        const scrollContainer = document.getElementById('tab-historico');
 
-        const buscaValida = termoBusca === '' || p.symbol.includes(termoBusca);
-        return buscaValida;
-    }).sort((a, b) => new Date(b.paymentDate) - new Date(a.paymentDate));
+        const lastProvId = proventosConhecidos.length > 0 ? proventosConhecidos[proventosConhecidos.length - 1].id : 'none';
+        const termoBusca = provSearchTerm || '';
+        const currentSignature = `${proventosConhecidos.length}-${lastProvId}-${termoBusca}`;
 
-    if (proventosIniciais.length === 0) {
-        listaHistoricoProventos.innerHTML = `
+        if (currentSignature === lastHistoricoProventosSignature && proventosVirtualizer) {
+            return;
+        }
+        lastHistoricoProventosSignature = currentSignature;
+
+        if (proventosVirtualizer) {
+            proventosVirtualizer.destroy();
+            proventosVirtualizer = null;
+        }
+
+        const hoje = new Date();
+        hoje.setHours(0, 0, 0, 0);
+
+        const proventosIniciais = proventosConhecidos.filter(p => {
+            if (!p.paymentDate) return false;
+            const parts = p.paymentDate.split('-');
+            if (parts.length !== 3) return false;
+            const dataPag = new Date(parts[0], parts[1] - 1, parts[2]);
+            if (dataPag > hoje) return false;
+
+            const buscaValida = termoBusca === '' || p.symbol.includes(termoBusca);
+            return buscaValida;
+        }).sort((a, b) => new Date(b.paymentDate) - new Date(a.paymentDate));
+
+        if (proventosIniciais.length === 0) {
+            listaHistoricoProventos.innerHTML = `
             <div class="flex flex-col items-center justify-center mt-12 opacity-50">
                 <p class="text-xs text-gray-500">Nenhum provento efetivado.</p>
             </div>`;
-        return;
-    }
+            return;
+        }
 
-    const grupos = agruparPorMes(proventosIniciais, 'paymentDate');
-    const gruposLimpos = {};
+        const grupos = agruparPorMes(proventosIniciais, 'paymentDate');
+        const gruposLimpos = {};
 
-    Object.keys(grupos).forEach(mes => {
-        const itensValidos = [];
-        grupos[mes].forEach(p => {
-            const dataRef = p.dataCom || p.paymentDate;
-            const qtd = getQuantidadeNaData(p.symbol, dataRef);
-            if (qtd > 0) {
-                p.qtdCalculada = qtd; 
-                p.totalCalculado = Number(p.value) * Number(qtd); 
-                itensValidos.push(p);
+        Object.keys(grupos).forEach(mes => {
+            const itensValidos = [];
+            grupos[mes].forEach(p => {
+                const dataRef = p.dataCom || p.paymentDate;
+                const qtd = getQuantidadeNaData(p.symbol, dataRef);
+                if (qtd > 0) {
+                    p.qtdCalculada = qtd;
+                    p.totalCalculado = Number(p.value) * Number(qtd);
+                    itensValidos.push(p);
+                }
+            });
+            if (itensValidos.length > 0) {
+                gruposLimpos[mes] = itensValidos;
             }
         });
-        if (itensValidos.length > 0) {
-            gruposLimpos[mes] = itensValidos;
-        }
-    });
 
-    const flatItems = flattenHistoricoData(gruposLimpos);
+        const flatItems = flattenHistoricoData(gruposLimpos);
 
-    const rowRenderer = (p) => {
-        const qtd = p.qtdCalculada; 
-        const dia = p.paymentDate.split('-')[2]; 
-        const total = p.totalCalculado; 
+        const rowRenderer = (p) => {
+            const qtd = p.qtdCalculada;
+            const dia = p.paymentDate.split('-')[2];
+            const total = p.totalCalculado;
 
-        // Cálculo do Valor Unitário (para exibir abaixo do total)
-        const valorUnitario = total / (qtd || 1); 
+            // Cálculo do Valor Unitário (para exibir abaixo do total)
+            const valorUnitario = total / (qtd || 1);
 
-        const bgIcone = 'bg-[#1C1C1E]';
-        const iconGraph = `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" /></svg>`;
+            const iconGraph = `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" /></svg>`;
 
-let tagHtml = '';
-        const rawType = (p.type || '').toUpperCase();
+            let tagHtml = '';
+            const rawType = (p.type || '').toUpperCase();
 
-        // Define apenas o TEXTO da etiqueta baseado no tipo
-        let label = 'OUTROS';
+            // Define apenas o TEXTO da etiqueta baseado no tipo
+            let label = 'OUTROS';
 
-        if (rawType.includes('JCP')) {
-            label = 'JCP';
-        } else if (rawType.includes('TRIB')) {
-            label = 'TRIB';
-        } else if (rawType.includes('DIV') || rawType.includes('REND')) {
-            label = 'DIV';
-        }
+            if (rawType.includes('JCP')) {
+                label = 'JCP';
+            } else if (rawType.includes('TRIB')) {
+                label = 'TRIB';
+            } else if (rawType.includes('DIV') || rawType.includes('REND')) {
+                label = 'DIV';
+            }
 
-        // Aplica o estilo CINZA único para todos
-        tagHtml = `<span class="text-[9px] font-extrabold text-gray-300 bg-gray-700/40 border border-gray-600/50 px-1.5 py-[1px] rounded-[4px] uppercase tracking-wider leading-none">${label}</span>`;
+            // Aplica o estilo CINZA único para todos
+            tagHtml = `<span class="text-[9px] font-extrabold text-gray-300 bg-gray-700/40 border border-gray-600/50 px-1.5 py-[1px] rounded-[4px] uppercase tracking-wider leading-none">${label}</span>`;
 
-        return `
-            <div class="history-card flex items-center justify-between py-2 px-3 mb-1 rounded-xl relative group h-full w-full bg-black" style="background-color: black !important;">
+            return `
+            <div class="history-card flex items-center justify-between py-2 px-0 mb-1 rounded-xl relative group h-full w-full bg-black border border-transparent">
                 <div class="flex items-center gap-3 flex-1 min-w-0">
 
-                    <div class="w-10 h-10 rounded-full ${bgIcone} flex items-center justify-center flex-shrink-0 shadow-sm relative overflow-hidden">
+                    <div class="w-10 h-10 rounded-full bg-[#1C1C1E] flex items-center justify-center flex-shrink-0 shadow-sm relative overflow-hidden">
                         ${iconGraph}
                     </div>
 
@@ -1901,10 +2275,16 @@ let tagHtml = '';
                 </div>
             </div>
         `;
-    };
+        };
 
-    proventosVirtualizer = new VirtualScroller(scrollContainer, listaHistoricoProventos, flatItems, rowRenderer);
-}
+        proventosVirtualizer = new VirtualScroller(scrollContainer, listaHistoricoProventos, flatItems, rowRenderer);
+    }
+
+    // Mantém compatibilidade
+    function renderizarHistoricoProventos() {
+        if (window.renderizarHistoricoProventosGlobal) window.renderizarHistoricoProventosGlobal();
+    }
+
     if (btnHistTransacoes && btnHistProventos) {
         const viewTransacoes = document.getElementById('view-transacoes');
         const viewProventos = document.getElementById('view-proventos');
@@ -1919,13 +2299,13 @@ let tagHtml = '';
             btnHistProventos.classList.remove('active');
 
             // Move a linha para a ESQUERDA (remove a classe que joga p/ direita)
-            if(tabIndicator) tabIndicator.classList.remove('indicator-right');
+            if (tabIndicator) tabIndicator.classList.remove('indicator-right');
 
             // Troca views
             viewTransacoes.classList.remove('hidden');
             viewProventos.classList.add('hidden');
 
-            if(statusEl) statusEl.classList.add('hidden');
+            if (statusEl) statusEl.classList.add('hidden');
             renderizarHistorico();
         });
 
@@ -1935,13 +2315,13 @@ let tagHtml = '';
             btnHistTransacoes.classList.remove('active');
 
             // Move a linha para a DIREITA
-            if(tabIndicator) tabIndicator.classList.add('indicator-right');
+            if (tabIndicator) tabIndicator.classList.add('indicator-right');
 
             // Troca views
             viewTransacoes.classList.add('hidden');
             viewProventos.classList.remove('hidden');
 
-            if(statusEl) statusEl.classList.add('hidden');
+            if (statusEl) statusEl.classList.add('hidden');
             renderizarHistoricoProventos();
         });
     }
@@ -1955,7 +2335,7 @@ let tagHtml = '';
         });
     }
 
-	// 2.1 Busca nos Proventos (Faltava este bloco)
+    // 2.1 Busca nos Proventos (Faltava este bloco)
     const provSearchInput = document.getElementById('proventos-search-input');
     if (provSearchInput) {
         provSearchInput.addEventListener('input', (e) => {
@@ -2017,127 +2397,126 @@ let tagHtml = '';
         });
     }
 
-function agruparNoticiasPorData(articles) {
-    const grupos = {};
-    const hoje = new Date();
-    hoje.setHours(0,0,0,0);
+    function agruparNoticiasPorData(articles) {
+        const grupos = {};
+        const hoje = new Date();
+        hoje.setHours(0, 0, 0, 0);
 
-    const ontem = new Date(hoje);
-    ontem.setDate(ontem.getDate() - 1);
+        const ontem = new Date(hoje);
+        ontem.setDate(ontem.getDate() - 1);
 
-    articles.forEach(article => {
-        // Tenta criar data. Se falhar, usa "DATA DESCONHECIDA" para não quebrar o app
-        let d = new Date(article.publicationDate);
-        if (isNaN(d.getTime())) {
-            d = new Date(); // Fallback para hoje se a data for inválida
-        }
-
-        const dZero = new Date(d);
-        dZero.setHours(0,0,0,0);
-
-        let labelData = '';
-        if (dZero.getTime() === hoje.getTime()) {
-            labelData = 'HOJE';
-        } else if (dZero.getTime() === ontem.getTime()) {
-            labelData = 'ONTEM';
-        } else {
-            // Formata: "17 DE DEZEMBRO"
-            labelData = d.toLocaleDateString('pt-BR', { day: 'numeric', month: 'long' }).toUpperCase();
-            // Adiciona ano se não for o ano atual
-            if (d.getFullYear() !== hoje.getFullYear()) {
-                labelData += ` DE ${d.getFullYear()}`;
-            }
-        }
-
-        if (!grupos[labelData]) grupos[labelData] = [];
-        grupos[labelData].push(article);
-    });
-    return grupos;
-}
-
-function renderizarNoticias(articles) { 
-    fiiNewsSkeleton.classList.add('hidden');
-
-    const newSignature = JSON.stringify(articles);
-    if (newSignature === lastNewsSignature && fiiNewsList.children.length > 0) {
-        return;
-    }
-    lastNewsSignature = newSignature;
-
-    fiiNewsList.innerHTML = ''; 
-    fiiNewsMensagem.classList.add('hidden');
-
-    if (!articles || articles.length === 0) {
-        fiiNewsMensagem.textContent = 'Nenhuma notícia recente encontrada.';
-        fiiNewsMensagem.classList.remove('hidden');
-        return;
-    }
-
-    const sortedArticles = [...articles].sort((a, b) => new Date(b.publicationDate) - new Date(a.publicationDate));
-    const grupos = agruparNoticiasPorData(sortedArticles);
-
-    const fragment = document.createDocumentFragment();
-    let isGlobalFirstItem = true;
-
-    Object.keys(grupos).forEach(dataLabel => {
-        // Header
-        const header = document.createElement('div');
-        header.className = 'sticky top-0 z-10 bg-black/95 backdrop-blur-md py-3 px-1 border-b border-neutral-800 mb-2';
-        header.innerHTML = `<h3 class="text-xs font-bold text-neutral-400 uppercase tracking-widest pl-1">${dataLabel}</h3>`;
-        fragment.appendChild(header);
-
-        // Lista
-        const listaGrupo = document.createElement('div');
-        listaGrupo.className = 'mb-8';
-
-        grupos[dataLabel].forEach((article, index) => {
-            const sourceName = article.sourceName || 'Fonte';
-            const faviconUrl = article.favicon || `https://www.google.com/s2/favicons?domain=${article.sourceHostname || 'google.com'}&sz=64`;
-            let horaPub = '';
-            try { horaPub = new Date(article.publicationDate).toLocaleTimeString('pt-BR', { hour: '2-digit', minute:'2-digit' }); } catch(e) { horaPub = '--:--'; }
-            const safeLabel = dataLabel.replace(/[^a-zA-Z0-9]/g, '');
-            const drawerId = `news-drawer-${safeLabel}-${index}`;
-
-            // Tickers
-            const tickerRegex = /[A-Z]{4}(3|4|5|6|11)/g; 
-            const foundTickers = [...new Set(article.title.match(tickerRegex) || [])];
-            let tickersHtml = '';
-            if (foundTickers.length > 0) {
-                foundTickers.forEach(ticker => {
-                    tickersHtml += `<span class="news-ticker-tag text-[10px] py-0.5 px-2 bg-neutral-800 text-neutral-400 rounded-md border border-neutral-700 mr-2 mb-1 inline-block active:bg-neutral-800 active:text-neutral-400 active:border-neutral-700 transition-colors" data-action="view-ticker" data-symbol="${ticker}">${ticker}</span>`;
-                });
+        articles.forEach(article => {
+            // Tenta criar data. Se falhar, usa "DATA DESCONHECIDA" para não quebrar o app
+            let d = new Date(article.publicationDate);
+            if (isNaN(d.getTime())) {
+                d = new Date(); // Fallback para hoje se a data for inválida
             }
 
-            const item = document.createElement('div');
+            const dZero = new Date(d);
+            dZero.setHours(0, 0, 0, 0);
 
-            let itemWrapperClass = 'group relative transition-all news-card-interactive ';
-            let titleClass = 'font-bold text-gray-100 leading-snug mb-2 group-hover:text-white transition-colors ';
-            let badgeDestaque = '';
-
-            if (isGlobalFirstItem) {
-                // DESTAQUE: Mudado de purple para blue
-                itemWrapperClass += 'bg-gradient-to-r from-blue-900/30 to-transparent border-l-[3px] border-blue-500 py-1 my-2 rounded-r-lg';
-                titleClass += 'text-base'; 
-                // BADGE: Mudado de bg-purple-600 para bg-blue-600
-                badgeDestaque = '<span class="inline-block bg-blue-600 text-white text-[9px] font-bold uppercase tracking-wider px-1.5 py-[2px] rounded-sm mb-2">Destaque</span>';
-                isGlobalFirstItem = false;
+            let labelData = '';
+            if (dZero.getTime() === hoje.getTime()) {
+                labelData = 'HOJE';
+            } else if (dZero.getTime() === ontem.getTime()) {
+                labelData = 'ONTEM';
             } else {
-                // NORMAL
-                itemWrapperClass += 'border-b border-neutral-800 last:border-0 hover:bg-neutral-900/40';
-                titleClass += 'text-sm';
+                // Formata: "17 DE DEZEMBRO"
+                labelData = d.toLocaleDateString('pt-BR', { day: 'numeric', month: 'long' }).toUpperCase();
+                // Adiciona ano se não for o ano atual
+                if (d.getFullYear() !== hoje.getFullYear()) {
+                    labelData += ` DE ${d.getFullYear()}`;
+                }
             }
 
-            item.className = itemWrapperClass;
-            item.setAttribute('data-action', 'toggle-news');
-            item.setAttribute('data-target', drawerId);
+            if (!grupos[labelData]) grupos[labelData] = [];
+            grupos[labelData].push(article);
+        });
+        return grupos;
+    }
 
-            // BOTÃO LER NOTÍCIA: Mudado de purple para blue
-            item.innerHTML = `
-                <div class="flex items-start gap-4 py-4 px-3 cursor-pointer">
-                    <div class="flex-shrink-0 mt-1.5">
+    function renderizarNoticias(articles) {
+        fiiNewsSkeleton.classList.add('hidden');
+
+        const newSignature = JSON.stringify(articles);
+        if (newSignature === lastNewsSignature && fiiNewsList.children.length > 0) {
+            return;
+        }
+        lastNewsSignature = newSignature;
+
+        fiiNewsList.innerHTML = '';
+        fiiNewsMensagem.classList.add('hidden');
+
+        if (!articles || articles.length === 0) {
+            fiiNewsMensagem.textContent = 'Nenhuma notícia recente encontrada.';
+            fiiNewsMensagem.classList.remove('hidden');
+            return;
+        }
+
+        const sortedArticles = [...articles].sort((a, b) => new Date(b.publicationDate) - new Date(a.publicationDate));
+        const grupos = agruparNoticiasPorData(sortedArticles);
+
+        const fragment = document.createDocumentFragment();
+        let isGlobalFirstItem = true;
+
+        Object.keys(grupos).forEach(dataLabel => {
+            // Header de data — estilo unificado com Extrato (inline, não sticky)
+            const header = document.createElement('div');
+            header.className = 'z-10 bg-black py-3 px-5 mb-0 -mx-4 border-b border-[#1F1F1F]';
+            header.innerHTML = `<h3 class="text-[11px] font-bold text-neutral-500 uppercase tracking-widest">${dataLabel}</h3>`;
+            fragment.appendChild(header);
+
+            // Lista (Margem negativa total para borda ponta a ponta)
+            const listaGrupo = document.createElement('div');
+            listaGrupo.className = 'mb-6 -mx-4';
+
+            grupos[dataLabel].forEach((article, index) => {
+                const sourceName = article.sourceName || 'Fonte';
+                const faviconUrl = article.favicon || `https://www.google.com/s2/favicons?domain=${article.sourceHostname || 'google.com'}&sz=64`;
+                let horaPub = '';
+                try { horaPub = new Date(article.publicationDate).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }); } catch (e) { horaPub = '--:--'; }
+                const safeLabel = dataLabel.replace(/[^a-zA-Z0-9]/g, '');
+                const drawerId = `news-drawer-${safeLabel}-${index}`;
+
+                // Tickers (Badges mais finos e discretos)
+                const tickerRegex = /[A-Z]{4}(3|4|5|6|11)/g;
+                const foundTickers = [...new Set(article.title.match(tickerRegex) || [])];
+                let tickersHtml = '';
+                if (foundTickers.length > 0) {
+                    foundTickers.forEach(ticker => {
+                        tickersHtml += `<span class="news-ticker-tag font-bold bg-[#1C1C1E] text-gray-400 rounded-[4px] border border-[#2C2C2E] mr-1 mb-1 inline-block transition-colors text-[10px] px-2 py-0.5" data-action="view-ticker" data-symbol="${ticker}">${ticker}</span>`;
+                    });
+                }
+
+                const item = document.createElement('div');
+
+                let itemWrapperClass = 'group relative transition-all news-card-interactive px-4 ';
+                let titleClass = 'font-bold text-gray-100 leading-snug mb-2 group-hover:text-white transition-colors ';
+                let badgeDestaque = '';
+
+                if (isGlobalFirstItem) {
+                    // DESTAQUE
+                    itemWrapperClass += 'bg-gradient-to-r from-blue-900/20 to-transparent border-l-[3px] border-blue-500 py-3 my-2 rounded-r-lg';
+                    titleClass += 'text-[15px]';
+                    badgeDestaque = '<span class="inline-block bg-blue-600/20 text-blue-400 border border-blue-500/30 text-[9px] font-bold uppercase tracking-wider px-1.5 py-[2px] rounded-sm mb-2">Destaque</span>';
+                    isGlobalFirstItem = false;
+                } else {
+                    // NORMAL (Divisória ponta a ponta mudando a cor da borda para #1F1F1F)
+                    itemWrapperClass += 'border-b border-[#1F1F1F] last:border-0 hover:bg-white/[0.02] py-3';
+                    titleClass += 'text-sm';
+                }
+
+                item.className = itemWrapperClass;
+                item.setAttribute('data-action', 'toggle-news');
+                item.setAttribute('data-target', drawerId);
+
+                // Ícone ajustado de w-10 h-10 para w-6 h-6 para ficar menos "pesado" visualmente
+                item.innerHTML = `
+                <div class="flex items-start gap-3 py-1 cursor-pointer">
+                    <div class="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5 overflow-hidden relative">
                         <img src="${faviconUrl}" alt="${sourceName}" 
-                             class="w-10 h-10 rounded-2xl bg-[#1C1C1E] object-contain p-0.5 border border-neutral-800 transition-all"
-                             loading="lazy"
+                             class="w-full h-full object-contain rounded-lg relative z-10"
+                             loading="lazy" decoding="async"
                              onerror="this.src='https://www.google.com/s2/favicons?domain=google.com&sz=64';" 
                         />
                     </div>
@@ -2145,9 +2524,9 @@ function renderizarNoticias(articles) {
                     <div class="flex-1 min-w-0 pointer-events-none">
                         ${badgeDestaque}
                         <div class="flex items-center gap-2 mb-1.5">
-                            <span class="text-[10px] font-bold uppercase tracking-wider text-neutral-500">${sourceName}</span>
-                            <span class="text-[10px] text-neutral-600">•</span>
-                            <span class="text-[10px] text-neutral-500">${horaPub}</span>
+                            <span class="text-[9px] font-bold uppercase tracking-wider text-gray-400">${sourceName}</span>
+                            <span class="text-[9px] text-gray-600">•</span>
+                            <span class="text-[9px] text-gray-500">${horaPub}</span>
                         </div>
 
                         <h4 class="${titleClass}">
@@ -2159,20 +2538,20 @@ function renderizarNoticias(articles) {
                         </div>
                     </div>
 
-                    <div class="text-neutral-600 group-hover:text-neutral-400 mt-2 transition-colors">
-                         <svg class="card-arrow-icon w-5 h-5 transition-transform duration-300" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                    <div class="text-gray-600 group-hover:text-gray-400 mt-1 transition-colors">
+                         <svg class="card-arrow-icon w-4 h-4 transition-transform duration-300" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
                         </svg>
                     </div>
                 </div>
 
                 <div id="${drawerId}" class="card-drawer">
-                    <div class="drawer-content px-3 pb-5 pl-14">
-                        <div class="text-sm text-neutral-400 leading-relaxed border-l-2 border-neutral-700 pl-4">
+                    <div class="drawer-content pb-4 pl-9 pr-2">
+                        <div class="text-[13px] text-gray-400 leading-relaxed border-l-2 border-[#2C2C2E] pl-3">
                             ${article.summary ? article.summary : 'Resumo não disponível.'}
                         </div>
-                        <div class="mt-4 pl-4">
-                            <a href="${article.link}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1.5 text-xs font-bold text-white hover:text-gray-200 transition-colors bg-white/10 border border-white/10 px-3 py-1.5 rounded-md hover:bg-white/20">
+                        <div class="mt-4 pl-3">
+                            <a href="${article.link}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1.5 text-xs font-bold text-white transition-colors bg-[#1C1C1E] border border-[#2C2C2E] px-3 py-1.5 rounded-lg active:scale-95">
                                 Ler notícia completa
                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
                             </a>
@@ -2180,172 +2559,172 @@ function renderizarNoticias(articles) {
                     </div>
                 </div>
             `;
-            listaGrupo.appendChild(item);
+                listaGrupo.appendChild(item);
+            });
+            fragment.appendChild(listaGrupo);
         });
-        fragment.appendChild(listaGrupo);
-    });
 
-    fiiNewsList.appendChild(fragment);
-}
-
-function renderizarGraficoAlocacao(isRetry = false) {
-    const canvas = document.getElementById('alocacao-chart');
-    if (!canvas) return;
-
-    const cardContainer = canvas.closest('.border'); 
-    if (cardContainer) {
-        cardContainer.classList.remove('border', 'border-[#2C2C2E]');
-        cardContainer.style.border = 'none';
-        cardContainer.style.boxShadow = 'none';
+        fiiNewsList.appendChild(fragment);
     }
 
-    const temPrecos = Array.isArray(precosAtuais) && precosAtuais.length > 0;
+    function renderizarGraficoAlocacao(isRetry = false) {
+        const canvas = document.getElementById('alocacao-chart');
+        if (!canvas) return;
 
-    if (!window.alocacaoRetryCount) window.alocacaoRetryCount = 0;
+        const cardContainer = canvas.closest('.border');
+        if (cardContainer) {
+            cardContainer.classList.remove('border', 'border-[#2C2C2E]');
+            cardContainer.style.border = 'none';
+            cardContainer.style.boxShadow = 'none';
+        }
 
-    if (!temPrecos && window.alocacaoRetryCount < 5) {
-        window.alocacaoRetryTimer = setTimeout(() => {
-            window.alocacaoRetryCount++;
-            renderizarGraficoAlocacao(true);
-        }, 800);
-    } else if (temPrecos) {
-        window.alocacaoRetryCount = 0;
-        if (window.alocacaoRetryTimer) clearTimeout(window.alocacaoRetryTimer);
-    }
+        const temPrecos = Array.isArray(precosAtuais) && precosAtuais.length > 0;
 
-    const mapPrecos = new Map();
-    if (temPrecos) {
-        precosAtuais.forEach(p => {
-            const sym = p.symbol || p.ticker || p.codigo;
-            const val = p.regularMarketPrice || p.price || p.cotacao || p.valor;
-            if (sym && val) {
-                mapPrecos.set(sym.toUpperCase().trim(), parseFloat(val));
+        if (!window.alocacaoRetryCount) window.alocacaoRetryCount = 0;
+
+        if (!temPrecos && window.alocacaoRetryCount < 5) {
+            window.alocacaoRetryTimer = setTimeout(() => {
+                window.alocacaoRetryCount++;
+                renderizarGraficoAlocacao(true);
+            }, 800);
+        } else if (temPrecos) {
+            window.alocacaoRetryCount = 0;
+            if (window.alocacaoRetryTimer) clearTimeout(window.alocacaoRetryTimer);
+        }
+
+        const mapPrecos = new Map();
+        if (temPrecos) {
+            precosAtuais.forEach(p => {
+                const sym = p.symbol || p.ticker || p.codigo;
+                const val = p.regularMarketPrice || p.price || p.cotacao || p.valor;
+                if (sym && val) {
+                    mapPrecos.set(sym.toUpperCase().trim(), parseFloat(val));
+                }
+            });
+        }
+
+        let totalGeral = 0;
+        const dadosAtivos = [];
+
+        if (Array.isArray(carteiraCalculada)) {
+            carteiraCalculada.forEach(ativo => {
+                const ticker = (ativo.symbol || ativo.ticker).toUpperCase().trim();
+                const qtd = parseFloat(ativo.quantity || ativo.quantidade || 0);
+                const precoMedio = parseFloat(ativo.precoMedio || ativo.averagePrice || 0);
+
+                // Tenta pegar o preço na ordem: Ao Vivo Global -> Do Ativo (Cache) -> Preço Médio (Fallback)
+                let precoLive = mapPrecos.get(ticker);
+                if (!precoLive) precoLive = parseFloat(ativo.regularMarketPrice || ativo.price || 0);
+                if (!precoLive || isNaN(precoLive) || precoLive === 0) precoLive = precoMedio;
+
+                const valorTotal = precoLive * qtd;
+
+                if (valorTotal > 0.01) {
+                    totalGeral += valorTotal;
+                    dadosAtivos.push({
+                        label: ticker,
+                        value: valorTotal,
+                        qtd: qtd,
+                        color: '' // Será preenchido depois
+                    });
+                }
+            });
+        }
+
+        // Ordenar do maior para o menor valor
+        dadosAtivos.sort((a, b) => b.value - a.value);
+
+        const paletaCores = [
+            '#8B5CF6', '#10B981', '#3B82F6', '#F59E0B',
+            '#EC4899', '#6366F1', '#EF4444', '#14B8A6'
+        ];
+
+        dadosAtivos.forEach((d, i) => {
+            d.color = paletaCores[i % paletaCores.length];
+        });
+
+        const sortedLabels = dadosAtivos.map(d => d.label);
+        const sortedValues = dadosAtivos.map(d => d.value);
+        const sortedColors = dadosAtivos.map(d => d.color);
+
+        const elTotalCenter = document.getElementById('alocacao-total-center');
+        if (elTotalCenter) {
+            elTotalCenter.textContent = totalGeral.toLocaleString('pt-BR', {
+                style: 'currency', currency: 'BRL'
+            });
+        }
+
+        if (dadosAtivos.length === 0) {
+            if (alocacaoChartInstance) {
+                alocacaoChartInstance.destroy();
+                alocacaoChartInstance = null;
             }
-        });
-    }
+            return;
+        }
 
-    let totalGeral = 0;
-    const dadosAtivos = [];
-
-    if (Array.isArray(carteiraCalculada)) {
-        carteiraCalculada.forEach(ativo => {
-            const ticker = (ativo.symbol || ativo.ticker).toUpperCase().trim();
-            const qtd = parseFloat(ativo.quantity || ativo.quantidade || 0);
-            const precoMedio = parseFloat(ativo.precoMedio || ativo.averagePrice || 0);
-
-            // Tenta pegar o preço na ordem: Ao Vivo Global -> Do Ativo (Cache) -> Preço Médio (Fallback)
-            let precoLive = mapPrecos.get(ticker);
-            if (!precoLive) precoLive = parseFloat(ativo.regularMarketPrice || ativo.price || 0);
-            if (!precoLive || isNaN(precoLive) || precoLive === 0) precoLive = precoMedio;
-
-            const valorTotal = precoLive * qtd;
-
-            if (valorTotal > 0.01) { 
-                totalGeral += valorTotal;
-                dadosAtivos.push({
-                    label: ticker,
-                    value: valorTotal,
-                    qtd: qtd,
-                    color: '' // Será preenchido depois
-                });
-            }
-        });
-    }
-
-    // Ordenar do maior para o menor valor
-    dadosAtivos.sort((a, b) => b.value - a.value);
-
-    const paletaCores = [
-        '#8B5CF6', '#10B981', '#3B82F6', '#F59E0B', 
-        '#EC4899', '#6366F1', '#EF4444', '#14B8A6'
-    ];
-
-    dadosAtivos.forEach((d, i) => {
-        d.color = paletaCores[i % paletaCores.length];
-    });
-
-    const sortedLabels = dadosAtivos.map(d => d.label);
-    const sortedValues = dadosAtivos.map(d => d.value);
-    const sortedColors = dadosAtivos.map(d => d.color);
-
-    const elTotalCenter = document.getElementById('alocacao-total-center');
-    if(elTotalCenter) {
-        elTotalCenter.textContent = totalGeral.toLocaleString('pt-BR', { 
-            style: 'currency', currency: 'BRL'
-        });
-    }
-
-    if (dadosAtivos.length === 0) {
         if (alocacaoChartInstance) {
             alocacaoChartInstance.destroy();
-            alocacaoChartInstance = null;
         }
-        return;
-    }
 
-    if (alocacaoChartInstance) {
-        alocacaoChartInstance.destroy();
-    }
+        const ctx = canvas.getContext('2d');
+        const isLight = document.body.classList.contains('light-mode');
+        const borderColor = isLight ? '#ffffff' : '#151515';
 
-    const ctx = canvas.getContext('2d');
-    const isLight = document.body.classList.contains('light-mode');
-    const borderColor = isLight ? '#ffffff' : '#151515'; 
-
-    alocacaoChartInstance = new Chart(ctx, {
-        type: 'doughnut',
-        data: {
-            labels: sortedLabels,
-            datasets: [{
-                data: sortedValues,
-                backgroundColor: sortedColors,
-                borderWidth: 2, 
-                borderColor: borderColor,
-                hoverOffset: 10, 
-                borderRadius: 5 
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            cutout: '75%', 
-            plugins: {
-                legend: { display: false }, 
-                tooltip: {
-                    backgroundColor: isLight ? 'rgba(255,255,255,0.95)' : 'rgba(20, 20, 20, 0.95)',
-                    titleColor: isLight ? '#333' : '#fff',
-                    bodyColor: isLight ? '#555' : '#ccc',
-                    borderColor: isLight ? '#ddd' : '#333',
-                    borderWidth: 1,
-                    padding: 12,
-                    cornerRadius: 12,
-                    bodyFont: { family: "'Inter', sans-serif" },
-                    titleFont: { family: "'Inter', sans-serif" },
-                    callbacks: {
-                        label: function(context) {
-                            const val = context.raw;
-                            const pct = totalGeral > 0 ? ((val / totalGeral) * 100).toFixed(1) + '%' : '0%';
-                            return ` ${pct} (${val.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'})})`;
+        alocacaoChartInstance = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: sortedLabels,
+                datasets: [{
+                    data: sortedValues,
+                    backgroundColor: sortedColors,
+                    borderWidth: 2,
+                    borderColor: borderColor,
+                    hoverOffset: 10,
+                    borderRadius: 5
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                cutout: '75%',
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        backgroundColor: isLight ? 'rgba(255,255,255,0.95)' : 'rgba(20, 20, 20, 0.95)',
+                        titleColor: isLight ? '#333' : '#fff',
+                        bodyColor: isLight ? '#555' : '#ccc',
+                        borderColor: isLight ? '#ddd' : '#333',
+                        borderWidth: 1,
+                        padding: 12,
+                        cornerRadius: 12,
+                        bodyFont: { family: "'Inter', sans-serif" },
+                        titleFont: { family: "'Inter', sans-serif" },
+                        callbacks: {
+                            label: function (context) {
+                                const val = context.raw;
+                                const pct = totalGeral > 0 ? ((val / totalGeral) * 100).toFixed(1) + '%' : '0%';
+                                return ` ${pct} (${val.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })})`;
+                            }
                         }
                     }
-                }
-            },
-            animation: { animateScale: true, animateRotate: true }
-        }
-    });
+                },
+                animation: { animateScale: true, animateRotate: true }
+            }
+        });
 
-    const legendContainer = document.getElementById('alocacao-legend-container');
-    if (legendContainer) {
-        legendContainer.innerHTML = ''; 
+        const legendContainer = document.getElementById('alocacao-legend-container');
+        if (legendContainer) {
+            legendContainer.innerHTML = '';
 
-        dadosAtivos.forEach(item => {
-            const percent = totalGeral > 0 ? ((item.value / totalGeral) * 100).toFixed(1) : 0;
-            const valorFormatado = item.value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+            dadosAtivos.forEach(item => {
+                const percent = totalGeral > 0 ? ((item.value / totalGeral) * 100).toFixed(1) : 0;
+                const valorFormatado = item.value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
-            const div = document.createElement('div');
-            // Container flex para separar Esquerda e Direita
-            div.className = 'flex items-center justify-between p-3 bg-[#151515] rounded-2xl mb-2';
+                const div = document.createElement('div');
+                // Container flex para separar Esquerda e Direita
+                div.className = 'flex items-center justify-between p-3 bg-[#151515] rounded-2xl mb-2';
 
-            div.innerHTML = `
+                div.innerHTML = `
                 <div class="flex items-center gap-3">
                     <div class="w-1.5 h-8 rounded-full" style="background-color: ${item.color}"></div>
 
@@ -2358,359 +2737,361 @@ function renderizarGraficoAlocacao(isRetry = false) {
                     <span class="text-sm font-bold text-white tracking-tight">${valorFormatado}</span>
                 </div>
             `;
-            legendContainer.appendChild(div);
-        });
-    }
-}
-
-
-function exibirDetalhesProventos(anoMes, labelAmigavel) {
-    // 1. Filtrar e Agrupar
-    const agrupado = {};
-    let totalMes = 0;
-
-    proventosConhecidos.forEach(p => {
-        if (!p.paymentDate || !p.paymentDate.startsWith(anoMes)) return;
-        const dataRef = p.dataCom || p.paymentDate;
-        const qtd = getQuantidadeNaData(p.symbol, dataRef);
-
-        if (qtd > 0) {
-            const total = p.value * qtd;
-            if (!agrupado[p.symbol]) agrupado[p.symbol] = 0;
-            agrupado[p.symbol] += total;
-            totalMes += total;
+                legendContainer.appendChild(div);
+            });
         }
-    });
+    }
 
-    const lista = Object.entries(agrupado).sort(([, a], [, b]) => b - a);
 
-    // 2. HTML da Lista (SEM BORDAS NOS ITENS)
-    let html = `<div class="w-full text-left space-y-2 max-h-[50vh] overflow-y-auto custom-scroll pr-1 mt-2">`;
+    function exibirDetalhesProventos(anoMes, labelAmigavel) {
+        // 1. Filtrar e Agrupar
+        const agrupado = {};
+        let totalMes = 0;
 
-    if (lista.length === 0) {
-        html += `<p class="text-center text-gray-500 text-sm py-4">Sem dados detalhados.</p>`;
-    } else {
-        lista.forEach(([ticker, valor]) => {
-            html += `
+        proventosConhecidos.forEach(p => {
+            if (!p.paymentDate || !p.paymentDate.startsWith(anoMes)) return;
+            const dataRef = p.dataCom || p.paymentDate;
+            const qtd = getQuantidadeNaData(p.symbol, dataRef);
+
+            if (qtd > 0) {
+                const total = p.value * qtd;
+                if (!agrupado[p.symbol]) agrupado[p.symbol] = 0;
+                agrupado[p.symbol] += total;
+                totalMes += total;
+            }
+        });
+
+        const lista = Object.entries(agrupado).sort(([, a], [, b]) => b - a);
+
+        // 2. HTML da Lista (SEM BORDAS NOS ITENS)
+        let html = `<div class="w-full text-left space-y-2 max-h-[50vh] overflow-y-auto custom-scroll pr-1 mt-2">`;
+
+        if (lista.length === 0) {
+            html += `<p class="text-center text-gray-500 text-sm py-4">Sem dados detalhados.</p>`;
+        } else {
+            lista.forEach(([ticker, valor]) => {
+                html += `
                 <div class="flex justify-between items-center p-3 bg-[#151515] rounded-xl">
                     <div class="flex items-center gap-3">
                         <div class="w-9 h-9 rounded-lg bg-[#1C1C1E] flex items-center justify-center font-bold text-[10px] text-gray-400">
-                            ${ticker.substring(0,2)}
+                            ${ticker.substring(0, 2)}
                         </div>
                         <span class="font-bold text-gray-200 text-sm">${ticker}</span>
                     </div>
                     <span class="font-bold text-white text-sm tracking-tight">${formatBRL(valor)}</span>
                 </div>
             `;
-        });
-    }
+            });
+        }
 
-    html += `</div>
+        html += `</div>
         <div class="mt-4 pt-3 border-t border-[#2C2C2E] flex justify-between items-center">
             <span class="text-xs font-bold text-gray-500 uppercase tracking-widest">Total do Mês</span>
             <span class="text-lg font-bold text-purple-400">${formatBRL(totalMes)}</span>
         </div>`;
 
-    // 3. Configurar Modal
-    const modal = document.getElementById('custom-modal');
-    const modalContent = document.getElementById('custom-modal-content'); // Captura o container
-    const title = document.getElementById('custom-modal-title');
-    const msg = document.getElementById('custom-modal-message');
-    const btnCancel = document.getElementById('custom-modal-cancel');
-    const btnOk = document.getElementById('custom-modal-ok');
+        // 3. Configurar Modal
+        const modal = document.getElementById('custom-modal');
+        const modalContent = document.getElementById('custom-modal-content'); // Captura o container
+        const title = document.getElementById('custom-modal-title');
+        const msg = document.getElementById('custom-modal-message');
+        const btnCancel = document.getElementById('custom-modal-cancel');
+        const btnOk = document.getElementById('custom-modal-ok');
 
-    if(modalContent) {
-        modalContent.style.border = 'none';
-        modalContent.style.boxShadow = '0 25px 50px -12px rgba(0, 0, 0, 0.9)'; // Sombra mais forte para compensar
-    }
-
-    title.textContent = `Proventos de ${labelAmigavel}`;
-    msg.innerHTML = html; 
-
-    btnCancel.style.display = 'none';
-    btnOk.textContent = 'Fechar';
-
-    btnOk.onclick = () => {
-        modal.classList.remove('visible');
-        setTimeout(() => {
-            if(modalContent) {
-                modalContent.style.border = ''; // Volta ao padrão do CSS/HTML
-                modalContent.style.boxShadow = ''; 
-            }
-
-            btnCancel.style.display = 'block';
-            btnOk.textContent = 'Confirmar';
-            msg.innerHTML = ''; 
-            btnOk.onclick = null; 
-        }, 300);
-    };
-
-    modal.classList.add('visible');
-}
-
-function renderizarGraficoHistorico(dadosExternos = null) {
-    const canvas = document.getElementById('historico-proventos-chart');
-    if (!canvas) return;
-
-    let labelsFiltrados, dataRecebidoFiltrados, dataAReceberFiltrados, keysFiltrados;
-
-    if (dadosExternos && dadosExternos.labels) {
-        labelsFiltrados = dadosExternos.labels;
-        dataRecebidoFiltrados = dadosExternos.data; 
-        dataAReceberFiltrados = new Array(labelsFiltrados.length).fill(0); 
-    }
-
-    // Dados Locais (Padrão)
-    const grupos = {};
-    const hoje = new Date(); hoje.setHours(0, 0, 0, 0);
-
-    proventosConhecidos.forEach(p => {
-        if (!p.paymentDate || p.value <= 0) return;
-        const key = p.paymentDate.substring(0, 7); // YYYY-MM
-        const dataRef = p.dataCom || p.paymentDate;
-        const qtd = getQuantidadeNaData(p.symbol, dataRef);
-
-        if (qtd > 0) {
-            if (!grupos[key]) grupos[key] = { recebido: 0, aReceber: 0 };
-            const [ano, mes, dia] = p.paymentDate.split('-');
-            const dataPagamento = new Date(ano, mes - 1, dia);
-            const valorTotal = p.value * qtd;
-
-            if (dataPagamento <= hoje) grupos[key].recebido += valorTotal;
-            else grupos[key].aReceber += valorTotal;
+        if (modalContent) {
+            modalContent.style.border = 'none';
+            modalContent.style.boxShadow = '0 25px 50px -12px rgba(0, 0, 0, 0.9)'; // Sombra mais forte para compensar
         }
-    });
 
-    let mesesOrdenados = Object.keys(grupos).sort();
-    const labelsRaw = [];
-    const dataR = [];
-    const dataA = [];
-    const keysRaw = [];
+        title.textContent = `Proventos de ${labelAmigavel}`;
+        msg.innerHTML = html;
 
-    mesesOrdenados.forEach(mesIso => {
-        const [anoFull, mesNum] = mesIso.split('-');
-        const dateObj = new Date(parseInt(anoFull), parseInt(mesNum) - 1, 1);
-        const nomeMes = dateObj.toLocaleString('pt-BR', { month: 'short' }).replace('.', '').toUpperCase();
-        const anoCurto = anoFull.slice(-2);
+        btnCancel.style.display = 'none';
+        btnOk.textContent = 'Fechar';
 
-        labelsRaw.push(`${nomeMes}/${anoCurto}`);
-        dataR.push(grupos[mesIso].recebido);
-        dataA.push(grupos[mesIso].aReceber);
-        keysRaw.push(mesIso);
-    });
+        btnOk.onclick = () => {
+            modal.classList.remove('visible');
+            setTimeout(() => {
+                if (modalContent) {
+                    modalContent.style.border = ''; // Volta ao padrão do CSS/HTML
+                    modalContent.style.boxShadow = '';
+                }
 
-    labelsFiltrados = labelsRaw.slice(-12);
-    dataRecebidoFiltrados = dataR.slice(-12);
-    dataAReceberFiltrados = dataA.slice(-12);
-    keysFiltrados = keysRaw.slice(-12);
+                btnCancel.style.display = 'block';
+                btnOk.textContent = 'Confirmar';
+                msg.innerHTML = '';
+                btnOk.onclick = null;
+            }, 300);
+        };
 
-    if (historicoChartInstance) {
-        historicoChartInstance.destroy();
+        modal.classList.add('visible');
     }
 
-    const ctx = canvas.getContext('2d');
+    function renderizarGraficoHistorico(dadosExternos = null) {
+        const canvas = document.getElementById('historico-proventos-chart');
+        if (!canvas) return;
 
-    // Cores das Barras
-    const colorRecebido = '#8B5CF6'; 
-    const colorAReceber = '#333333'; 
+        let labelsFiltrados, dataRecebidoFiltrados, dataAReceberFiltrados, keysFiltrados;
 
-    // Total usado para traçar a linha de crescimento
-    const dataTotal = dataRecebidoFiltrados.map((recebido, index) => recebido + dataAReceberFiltrados[index]);
+        if (dadosExternos && dadosExternos.labels) {
+            labelsFiltrados = dadosExternos.labels;
+            dataRecebidoFiltrados = dadosExternos.data;
+            dataAReceberFiltrados = new Array(labelsFiltrados.length).fill(0);
+        }
 
-    historicoChartInstance = new Chart(ctx, {
-        type: 'bar',
-        plugins: [crosshairPlugin], // <-- PLUGIN DA LINHA VERTICAL PONTILHADA AQUI
-        data: {
-            labels: labelsFiltrados,
-            datasets: [
-                {
-                    type: 'line', // <-- LINHA DE CRESCIMENTO (Fina e Clara) DE VOLTA
-                    label: 'Crescimento',
-                    data: dataTotal, 
-                    borderColor: '#F3F4F6', 
-                    borderWidth: 1,
-                    tension: 0.4, 
-                    pointRadius: 2,
-                    pointHoverRadius: 5,
-                    pointBackgroundColor: '#F3F4F6',
-                    spanGaps: true, 
-                    order: 0 
-                },
-                {
-                    label: 'A Receber', 
-                    data: dataAReceberFiltrados,
-                    backgroundColor: colorAReceber,
-                    borderRadius: 4,
-                    barPercentage: 0.6,
-                    stack: 'Stack 0',
-                    rawKeys: keysFiltrados,
-                    order: 1
-                },
-                {
-                    label: 'Recebido',
-                    data: dataRecebidoFiltrados,
-                    backgroundColor: colorRecebido,
-                    borderRadius: 4,
-                    barPercentage: 0.6,
-                    stack: 'Stack 0',
-                    rawKeys: keysFiltrados,
-                    order: 1
-                }
-            ]
-        },
-        options: {
-            responsive: true, 
-            maintainAspectRatio: false,
-            animation: { duration: 600 },
-            layout: { padding: { top: 10, bottom: 0 } },
-            interaction: { mode: 'index', axis: 'x', intersect: false }, // <-- MODO INDEX PARA A LINHA VERTICAL FUNCIONAR
+        // Dados Locais (Padrão)
+        const grupos = {};
+        const hoje = new Date(); hoje.setHours(0, 0, 0, 0);
 
-            onClick: (e, elements) => {
-                if (!elements || elements.length === 0) return;
+        proventosConhecidos.forEach(p => {
+            if (!p.paymentDate || p.value <= 0) return;
+            const key = p.paymentDate.substring(0, 7); // YYYY-MM
+            const dataRef = p.dataCom || p.paymentDate;
+            const qtd = getQuantidadeNaData(p.symbol, dataRef);
 
-                const index = elements[0].index;
-                const labelAmigavel = labelsFiltrados[index]; 
-                const rawKey = keysFiltrados[index]; 
+            if (qtd > 0) {
+                if (!grupos[key]) grupos[key] = { recebido: 0, aReceber: 0 };
+                const [ano, mes, dia] = p.paymentDate.split('-');
+                const dataPagamento = new Date(ano, mes - 1, dia);
+                const valorTotal = p.value * qtd;
 
-                renderizarListaProventosMes(rawKey, labelAmigavel);
+                if (dataPagamento <= hoje) grupos[key].recebido += valorTotal;
+                else grupos[key].aReceber += valorTotal;
+            }
+        });
+
+        let mesesOrdenados = Object.keys(grupos).sort();
+        const labelsRaw = [];
+        const dataR = [];
+        const dataA = [];
+        const keysRaw = [];
+
+        mesesOrdenados.forEach(mesIso => {
+            const [anoFull, mesNum] = mesIso.split('-');
+            const dateObj = new Date(parseInt(anoFull), parseInt(mesNum) - 1, 1);
+            const nomeMes = dateObj.toLocaleString('pt-BR', { month: 'short' }).replace('.', '').toUpperCase();
+            const anoCurto = anoFull.slice(-2);
+
+            labelsRaw.push(`${nomeMes}/${anoCurto}`);
+            dataR.push(grupos[mesIso].recebido);
+            dataA.push(grupos[mesIso].aReceber);
+            keysRaw.push(mesIso);
+        });
+
+        labelsFiltrados = labelsRaw.slice(-12);
+        dataRecebidoFiltrados = dataR.slice(-12);
+        dataAReceberFiltrados = dataA.slice(-12);
+        keysFiltrados = keysRaw.slice(-12);
+
+        if (historicoChartInstance) {
+            historicoChartInstance.destroy();
+        }
+
+        const ctx = canvas.getContext('2d');
+        const isLight = document.body.classList.contains('light-mode');
+
+        // Cores das Barras
+        const colorRecebido = '#8B5CF6';
+        const colorAReceber = isLight ? '#e5e7eb' : '#333333';
+        const linhaCrescimentoColor = isLight ? '#d1d5db' : '#F3F4F6';
+
+        // Total usado para traçar a linha de crescimento
+        const dataTotal = dataRecebidoFiltrados.map((recebido, index) => recebido + dataAReceberFiltrados[index]);
+
+        historicoChartInstance = new Chart(ctx, {
+            type: 'bar',
+            plugins: [crosshairPlugin], // <-- PLUGIN DA LINHA VERTICAL PONTILHADA AQUI
+            data: {
+                labels: labelsFiltrados,
+                datasets: [
+                    {
+                        type: 'line', // <-- LINHA DE CRESCIMENTO (Curva e Translúcido)
+                        label: 'Crescimento',
+                        data: dataTotal,
+                        borderColor: linhaCrescimentoColor,
+                        borderWidth: 1.5,
+                        tension: 0.4,
+                        pointRadius: 2,
+                        pointHoverRadius: 5,
+                        pointBackgroundColor: linhaCrescimentoColor,
+                        spanGaps: true,
+                        order: 0
+                    },
+                    {
+                        label: 'A Receber',
+                        data: dataAReceberFiltrados,
+                        backgroundColor: colorAReceber,
+                        borderRadius: 4,
+                        barPercentage: 0.6,
+                        stack: 'Stack 0',
+                        rawKeys: keysFiltrados,
+                        order: 1
+                    },
+                    {
+                        label: 'Recebido',
+                        data: dataRecebidoFiltrados,
+                        backgroundColor: colorRecebido,
+                        borderRadius: 4,
+                        barPercentage: 0.6,
+                        stack: 'Stack 0',
+                        rawKeys: keysFiltrados,
+                        order: 1
+                    }
+                ]
             },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                animation: { duration: 600 },
+                layout: { padding: { top: 10, bottom: 0 } },
+                interaction: { mode: 'index', axis: 'x', intersect: false }, // <-- MODO INDEX PARA A LINHA VERTICAL FUNCIONAR
 
-            plugins: {
-                legend: { display: false }, 
+                onClick: (e, elements) => {
+                    if (!elements || elements.length === 0) return;
 
-                tooltip: { 
-                    enabled: true,
-                    backgroundColor: 'rgba(20, 20, 20, 0.95)',
-                    titleColor: '#ffffff',
-                    bodyColor: '#cccccc',
-                    borderColor: '#333333',
-                    borderWidth: 1,
-                    padding: 10,
-                    displayColors: true,
-                    boxWidth: 6,
-                    boxHeight: 6,
-                    usePointStyle: true,
+                    const index = elements[0].index;
+                    const labelAmigavel = labelsFiltrados[index];
+                    const rawKey = keysFiltrados[index];
 
-                    titleFont: {
-                        family: "'Inter', sans-serif",
-                        size: 11,
-                        weight: 'bold'
-                    },
-                    bodyFont: {
-                        family: "'Inter', sans-serif",
-                        size: 11,
-                        weight: '500'
-                    },
+                    renderizarListaProventosMes(rawKey, labelAmigavel);
+                },
 
-                    callbacks: {
-                        title: function(context) {
-                            return context[0].label;
+                plugins: {
+                    legend: { display: false },
+
+                    tooltip: {
+                        enabled: true,
+                        backgroundColor: isLight ? 'rgba(255, 255, 255, 0.95)' : 'rgba(20, 20, 20, 0.95)',
+                        titleColor: isLight ? '#1f2937' : '#ffffff',
+                        bodyColor: isLight ? '#4b5563' : '#cccccc',
+                        borderColor: isLight ? '#e5e7eb' : '#333333',
+                        borderWidth: 1,
+                        padding: 10,
+                        displayColors: true,
+                        boxWidth: 6,
+                        boxHeight: 6,
+                        usePointStyle: true,
+
+                        titleFont: {
+                            family: "'Inter', sans-serif",
+                            size: 11,
+                            weight: 'bold'
                         },
-                        label: function(context) {
-                            let label = context.dataset.label || '';
-                            if (label) label += ': ';
+                        bodyFont: {
+                            family: "'Inter', sans-serif",
+                            size: 11,
+                            weight: '500'
+                        },
 
-                            // Lógica inteligente: Porcentagem para a Linha, Dinheiro para as Barras
-                            if (context.dataset.type === 'line') {
-                                const currentIndex = context.dataIndex;
-                                if (currentIndex === 0) return label + '---'; 
+                        callbacks: {
+                            title: function (context) {
+                                return context[0].label;
+                            },
+                            label: function (context) {
+                                let label = context.dataset.label || '';
+                                if (label) label += ': ';
 
-                                const atual = context.raw;
-                                const anterior = context.chart.data.datasets[0].data[currentIndex - 1];
+                                // Lógica inteligente: Porcentagem para a Linha, Dinheiro para as Barras
+                                if (context.dataset.type === 'line') {
+                                    const currentIndex = context.dataIndex;
+                                    if (currentIndex === 0) return label + '---';
 
-                                if (anterior === 0) return label + (atual > 0 ? '+100%' : '0%');
+                                    const atual = context.raw;
+                                    const anterior = context.chart.data.datasets[0].data[currentIndex - 1];
 
-                                const percent = ((atual - anterior) / anterior) * 100;
-                                const signal = percent > 0 ? '+' : '';
-                                return label + signal + percent.toFixed(1) + '%';
-                            } else {
-                                if(context.parsed.y === 0) return null;
-                                return label + formatBRL(context.parsed.y);
+                                    if (anterior === 0) return label + (atual > 0 ? '+100%' : '0%');
+
+                                    const percent = ((atual - anterior) / anterior) * 100;
+                                    const signal = percent > 0 ? '+' : '';
+                                    return label + signal + percent.toFixed(1) + '%';
+                                } else {
+                                    if (context.parsed.y === 0) return null;
+                                    return label + formatBRL(context.parsed.y);
+                                }
                             }
                         }
                     }
-                } 
-            },
-            scales: {
-                y: { display: false, stacked: true },
-                x: { 
-                    stacked: true, 
-                    grid: { display: false }, 
-                    ticks: {
-                        color: '#666',
-                        font: { 
-                            family: "'Inter', sans-serif",
-                            size: 10, 
-                            weight: '600' 
+                },
+                scales: {
+                    y: { display: false, stacked: true },
+                    x: {
+                        stacked: true,
+                        grid: { display: false, drawBorder: false },
+                        ticks: {
+                            color: isLight ? '#9ca3af' : '#666',
+                            font: { family: "'Inter', sans-serif", size: 9, weight: '600' },
+                            maxRotation: 45,
+                            minRotation: 0,
+                            autoSkip: true,
+                            maxTicksLimit: 12
                         }
                     }
                 }
             }
+        });
+
+        if (keysFiltrados.length > 0) {
+            const lastIdx = keysFiltrados.length - 1;
+            renderizarListaProventosMes(keysFiltrados[lastIdx], labelsFiltrados[lastIdx]);
         }
-    });
-
-    if (keysFiltrados.length > 0) {
-        const lastIdx = keysFiltrados.length - 1;
-        renderizarListaProventosMes(keysFiltrados[lastIdx], labelsFiltrados[lastIdx]);
     }
-}
 
-function renderizarListaProventosMes(anoMes, labelAmigavel) {
-    const container = document.getElementById('proventos-lista-container');
-    const labelMes = document.getElementById('proventos-mes-selecionado');
+    function renderizarListaProventosMes(anoMes, labelAmigavel) {
+        const container = document.getElementById('proventos-lista-container');
+        const labelMes = document.getElementById('proventos-mes-selecionado');
 
-    if (!container) return;
-    if (labelMes) labelMes.textContent = labelAmigavel;
+        if (!container) return;
+        if (labelMes) labelMes.textContent = labelAmigavel;
 
-    // Remove o espaçamento forçado de blocos para permitir a lista contínua
-    container.classList.remove('space-y-3');
+        // Remove o espaçamento forçado de blocos para permitir a lista contínua
+        container.classList.remove('space-y-3');
 
-    const agrupado = {};
-    let totalMes = 0;
+        const agrupado = {};
+        let totalMes = 0;
 
-    proventosConhecidos.forEach(p => {
-        if (!p.paymentDate || !p.paymentDate.startsWith(anoMes)) return;
-        const dataRef = p.dataCom || p.paymentDate;
-        const qtd = getQuantidadeNaData(p.symbol, dataRef);
-        if (qtd > 0) {
-            const total = p.value * qtd;
-            if (!agrupado[p.symbol]) {
-                agrupado[p.symbol] = {
-                    symbol: p.symbol,
-                    valorTotal: 0,
-                    qtd: qtd,
-                    dataPag: p.paymentDate // Formato YYYY-MM-DD
-                };
+        proventosConhecidos.forEach(p => {
+            if (!p.paymentDate || !p.paymentDate.startsWith(anoMes)) return;
+            const dataRef = p.dataCom || p.paymentDate;
+            const qtd = getQuantidadeNaData(p.symbol, dataRef);
+            if (qtd > 0) {
+                const total = p.value * qtd;
+                if (!agrupado[p.symbol]) {
+                    agrupado[p.symbol] = {
+                        symbol: p.symbol,
+                        valorTotal: 0,
+                        qtd: qtd,
+                        dataPag: p.paymentDate // Formato YYYY-MM-DD
+                    };
+                }
+                agrupado[p.symbol].valorTotal += total;
+                totalMes += total;
             }
-            agrupado[p.symbol].valorTotal += total;
-            totalMes += total;
+        });
+
+        const lista = Object.values(agrupado).sort((a, b) => b.valorTotal - a.valorTotal);
+        container.innerHTML = '';
+
+        if (lista.length === 0) {
+            container.innerHTML = `<p class="text-center text-gray-600 text-xs py-8">Nenhum pagamento registrado.</p>`;
+            return;
         }
-    });
 
-    const lista = Object.values(agrupado).sort((a, b) => b.valorTotal - a.valorTotal);
-    container.innerHTML = ''; 
+        const hoje = new Date();
+        hoje.setHours(0, 0, 0, 0);
 
-    if (lista.length === 0) {
-        container.innerHTML = `<p class="text-center text-gray-600 text-xs py-8">Nenhum pagamento registrado.</p>`;
-        return;
-    }
+        lista.forEach(item => {
+            const [ano, mes, dia] = item.dataPag.split('-').map(Number);
+            const dataPagamentoObj = new Date(ano, mes - 1, dia);
+            const foiRecebido = dataPagamentoObj <= hoje;
+            const valorUnitario = item.valorTotal / (item.qtd || 1);
 
-    const hoje = new Date();
-    hoje.setHours(0, 0, 0, 0);
+            const colorIcon = foiRecebido ? 'text-green-500' : 'text-yellow-500';
+            const iconGraph = `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 ${colorIcon}" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" /></svg>`;
+            const bgIcone = 'bg-[#1C1C1E]';
 
-    lista.forEach(item => {
-        const [ano, mes, dia] = item.dataPag.split('-').map(Number);
-        const dataPagamentoObj = new Date(ano, mes - 1, dia);
-        const foiRecebido = dataPagamentoObj <= hoje;
-        const valorUnitario = item.valorTotal / (item.qtd || 1);
+            const badgeHtml = `<span class="text-[9px] font-extrabold text-gray-300 bg-gray-700/40 border border-gray-600/50 px-1.5 py-[1px] rounded-[4px] uppercase tracking-wider leading-none">${foiRecebido ? 'RECEBIDO' : 'A RECEBER'}</span>`;
 
-        const colorIcon = foiRecebido ? 'text-green-500' : 'text-yellow-500';
-        const iconGraph = `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 ${colorIcon}" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" /></svg>`;
-        const bgIcone = 'bg-[#1C1C1E]';
-
-        const badgeHtml = `<span class="text-[9px] font-extrabold text-gray-300 bg-gray-700/40 border border-gray-600/50 px-1.5 py-[1px] rounded-[4px] uppercase tracking-wider leading-none">${foiRecebido ? 'RECEBIDO' : 'A RECEBER'}</span>`;
-
-        const cardHTML = `
+            const cardHTML = `
             <div class="flex items-center justify-between py-3 px-2 relative group w-full bg-transparent">
                 <div class="flex items-center gap-3 flex-1 min-w-0">
 
@@ -2736,56 +3117,65 @@ function renderizarListaProventosMes(anoMes, labelAmigavel) {
                 </div>
             </div>
         `;
-        container.insertAdjacentHTML('beforeend', cardHTML);
-    });
+            container.insertAdjacentHTML('beforeend', cardHTML);
+        });
 
-    const totalHTML = `
+        const totalHTML = `
         <div class="mt-2 pt-4 border-t border-[#2C2C2E] flex justify-between items-center px-2 pb-8">
             <span class="text-xs font-bold text-gray-500 uppercase tracking-widest">Total ${labelAmigavel}</span>
             <span class="text-lg font-bold text-white tracking-tight">${formatBRL(totalMes)}</span>
         </div>
     `;
-    container.insertAdjacentHTML('beforeend', totalHTML);
-}
-
-function openPatrimonioModal() {
-    if(!patrimonioPageModal) return;
-
-    // 1. Mostra o modal
-    patrimonioPageModal.classList.add('visible');
-    patrimonioPageContent.style.transform = ''; 
-    patrimonioPageContent.classList.remove('closing');
-    document.body.style.overflow = 'hidden';
-
-    // 2. Atualiza textos do Header do modal
-    if(modalPatrimonioValor && totalCarteiraValor) {
-        modalPatrimonioValor.textContent = totalCarteiraValor.textContent;
-        // Mantém a classe de blur/privacidade se houver
-        if(totalCarteiraValor.classList.contains('blur-sm')) {
-            modalPatrimonioValor.classList.add('blur-sm');
-        } else {
-            modalPatrimonioValor.classList.remove('blur-sm');
-        }
+        container.insertAdjacentHTML('beforeend', totalHTML);
     }
-    if(modalCustoValor && totalCarteiraCusto) {
-        modalCustoValor.textContent = totalCarteiraCusto.textContent;
-    }
-    requestAnimationFrame(() => {
-        setTimeout(() => {
-            if (patrimonioChartInstance) {
-                // Força o Chart.js a reler o tamanho do container pai
-                patrimonioChartInstance.resize();
-                patrimonioChartInstance.update('none'); // Update sem animação para ser rápido
+
+    function openPatrimonioModal() {
+        if (!patrimonioPageModal) return;
+
+        // 1. Mostra o modal
+        patrimonioPageModal.classList.add('visible');
+        patrimonioPageContent.style.transform = '';
+        patrimonioPageContent.classList.remove('closing');
+        document.body.style.overflow = 'hidden';
+
+        // 2. Atualiza textos do Header do modal
+        if (modalPatrimonioValor && totalCarteiraValor) {
+            modalPatrimonioValor.textContent = totalCarteiraValor.textContent;
+            // Mantém a classe de blur/privacidade se houver
+            if (totalCarteiraValor.classList.contains('blur-sm')) {
+                modalPatrimonioValor.classList.add('blur-sm');
             } else {
-                // Se o gráfico ainda não existia (primeira vez), cria ele
-                renderizarGraficoPatrimonio();
+                modalPatrimonioValor.classList.remove('blur-sm');
             }
-        }, 50); // 50ms é suficiente
-    });
-}
+        }
+        if (modalCustoValor && totalCarteiraCusto) {
+            modalCustoValor.textContent = totalCarteiraCusto.textContent;
+        }
+        requestAnimationFrame(() => {
+            // Reposition the slider now that the modal is visible and measurable
+            const activeRangeBtn = document.querySelector('.patrimonio-range-btn[data-range="' + currentPatrimonioRange + '"]');
+            if (activeRangeBtn) {
+                patrimonioSlider.style.transition = 'none';
+                movePatrimonioSlider(activeRangeBtn);
+                // Re-enable transition after paint
+                requestAnimationFrame(() => { patrimonioSlider.style.transition = ''; });
+            }
 
-function closePatrimonioModal() {
-        if(!patrimonioPageContent) return;
+            setTimeout(() => {
+                if (patrimonioChartInstance) {
+                    // Força o Chart.js a reler o tamanho do container pai
+                    patrimonioChartInstance.resize();
+                    patrimonioChartInstance.update('none'); // Update sem animação para ser rápido
+                } else {
+                    // Se o gráfico ainda não existia (primeira vez), cria ele
+                    renderizarGraficoPatrimonio();
+                }
+            }, 50); // 50ms é suficiente
+        });
+    }
+
+    function closePatrimonioModal() {
+        if (!patrimonioPageContent) return;
 
         // 1. Remove qualquer transformação manual feita pelo dedo (reset)
         patrimonioPageContent.style.transform = '';
@@ -2800,568 +3190,582 @@ function closePatrimonioModal() {
         document.body.style.overflow = '';
     }
 
-function openProventosModal() {
-    if(!proventosPageModal) return;
+    function openProventosModal() {
+        if (!proventosPageModal) return;
 
-    // 1. Mostra o modal
-    proventosPageModal.classList.add('visible');
-    proventosPageContent.style.transform = ''; 
-    proventosPageContent.classList.remove('closing');
-    document.body.style.overflow = 'hidden';
+        // 1. Mostra o modal
+        proventosPageModal.classList.add('visible');
+        proventosPageContent.style.transform = '';
+        proventosPageContent.classList.remove('closing');
+        document.body.style.overflow = 'hidden';
 
-    // 2. Renderiza ou atualiza o gráfico
-    requestAnimationFrame(() => {
-        setTimeout(() => {
-            if (historicoChartInstance) {
-                // Força o Chart.js a reler o tamanho do container pai
-                historicoChartInstance.resize();
-                historicoChartInstance.update('none'); // Update sem animação para ser rápido
-            } else {
-                // Se o gráfico ainda não existia (primeira vez), cria ele
-                renderizarGraficoHistorico();
-            }
-        }, 50); // 50ms é suficiente
-    });
-}
-
-function closeProventosModal() {
-    if(!proventosPageContent) return;
-
-    // 1. Remove qualquer transformação manual feita pelo dedo (reset)
-    proventosPageContent.style.transform = '';
-
-    // 2. Adiciona a classe que faz a animação de descer (definida no CSS)
-    proventosPageContent.classList.add('closing');
-
-    // 3. Remove a visibilidade do fundo escuro
-    proventosPageModal.classList.remove('visible');
-
-    // 4. Libera o scroll da página principal
-    document.body.style.overflow = '';
-}
-
-function openAlocacaoModal() {
-    if(!alocacaoPageModal) return;
-
-    alocacaoPageModal.classList.add('visible');
-    alocacaoPageContent.style.transform = ''; 
-    alocacaoPageContent.classList.remove('closing');
-    document.body.style.overflow = 'hidden';
-
-    // Redimensiona o gráfico de Rosca
-    requestAnimationFrame(() => {
-        setTimeout(() => {
-            if (alocacaoChartInstance) {
-                alocacaoChartInstance.resize();
-                alocacaoChartInstance.update('none');
-            } else {
-                renderizarGraficoAlocacao(); 
-            }
-        }, 50);
-    });
-}
-
-function closeAlocacaoModal() {
-    if(!alocacaoPageContent) return;
-
-    alocacaoPageContent.style.transform = '';
-    alocacaoPageContent.classList.add('closing');
-    alocacaoPageModal.classList.remove('visible');
-    document.body.style.overflow = '';
-}
-
-function renderizarGraficoPatrimonio(isRetry = false) {
-    const canvas = document.getElementById('patrimonio-chart');
-    if (!canvas) return;
-
-    const temPrecos = Array.isArray(precosAtuais) && precosAtuais.length > 0;
-
-    if (!window.patrimonioRetryCount) window.patrimonioRetryCount = 0;
-
-    if (!temPrecos && window.patrimonioRetryCount < 5) {
-        window.patrimonioRetryTimer = setTimeout(() => {
-            window.patrimonioRetryCount++;
-            renderizarGraficoPatrimonio(true);
-        }, 800);
-    } else if (temPrecos) {
-        window.patrimonioRetryCount = 0;
-        if (window.patrimonioRetryTimer) clearTimeout(window.patrimonioRetryTimer);
-    }
-
-    const mapPrecos = new Map();
-    if (temPrecos) {
-        precosAtuais.forEach(p => {
-            const sym = p.symbol || p.ticker || p.codigo;
-            const val = p.regularMarketPrice || p.price || p.cotacao || p.valor;
-            if (sym && val) {
-                mapPrecos.set(sym.toUpperCase().trim(), parseFloat(val));
-            }
-        });
-    }
-
-    let totalAtualLive = 0;
-    let custoTotalLive = 0;
-
-    if (Array.isArray(carteiraCalculada)) {
-        carteiraCalculada.forEach(ativo => {
-            const ticker = (ativo.symbol || ativo.ticker).toUpperCase().trim();
-            const qtd = parseFloat(ativo.quantity || ativo.quantidade || 0);
-            const precoMedio = parseFloat(ativo.precoMedio || ativo.averagePrice || 0);
-
-            let precoLive = mapPrecos.get(ticker);
-            if (!precoLive) precoLive = parseFloat(ativo.regularMarketPrice || ativo.price || 0);
-            if (!precoLive || isNaN(precoLive) || precoLive === 0) precoLive = precoMedio;
-
-            totalAtualLive += precoLive * qtd;
-            custoTotalLive += precoMedio * qtd;
-        });
-    }
-
-    const elLive = document.getElementById('modal-patrimonio-live');
-    if (elLive) {
-        elLive.textContent = totalAtualLive.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-        elLive.className = "text-sm font-bold text-white mt-1 truncate";
-    }
-
-    const elCusto = document.getElementById('modal-custo-valor');
-    if (elCusto) {
-        elCusto.textContent = custoTotalLive.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-    }
-
-    const hoje = new Date();
-    hoje.setHours(23, 59, 59, 999);
-    let dataCorte;
-
-    if (currentPatrimonioRange === '7D') {
-        dataCorte = new Date(hoje);
-        dataCorte.setDate(hoje.getDate() - 7);
-    } else if (currentPatrimonioRange === '1M') {
-        dataCorte = new Date(hoje);
-        dataCorte.setDate(hoje.getDate() - 30);
-    } else if (currentPatrimonioRange === '6M') {
-        dataCorte = new Date(hoje);
-        dataCorte.setMonth(hoje.getMonth() - 6);
-    } else if (currentPatrimonioRange === '1Y') {
-        dataCorte = new Date(hoje);
-        dataCorte.setFullYear(hoje.getFullYear() - 1);
-    } else {
-        dataCorte = new Date('2000-01-01'); // ALL
-    }
-    dataCorte.setHours(0, 0, 0, 0);
-
-    let dadosOrdenados = [...patrimonio]
-        .filter(p => {
-             const parts = p.date.split('-'); 
-             const dataPonto = new Date(parts[0], parts[1] - 1, parts[2]);
-             return dataPonto >= dataCorte;
-        })
-        .sort((a, b) => new Date(a.date) - new Date(b.date));
-
-    if (['6M', '1Y'].includes(currentPatrimonioRange)) {
-        const grupos = {};
-        dadosOrdenados.forEach(p => {
-            const chaveMes = p.date.substring(0, 7); 
-            grupos[chaveMes] = p; 
-        });
-        dadosOrdenados = Object.values(grupos);
-        dadosOrdenados.sort((a, b) => new Date(a.date) - new Date(b.date));
-    }
-
-    if (dadosOrdenados.length === 0) {
-        if (patrimonioChartInstance) {
-            patrimonioChartInstance.destroy();
-            patrimonioChartInstance = null;
-        }
-        const elChartVal = document.getElementById('modal-patrimonio-chart-val');
-        if (elChartVal) elChartVal.textContent = "R$ 0,00";
-        return;
-    }
-
-    const labels = [];
-    const dataValor = [];
-    const dataCusto = [];
-
-    const txOrdenadas = [...transacoes].sort((a, b) => new Date(a.date) - new Date(b.date));
-    let custoAcumulado = 0;
-    let txIndex = 0;
-
-    dadosOrdenados.forEach(p => {
-        const parts = p.date.split('-');
-        const d = new Date(parts[0], parts[1]-1, parts[2]);
-        const dia = String(d.getDate()).padStart(2, '0');
-        const mes = d.toLocaleString('pt-BR', { month: 'short' }).replace('.', '').toUpperCase();
-        const ano = d.getFullYear().toString().slice(-2);
-
-        if (['7D', '1M'].includes(currentPatrimonioRange)) labels.push([dia, mes]); 
-        else if (['6M', '1Y'].includes(currentPatrimonioRange)) labels.push([mes, ano]); 
-        else labels.push([dia, mes, ano]); 
-
-        dataValor.push(parseFloat(p.value.toFixed(2)));
-
-        const dataPontoLimite = new Date(p.date + 'T23:59:59');
-        while(txIndex < txOrdenadas.length) {
-            const tx = txOrdenadas[txIndex];
-            const dataTx = new Date(tx.date);
-            if (dataTx <= dataPontoLimite) {
-                let operacao = (tx.quantity * tx.price);
-                if (tx.type === 'buy') custoAcumulado += operacao;
-                if (tx.type === 'sell') custoAcumulado -= operacao;
-                custoAcumulado = parseFloat(custoAcumulado.toFixed(2));
-                txIndex++;
-            } else {
-                break;
-            }
-        }
-        dataCusto.push(custoAcumulado);
-    });
-
-    const elChartVal = document.getElementById('modal-patrimonio-chart-val');
-    if (elChartVal) {
-        if (dataValor.length > 0) {
-            const ultimoValorGrafico = dataValor[dataValor.length - 1];
-            elChartVal.textContent = ultimoValorGrafico.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-        } else {
-            elChartVal.textContent = "R$ 0,00";
-        }
-    }
-
-    const ctx = canvas.getContext('2d');
-    const isLight = document.body.classList.contains('light-mode');
-
-    const colorLinePatrimonio = '#c084fc'; 
-    const colorLineInvestido = isLight ? '#9ca3af' : '#525252'; 
-    const colorBadgeBg = isLight ? '#f3f4f6' : '#1f2937';
-    const colorBadgeText = isLight ? '#1f2937' : '#f9fafb';
-    const colorCrosshair = isLight ? '#d1d5db' : '#404040';
-
-    const gradientFill = ctx.createLinearGradient(0, 0, 0, 400);
-    gradientFill.addColorStop(0, 'rgba(192, 132, 252, 0.25)');
-    gradientFill.addColorStop(1, 'rgba(0, 0, 0, 0)'); // Fade to transparent
-
-    const patrimonioCrosshairPlugin = {
-        id: 'patrimonioCrosshair',
-        afterDraw: (chart) => {
-            if (chart.tooltip?._active?.length && chart.tooltip._eventPosition) {
-                const ctx = chart.ctx;
-                const activePoint = chart.tooltip._active[0];
-                const x = activePoint.element.x; 
-                const y = chart.tooltip._eventPosition.y; 
-
-                const topY = chart.scales.y.top;
-                const bottomY = chart.scales.y.bottom;
-                const leftX = chart.scales.x.left;
-                const rightX = chart.scales.x.right;
-
-                ctx.save();
-                ctx.lineWidth = 1;
-                ctx.strokeStyle = colorCrosshair;
-                ctx.setLineDash([4, 4]);
-
-                // Crosshair
-                ctx.beginPath();
-                ctx.moveTo(x, topY);
-                ctx.lineTo(x, bottomY);
-                ctx.stroke();
-
-                ctx.beginPath();
-                ctx.moveTo(leftX, y);
-                ctx.lineTo(rightX, y);
-                ctx.stroke();
-
-                // Badge X (Data)
-                const xIndex = activePoint.index;
-                const labelRaw = chart.data.labels[xIndex];
-                const labelText = Array.isArray(labelRaw) ? labelRaw.join(' ') : labelRaw;
-
-                ctx.font = 'bold 10px Inter, sans-serif';
-                const dateWidth = ctx.measureText(labelText).width + 12;
-                const dateHeight = 20;
-                let dateBadgeX = x - (dateWidth / 2);
-
-                if (dateBadgeX < leftX) dateBadgeX = leftX;
-                if (dateBadgeX + dateWidth > rightX) dateBadgeX = rightX - dateWidth;
-
-                // Força o badge para dentro da área visível inferior
-                const dateBadgeY = bottomY - dateHeight - 2; 
-
-                ctx.fillStyle = colorBadgeBg;
-                ctx.beginPath();
-                ctx.roundRect(dateBadgeX, dateBadgeY, dateWidth, dateHeight, 4);
-                ctx.fill();
-
-                ctx.fillStyle = colorBadgeText;
-                ctx.textAlign = 'center';
-                ctx.textBaseline = 'middle';
-                ctx.fillText(labelText, dateBadgeX + (dateWidth / 2), dateBadgeY + (dateHeight / 2));
-
-                // Badge Y (Valor)
-                const yValue = chart.scales.y.getValueForPixel(y);
-                const priceText = yValue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-                const priceWidth = ctx.measureText(priceText).width + 12;
-                const priceHeight = 20;
-
-                const priceBadgeX = rightX - priceWidth; 
-                let priceBadgeY = y - (priceHeight / 2);
-
-                if (priceBadgeY < topY) priceBadgeY = topY;
-                if (priceBadgeY + priceHeight > bottomY) priceBadgeY = bottomY - priceHeight;
-
-                ctx.fillStyle = colorBadgeBg;
-                ctx.beginPath();
-                ctx.roundRect(priceBadgeX, priceBadgeY, priceWidth, priceHeight, 4);
-                ctx.fill();
-
-                ctx.fillStyle = colorBadgeText;
-                ctx.textAlign = 'left';
-                ctx.textBaseline = 'middle';
-                ctx.fillText(priceText, priceBadgeX + 6, priceBadgeY + (priceHeight / 2));
-
-                ctx.restore();
-            }
-        }
-    };
-
-    if (patrimonioChartInstance) {
-        patrimonioChartInstance.data.labels = labels;
-        patrimonioChartInstance.data.datasets[0].data = dataValor;
-        patrimonioChartInstance.data.datasets[1].data = dataCusto;
-        patrimonioChartInstance.data.datasets[0].backgroundColor = gradientFill;
-        patrimonioChartInstance.data.datasets[0].borderColor = colorLinePatrimonio;
-        patrimonioChartInstance.data.datasets[1].borderColor = colorLineInvestido;
-        patrimonioChartInstance.update('none'); 
-    } else {
-        patrimonioChartInstance = new Chart(ctx, {
-            type: 'line',
-            data: {
-                labels: labels,
-                datasets: [
-                    {
-                        label: 'Patrimônio',
-                        data: dataValor,
-                        fill: true,
-                        backgroundColor: gradientFill,
-                        borderColor: colorLinePatrimonio,
-                        borderWidth: 1, 
-                        tension: 0.05, 
-                        pointRadius: 0, 
-                        pointHitRadius: 20,
-                        pointHoverRadius: 4, 
-                        pointHoverBackgroundColor: colorLinePatrimonio,
-                        pointHoverBorderWidth: 0, 
-                        order: 1
-                    },
-                    {
-                        label: 'Investido',
-                        data: dataCusto,
-                        fill: false,
-                        borderColor: colorLineInvestido,
-                        borderWidth: 1.2,
-                        borderDash: [4, 4],
-                        tension: 0.05,
-                        pointRadius: 0,
-                        pointHitRadius: 10,
-                        pointHoverRadius: 0,
-                        order: 2
-                    }
-                ]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                // Layout "Zero Margem" (Full Bleed)
-                layout: { padding: { left: 0, right: 0, top: 0, bottom: 0 } },
-                interaction: { mode: 'index', intersect: false },
-                plugins: {
-                    legend: { display: false },
-                    tooltip: {
-                        enabled: true, 
-                        mode: 'index',
-                        intersect: false,
-                        backgroundColor: 'rgba(28, 28, 30, 0.95)',
-                        titleColor: '#9CA3AF',
-                        bodyColor: '#FFF',
-                        borderColor: '#333',
-                        borderWidth: 1,
-                        padding: 8,
-                        cornerRadius: 6,
-                        displayColors: false,
-                        callbacks: {
-                             title: function(context) {
-                                const label = context[0].label;
-                                return Array.isArray(label) ? label.join(' ') : label;
-                             },
-                             label: function(context) {
-                                 let label = context.dataset.label || '';
-                                 if (label) { label += ': '; }
-                                 if (context.parsed.y !== null) {
-                                     label += context.parsed.y.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-                                 }
-                                 return label;
-                             }
-                        }
-                    }
-                },
-                scales: {
-                    y: { display: false }, 
-                    x: { display: false }
+        // 2. Renderiza ou atualiza o gráfico
+        requestAnimationFrame(() => {
+            setTimeout(() => {
+                if (historicoChartInstance) {
+                    // Força o Chart.js a reler o tamanho do container pai
+                    historicoChartInstance.resize();
+                    historicoChartInstance.update('none'); // Update sem animação para ser rápido
+                } else {
+                    // Se o gráfico ainda não existia (primeira vez), cria ele
+                    renderizarGraficoHistorico();
                 }
-            },
-            plugins: [patrimonioCrosshairPlugin]
+            }, 50); // 50ms é suficiente
         });
     }
 
-    const lastTxId = transacoes.length > 0 ? transacoes[transacoes.length - 1].id : 'none';
-    const txCount = transacoes.length;
-    const currentSignature = `${currentPatrimonioRange}-${txCount}-${lastTxId}-${totalAtualLive.toFixed(2)}`;
-    lastPatrimonioCalcSignature = currentSignature;
-}
+    function closeProventosModal() {
+        if (!proventosPageContent) return;
 
+        // 1. Remove qualquer transformação manual feita pelo dedo (reset)
+        proventosPageContent.style.transform = '';
 
-function renderizarTimelinePagamentos() {
-    const container = document.getElementById('timeline-pagamentos-container');
-    const lista = document.getElementById('timeline-lista');
+        // 2. Adiciona a classe que faz a animação de descer (definida no CSS)
+        proventosPageContent.classList.add('closing');
 
-    // Configura container para Grid
-    lista.className = 'payment-static-list'; 
+        // 3. Remove a visibilidade do fundo escuro
+        proventosPageModal.classList.remove('visible');
 
-    // Usamos paddingTop para evitar colapso de margem. 32px garante o "descanso".
-    container.style.marginTop = '0px'; 
-    container.style.paddingTop = '32px'; 
-
-    // Verificações iniciais
-    if (!proventosAtuais || proventosAtuais.length === 0) {
-        container.classList.add('hidden');
-        return;
+        // 4. Libera o scroll da página principal
+        document.body.style.overflow = '';
     }
 
-    const hoje = new Date();
-    hoje.setHours(0,0,0,0);
+    function openAlocacaoModal() {
+        if (!alocacaoPageModal) return;
 
-    // 1. Filtra (Futuros ou Hoje + Ativo na Carteira) e Ordena
-    const pagamentosReais = proventosAtuais.filter(p => {
-        if (!p.paymentDate) return false;
+        alocacaoPageModal.classList.add('visible');
+        alocacaoPageContent.style.transform = '';
+        alocacaoPageContent.classList.remove('closing');
+        document.body.style.overflow = 'hidden';
 
-        const parts = p.paymentDate.split('-');
-        const dataPag = new Date(parts[0], parts[1] - 1, parts[2]);
-
-        // Ignora passados
-        if (dataPag < hoje) return false;
-
-        // Verifica carteira
-        const ativoNaCarteira = carteiraCalculada.find(c => c.symbol === p.symbol);
-        return ativoNaCarteira && ativoNaCarteira.quantity > 0;
-    }).sort((a, b) => a.paymentDate.localeCompare(b.paymentDate)); // OTIMIZAÇÃO: string ISO, sem new Date()
-
-    if (pagamentosReais.length === 0) {
-        container.classList.add('hidden');
-        return;
+        // Redimensiona o gráfico de Rosca
+        requestAnimationFrame(() => {
+            setTimeout(() => {
+                if (alocacaoChartInstance) {
+                    alocacaoChartInstance.resize();
+                    alocacaoChartInstance.update('none');
+                } else {
+                    renderizarGraficoAlocacao();
+                }
+            }, 50);
+        });
     }
 
-    lista.innerHTML = '';
-    const totalItems = pagamentosReais.length;
+    function closeAlocacaoModal() {
+        if (!alocacaoPageContent) return;
 
-    // Regra: Se tem até 3, mostra 3. Se tem mais, mostra 2 + botão.
-    let itemsToRender = [];
-    let showMoreButton = false;
-
-    if (totalItems <= 3) {
-        itemsToRender = pagamentosReais;
-    } else {
-        itemsToRender = pagamentosReais.slice(0, 2);
-        showMoreButton = true;
+        alocacaoPageContent.style.transform = '';
+        alocacaoPageContent.classList.add('closing');
+        alocacaoPageModal.classList.remove('visible');
+        document.body.style.overflow = '';
     }
 
-    // OTIMIZAÇÃO: DocumentFragment acumula todos os nós em memória.
-    // O navegador só recalcula o layout UMA vez no appendChild final,
-    // em vez de fazer um reflow por card (elimina layout thrashing).
-    const fragment = document.createDocumentFragment();
+    function renderizarGraficoPatrimonio(isRetry = false) {
+        const canvas = document.getElementById('patrimonio-chart');
+        if (!canvas) return;
 
-    // Renderiza os Cards Normais
-    itemsToRender.forEach(prov => {
-        const parts = prov.paymentDate.split('-');
-        const dataObj = new Date(parts[0], parts[1] - 1, parts[2]);
+        const temPrecos = Array.isArray(precosAtuais) && precosAtuais.length > 0;
 
-        const dia = parts[2];
-        const mes = dataObj.toLocaleString('pt-BR', { month: 'short' }).replace('.', '').toUpperCase();
-        const diaSemana = dataObj.toLocaleString('pt-BR', { weekday: 'short' }).replace('.', '').toUpperCase();
+        if (!window.patrimonioRetryCount) window.patrimonioRetryCount = 0;
 
-        // Verifica se é hoje
-        const diffTime = Math.abs(dataObj - hoje);
-        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
-        const isHoje = diffDays === 0 || (dataObj.getTime() === hoje.getTime());
+        if (!temPrecos && window.patrimonioRetryCount < 5) {
+            window.patrimonioRetryTimer = setTimeout(() => {
+                window.patrimonioRetryCount++;
+                renderizarGraficoPatrimonio(true);
+            }, 800);
+        } else if (temPrecos) {
+            window.patrimonioRetryCount = 0;
+            if (window.patrimonioRetryTimer) clearTimeout(window.patrimonioRetryTimer);
+        }
 
-        // Cálculos
-        const ativoNaCarteira = carteiraCalculada.find(c => c.symbol === prov.symbol);
-        const qtd = ativoNaCarteira ? ativoNaCarteira.quantity : 0;
-        const totalReceber = prov.value * qtd;
+        const mapPrecos = new Map();
+        if (temPrecos) {
+            precosAtuais.forEach(p => {
+                const sym = p.symbol || p.ticker || p.codigo;
+                const val = p.regularMarketPrice || p.price || p.cotacao || p.valor;
+                if (sym && val) {
+                    mapPrecos.set(sym.toUpperCase().trim(), parseFloat(val));
+                }
+            });
+        }
 
-        const classeHoje = isHoje ? 'is-today' : '';
-        const textoHeader = isHoje ? 'HOJE' : mes;
+        let totalAtualLive = 0;
+        let custoTotalLive = 0;
 
-        const item = document.createElement('div');
-        item.className = `agenda-card ${classeHoje}`; 
+        if (Array.isArray(carteiraCalculada)) {
+            carteiraCalculada.forEach(ativo => {
+                const ticker = (ativo.symbol || ativo.ticker).toUpperCase().trim();
+                const qtd = parseFloat(ativo.quantity || ativo.quantidade || 0);
+                const precoMedio = parseFloat(ativo.precoMedio || ativo.averagePrice || 0);
 
-        // Clique no card abre detalhes do ativo
-        item.onclick = () => {
-             window.abrirDetalhesAtivo?.(prov.symbol);
+                let precoLive = mapPrecos.get(ticker);
+                if (!precoLive) precoLive = parseFloat(ativo.regularMarketPrice || ativo.price || 0);
+                if (!precoLive || isNaN(precoLive) || precoLive === 0) precoLive = precoMedio;
+
+                totalAtualLive += precoLive * qtd;
+                custoTotalLive += precoMedio * qtd;
+            });
+        }
+
+        const elLive = document.getElementById('modal-patrimonio-live');
+        if (elLive) {
+            elLive.textContent = totalAtualLive.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+            elLive.className = "text-sm font-bold text-white mt-1 truncate";
+        }
+
+        const elCusto = document.getElementById('modal-custo-valor');
+        if (elCusto) {
+            elCusto.textContent = custoTotalLive.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+        }
+
+        const hoje = new Date();
+        hoje.setHours(23, 59, 59, 999);
+        let dataCorte;
+
+        if (currentPatrimonioRange === '7D') {
+            dataCorte = new Date(hoje);
+            dataCorte.setDate(hoje.getDate() - 7);
+        } else if (currentPatrimonioRange === '1M') {
+            dataCorte = new Date(hoje);
+            dataCorte.setDate(hoje.getDate() - 30);
+        } else if (currentPatrimonioRange === '6M') {
+            dataCorte = new Date(hoje);
+            dataCorte.setMonth(hoje.getMonth() - 6);
+        } else if (currentPatrimonioRange === '1Y') {
+            dataCorte = new Date(hoje);
+            dataCorte.setFullYear(hoje.getFullYear() - 1);
+        } else {
+            dataCorte = new Date('2000-01-01'); // ALL
+        }
+        dataCorte.setHours(0, 0, 0, 0);
+
+        let dadosOrdenados = [...patrimonio]
+            .filter(p => {
+                const parts = p.date.split('-');
+                const dataPonto = new Date(parts[0], parts[1] - 1, parts[2]);
+                return dataPonto >= dataCorte;
+            })
+            .sort((a, b) => new Date(a.date) - new Date(b.date));
+
+        if (['6M', '1Y', 'ALL'].includes(currentPatrimonioRange)) {
+            const grupos = {};
+            dadosOrdenados.forEach(p => {
+                const chaveMes = p.date.substring(0, 7);
+                grupos[chaveMes] = p;
+            });
+            dadosOrdenados = Object.values(grupos);
+            dadosOrdenados.sort((a, b) => new Date(a.date) - new Date(b.date));
+        }
+
+        if (dadosOrdenados.length === 0) {
+            if (patrimonioChartInstance) {
+                patrimonioChartInstance.destroy();
+                patrimonioChartInstance = null;
+            }
+            const elChartVal = document.getElementById('modal-patrimonio-chart-val');
+            if (elChartVal) elChartVal.textContent = "R$ 0,00";
+            return;
+        }
+
+        const labels = [];
+        const dataValor = [];
+        const dataCusto = [];
+
+        const txOrdenadas = [...transacoes].sort((a, b) => new Date(a.date) - new Date(b.date));
+        let custoAcumulado = 0;
+        let txIndex = 0;
+
+        dadosOrdenados.forEach(p => {
+            const parts = p.date.split('-');
+            const d = new Date(parts[0], parts[1] - 1, parts[2]);
+            const dia = String(d.getDate()).padStart(2, '0');
+            const mes = d.toLocaleString('pt-BR', { month: 'short' }).replace('.', '').toUpperCase();
+            const ano = d.getFullYear().toString().slice(-2);
+
+            if (['7D', '1M'].includes(currentPatrimonioRange)) labels.push([dia, mes]);
+            else if (['6M', '1Y'].includes(currentPatrimonioRange)) labels.push([mes, ano]);
+            else labels.push([dia, mes, ano]);
+
+            dataValor.push(parseFloat(p.value.toFixed(2)));
+
+            const dataPontoLimite = new Date(p.date + 'T23:59:59');
+            while (txIndex < txOrdenadas.length) {
+                const tx = txOrdenadas[txIndex];
+                const dataTx = new Date(tx.date);
+                if (dataTx <= dataPontoLimite) {
+                    let operacao = (tx.quantity * tx.price);
+                    if (tx.type === 'buy') custoAcumulado += operacao;
+                    if (tx.type === 'sell') custoAcumulado -= operacao;
+                    custoAcumulado = parseFloat(custoAcumulado.toFixed(2));
+                    txIndex++;
+                } else {
+                    break;
+                }
+            }
+            dataCusto.push(custoAcumulado);
+        });
+
+        const elChartVal = document.getElementById('modal-patrimonio-chart-val');
+        if (elChartVal) {
+            if (dataValor.length > 0) {
+                const ultimoValorGrafico = dataValor[dataValor.length - 1];
+                elChartVal.textContent = ultimoValorGrafico.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+            } else {
+                elChartVal.textContent = "R$ 0,00";
+            }
+        }
+
+        const ctx = canvas.getContext('2d');
+        const isLight = document.body.classList.contains('light-mode');
+
+        const colorLinePatrimonio = '#c084fc';
+        const colorLineInvestido = isLight ? '#9ca3af' : '#525252';
+        const colorBadgeBg = isLight ? '#f3f4f6' : '#1f2937';
+        const colorBadgeText = isLight ? '#1f2937' : '#f9fafb';
+        const colorCrosshair = isLight ? '#d1d5db' : '#404040';
+
+        const gradientFill = ctx.createLinearGradient(0, 0, 0, 400);
+        gradientFill.addColorStop(0, 'rgba(192, 132, 252, 0.45)');
+        gradientFill.addColorStop(1, 'rgba(192, 132, 252, 0.0)');
+
+        const patrimonioCrosshairPlugin = {
+            id: 'patrimonioCrosshair',
+            afterDraw: (chart) => {
+                if (chart.tooltip?._active?.length && chart.tooltip._eventPosition) {
+                    const ctx = chart.ctx;
+                    const activePoint = chart.tooltip._active[0];
+                    const x = activePoint.element.x;
+                    const y = chart.tooltip._eventPosition.y;
+
+                    const topY = chart.scales.y.top;
+                    const bottomY = chart.scales.y.bottom;
+                    const leftX = chart.scales.x.left;
+                    const rightX = chart.scales.x.right;
+
+                    ctx.save();
+                    ctx.lineWidth = 1;
+                    ctx.strokeStyle = colorCrosshair;
+                    ctx.setLineDash([4, 4]);
+
+                    // Crosshair
+                    ctx.beginPath();
+                    ctx.moveTo(x, topY);
+                    ctx.lineTo(x, bottomY);
+                    ctx.stroke();
+
+                    ctx.beginPath();
+                    ctx.moveTo(leftX, y);
+                    ctx.lineTo(rightX, y);
+                    ctx.stroke();
+
+                    // Badge X (Data)
+                    const xIndex = activePoint.index;
+                    const labelRaw = chart.data.labels[xIndex];
+                    const labelText = Array.isArray(labelRaw) ? labelRaw.join(' ') : labelRaw;
+
+                    ctx.font = 'bold 10px Inter, sans-serif';
+                    const dateWidth = ctx.measureText(labelText).width + 12;
+                    const dateHeight = 20;
+                    let dateBadgeX = x - (dateWidth / 2);
+
+                    if (dateBadgeX < leftX) dateBadgeX = leftX;
+                    if (dateBadgeX + dateWidth > rightX) dateBadgeX = rightX - dateWidth;
+
+                    // Força o badge para dentro da área visível inferior
+                    const dateBadgeY = bottomY - dateHeight - 2;
+
+                    ctx.fillStyle = colorBadgeBg;
+                    ctx.beginPath();
+                    ctx.roundRect(dateBadgeX, dateBadgeY, dateWidth, dateHeight, 4);
+                    ctx.fill();
+
+                    ctx.fillStyle = colorBadgeText;
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText(labelText, dateBadgeX + (dateWidth / 2), dateBadgeY + (dateHeight / 2));
+
+                    // Badge Y (Valor)
+                    const yValue = chart.scales.y.getValueForPixel(y);
+                    const priceText = yValue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+                    const priceWidth = ctx.measureText(priceText).width + 12;
+                    const priceHeight = 20;
+
+                    const priceBadgeX = rightX - priceWidth;
+                    let priceBadgeY = y - (priceHeight / 2);
+
+                    if (priceBadgeY < topY) priceBadgeY = topY;
+                    if (priceBadgeY + priceHeight > bottomY) priceBadgeY = bottomY - priceHeight;
+
+                    ctx.fillStyle = colorBadgeBg;
+                    ctx.beginPath();
+                    ctx.roundRect(priceBadgeX, priceBadgeY, priceWidth, priceHeight, 4);
+                    ctx.fill();
+
+                    ctx.fillStyle = colorBadgeText;
+                    ctx.textAlign = 'left';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText(priceText, priceBadgeX + 6, priceBadgeY + (priceHeight / 2));
+
+                    ctx.restore();
+                }
+            }
         };
 
-        const valorFormatado = _fmtBRL.format(totalReceber);
+        if (patrimonioChartInstance) {
+            patrimonioChartInstance.data.labels = labels;
+            patrimonioChartInstance.data.datasets[0].data = dataValor;
+            patrimonioChartInstance.data.datasets[1].data = dataCusto;
+            if (patrimonioChartInstance.data.datasets[2]) {
+                patrimonioChartInstance.data.datasets[2].data = dataValor;
+            }
+            patrimonioChartInstance.data.datasets[0].backgroundColor = gradientFill;
+            patrimonioChartInstance.data.datasets[0].borderColor = colorLinePatrimonio;
+            patrimonioChartInstance.data.datasets[1].borderColor = colorLineInvestido;
+            patrimonioChartInstance.update();
+        } else {
+            patrimonioChartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: 'Patrimônio',
+                            data: dataValor,
+                            fill: true,
+                            backgroundColor: gradientFill,
+                            borderColor: colorLinePatrimonio,
+                            borderWidth: 1.5,
+                            tension: 0.4,
+                            pointRadius: 0,
+                            pointHitRadius: 20,
+                            pointHoverRadius: 4,
+                            pointHoverBackgroundColor: colorLinePatrimonio,
+                            pointHoverBorderWidth: 0,
+                            order: 1
+                        },
+                        {
+                            label: 'Investido',
+                            data: dataCusto,
+                            fill: false,
+                            borderColor: colorLineInvestido,
+                            borderWidth: 1.2,
+                            borderDash: [4, 4],
+                            tension: 0.4,
+                            pointRadius: 0,
+                            pointHitRadius: 10,
+                            pointHoverRadius: 0,
+                            order: 2
+                        },
+                        {
+                            label: 'Evolucao',
+                            data: dataValor,
+                            fill: false,
+                            borderColor: 'transparent',
+                            borderWidth: 0,
+                            pointRadius: 0,
+                            pointHitRadius: 0,
+                            pointHoverRadius: 0,
+                            order: 3
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    // Layout "Zero Margem" (Full Bleed)
+                    layout: { padding: { left: 16, right: 16, top: 20, bottom: 20 } },
+                    interaction: { mode: 'index', intersect: false },
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            enabled: true,
+                            mode: 'index',
+                            intersect: false,
+                            backgroundColor: 'rgba(28, 28, 30, 0.95)',
+                            titleColor: '#9CA3AF',
+                            bodyColor: '#FFF',
+                            borderColor: '#333',
+                            borderWidth: 1,
+                            padding: 8,
+                            cornerRadius: 6,
+                            displayColors: false,
+                            callbacks: {
+                                title: function () {
+                                    return ''; // Remove o título (data)
+                                },
+                                label: function (context) {
+                                    const currentIndex = context.dataIndex;
 
-        // Removemos style="color:..." para que o CSS (style.css) controle as cores (Verde se for hoje, Amarelo padrão)
-        item.innerHTML = `
-            <div class="agenda-header">${textoHeader}</div>
+                                    if (context.datasetIndex === 0) {
+                                        const valPatrimonio = context.parsed.y;
+                                        return `Patrimônio: ${valPatrimonio.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}`;
+                                    } else if (context.datasetIndex === 1) {
+                                        const valInvestido = context.parsed.y;
+                                        return `Investido: ${valInvestido.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}`;
+                                    } else if (context.datasetIndex === 2) {
+                                        if (currentIndex > 0) {
+                                            const atual = context.parsed.y;
+                                            const anterior = context.dataset.data[currentIndex - 1];
+                                            if (anterior > 0) {
+                                                const percent = ((atual - anterior) / anterior) * 100;
+                                                const signal = percent > 0 ? '+' : '';
+                                                return `${signal}${percent.toFixed(2)}%`;
+                                            }
+                                        }
+                                        return null; // Não mostra a linha de porcentagem se for o primeiro ponto
+                                    }
+                                    return null;
+                                },
+                                labelTextColor: function (context) {
+                                    if (context.datasetIndex === 0) return '#FFF';
+                                    if (context.datasetIndex === 1) return '#9ca3af';
 
-            <div class="agenda-body">
-                <span class="agenda-day">${dia}</span>
-                <span class="agenda-weekday">${diaSemana}</span>
-            </div>
+                                    if (context.datasetIndex === 2) {
+                                        const currentIndex = context.dataIndex;
+                                        if (currentIndex > 0) {
+                                            const atual = context.parsed.y;
+                                            const anterior = context.dataset.data[currentIndex - 1];
+                                            if (anterior > 0) {
+                                                const percent = ((atual - anterior) / anterior) * 100;
+                                                return percent >= 0 ? '#4ade80' : '#f87171'; // Tailwind green-400 / red-400
+                                            }
+                                        }
+                                    }
+                                    return '#FFF';
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: { display: false },
+                        x: { display: false }
+                    },
+                    animation: { duration: 600, easing: 'easeOutQuart' }
+                },
+                plugins: [patrimonioCrosshairPlugin]
+            });
+        }
 
-            <div class="agenda-footer">
-                <span class="agenda-ticker">${prov.symbol}</span>
-                <span class="agenda-value">+${valorFormatado}</span>
-            </div>
-        `;
-        fragment.appendChild(item); // → memória, sem tocar no DOM real
-    });
-
-    // Renderiza o Botão "Ver Todos" (+X)
-    if (showMoreButton) {
-        const remaining = totalItems - 2;
-        const moreBtn = document.createElement('div');
-        moreBtn.className = 'agenda-card more-card';
-
-        moreBtn.onclick = () => {
-            openPagamentosModal(pagamentosReais);
-        };
-
-        moreBtn.innerHTML = `
-            <div class="agenda-body">
-                <span class="more-count">+${remaining}</span>
-                <span class="more-label">VER TODOS</span>
-            </div>
-        `;
-        fragment.appendChild(moreBtn); // → também vai para o fragment
+        const lastTxId = transacoes.length > 0 ? transacoes[transacoes.length - 1].id : 'none';
+        const txCount = transacoes.length;
+        const currentSignature = `${currentPatrimonioRange}-${txCount}-${lastTxId}-${totalAtualLive.toFixed(2)}`;
+        lastPatrimonioCalcSignature = currentSignature;
     }
 
-    lista.appendChild(fragment); // único reflow — insere tudo de uma vez no DOM real
-    container.classList.remove('hidden');
-}
 
-function renderizarDashboardSkeletons(show) {
-    const skeletons = [skeletonTotalValor, skeletonTotalCusto, skeletonTotalPL, skeletonTotalProventos, skeletonTotalCaixa];
-    const dataElements = [totalCarteiraValor, totalCarteiraCusto, totalCarteiraPL, totalProventosEl, totalCaixaValor];
+    function renderizarTimelinePagamentos() {
+        const container = document.getElementById('timeline-pagamentos-container');
+        const lista = document.getElementById('timeline-lista');
 
-    if (show) {
-        skeletons.forEach(el => { if(el) el.classList.remove('hidden'); });
-        dataElements.forEach(el => { if(el) el.classList.add('hidden'); });
-    } else {
-        skeletons.forEach(el => { if(el) el.classList.add('hidden'); });
-        dataElements.forEach(el => { if(el) el.classList.remove('hidden'); });
+        // Estilos de margem garantidos
+        container.style.marginTop = '0px';
+        container.style.paddingTop = '16px';
+
+        // Verificações iniciais
+        if (!proventosAtuais || proventosAtuais.length === 0) {
+            container.classList.add('hidden');
+            return;
+        }
+
+        const hoje = new Date();
+        hoje.setHours(0, 0, 0, 0);
+
+        // 1. Filtra (Futuros ou Hoje + Ativo na Carteira) e Ordena
+        const pagamentosReais = proventosAtuais.filter(p => {
+            if (!p.paymentDate) return false;
+
+            const parts = p.paymentDate.split('-');
+            const dataPag = new Date(parts[0], parts[1] - 1, parts[2]);
+
+            // Ignora passados
+            if (dataPag < hoje) return false;
+
+            // Verifica carteira
+            const ativoNaCarteira = carteiraCalculada.find(c => c.symbol === p.symbol);
+            return ativoNaCarteira && ativoNaCarteira.quantity > 0;
+        }).sort((a, b) => a.paymentDate.localeCompare(b.paymentDate));
+
+        if (pagamentosReais.length === 0) {
+            container.classList.add('hidden');
+            return;
+        }
+
+        // Configura container para Carousel Horizontal (só ativa scroll se tiver > 2 itens para liberar o gesto de aba)
+        const isScrollable = pagamentosReais.length > 2;
+        lista.className = `flex ${isScrollable ? 'overflow-x-auto snap-x' : ''} gap-3 hide-scrollbar pb-2 px-1 mt-4`;
+        lista.style = isScrollable ? '-webkit-overflow-scrolling: touch;' : '';
+
+        lista.innerHTML = '';
+        const itemsToRender = pagamentosReais; // Mostrar todos em scroll horizontal
+
+        const fragment = document.createDocumentFragment();
+
+        itemsToRender.forEach(prov => {
+            const parts = prov.paymentDate.split('-');
+            const dataObj = new Date(parts[0], parts[1] - 1, parts[2]);
+
+            const dia = parts[2];
+            const mes = dataObj.toLocaleString('pt-BR', { month: 'short' }).replace('.', '').toUpperCase();
+
+            // Cálculos
+            const ativoNaCarteira = carteiraCalculada.find(c => c.symbol === prov.symbol);
+            const qtd = ativoNaCarteira ? ativoNaCarteira.quantity : 0;
+            const totalReceber = prov.value * qtd;
+
+            const item = document.createElement('div');
+            // Formato 'Squarish' do screenshot sem bordas e conditionally snappable
+            item.className = `w-28 h-28 flex-shrink-0 ${isScrollable ? 'snap-start' : ''} bg-[#151515] rounded-3xl p-3.5 flex flex-col justify-between cursor-pointer active:scale-95 transition-transform`;
+
+            item.onclick = () => {
+                window.abrirDetalhesAtivo?.(prov.symbol);
+            };
+
+            const valorFormatado = _fmtBRL.format(totalReceber);
+
+            // Seleciona SVG dependendo se é FII ou Ação
+            const isFundo = typeof isFII === 'function' ? isFII(prov.symbol) : prov.symbol.endsWith('11');
+
+            const iconSvg = isFundo
+                ? `<svg class="w-6 h-6 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+                     <path stroke-linecap="round" stroke-linejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                   </svg>`
+                : `<svg class="w-6 h-6 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+                     <path stroke-linecap="round" stroke-linejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-4-6l3-3m0 0l3 3m-3-3v8" />
+                   </svg>`; // Casa com seta pra cima ou ícone de ação
+
+            item.innerHTML = `
+                <div>
+                    ${iconSvg}
+                </div>
+                <div class="flex flex-col">
+                    <span class="text-[13px] font-bold text-white tracking-wide truncate leading-tight">${prov.symbol}</span>
+                    <span class="text-[10px] text-gray-400 mt-1 flex items-center justify-between w-full">
+                        <span class="min-w-0 truncate mr-1">${dia} ${mes}</span>
+                        <span class="text-green-400 font-semibold whitespace-nowrap flex-shrink-0">+${valorFormatado}</span>
+                    </span>
+                </div>
+            `;
+            fragment.appendChild(item);
+        });
+
+        lista.appendChild(fragment); // único reflow — insere tudo de uma vez no DOM real
+        container.classList.remove('hidden');
     }
-}
 
-function renderizarCarteiraSkeletons(show) {
+    function renderizarDashboardSkeletons(show) {
+        const skeletons = [skeletonTotalValor, skeletonTotalCusto, skeletonTotalPL, skeletonTotalProventos, skeletonTotalCaixa];
+        const dataElements = [totalCarteiraValor, totalCarteiraCusto, totalCarteiraPL, totalProventosEl, totalCaixaValor];
+
+        if (show) {
+            skeletons.forEach(el => { if (el) el.classList.remove('hidden'); });
+            dataElements.forEach(el => { if (el) el.classList.add('hidden'); });
+        } else {
+            skeletons.forEach(el => { if (el) el.classList.add('hidden'); });
+            dataElements.forEach(el => { if (el) el.classList.remove('hidden'); });
+        }
+    }
+
+    function renderizarCarteiraSkeletons(show) {
         // Se a lista estiver vazia (primeiro load), usamos o skeleton genérico
         if (listaCarteira.children.length === 0 && show) {
             skeletonListaCarteira.classList.remove('hidden');
@@ -3398,252 +3802,252 @@ function renderizarCarteiraSkeletons(show) {
         });
     }
 
-// Cache de memoização para getQuantidadeNaData.
-// Chave: `${symbol}_${dataLimiteStr}`. Evita O(N*M) iterações em loops de proventos.
-// Deve ser zerado sempre que o array de transações sofrer qualquer mutação.
-let _cacheQtdNaData = {};
+    // Cache de memoização para getQuantidadeNaData.
+    // Chave: `${symbol}_${dataLimiteStr}`. Evita O(N*M) iterações em loops de proventos.
+    // Deve ser zerado sempre que o array de transações sofrer qualquer mutação.
+    let _cacheQtdNaData = {};
 
-function invalidarCacheQtdNaData() {
-    _cacheQtdNaData = {};
-}
-
-function getQuantidadeNaData(symbol, dataLimiteStr) {
-    if (!dataLimiteStr) return 0;
-
-    const chave = `${symbol}_${dataLimiteStr}`;
-    if (Object.prototype.hasOwnProperty.call(_cacheQtdNaData, chave)) {
-        return _cacheQtdNaData[chave];
+    function invalidarCacheQtdNaData() {
+        _cacheQtdNaData = {};
     }
 
-    const dataLimite = new Date(dataLimiteStr + 'T23:59:59');
+    function getQuantidadeNaData(symbol, dataLimiteStr) {
+        if (!dataLimiteStr) return 0;
 
-    const resultado = transacoes.reduce((total, t) => {
-        if (t.symbol === symbol) {
-            const dataTransacao = new Date(t.date);
-            if (dataTransacao <= dataLimite) {
-                if (t.type === 'buy')  return total + t.quantity;
-                if (t.type === 'sell') return total - t.quantity;
+        const chave = `${symbol}_${dataLimiteStr}`;
+        if (Object.prototype.hasOwnProperty.call(_cacheQtdNaData, chave)) {
+            return _cacheQtdNaData[chave];
+        }
+
+        const dataLimite = new Date(dataLimiteStr + 'T23:59:59');
+
+        const resultado = transacoes.reduce((total, t) => {
+            if (t.symbol === symbol) {
+                const dataTransacao = new Date(t.date);
+                if (dataTransacao <= dataLimite) {
+                    if (t.type === 'buy') return total + t.quantity;
+                    if (t.type === 'sell') return total - t.quantity;
+                }
             }
-        }
-        return total;
-    }, 0);
+            return total;
+        }, 0);
 
-    _cacheQtdNaData[chave] = resultado;
-    return resultado;
-}
-
-async function renderizarCarteira() {
-    // Esconde os skeletons de carregamento
-    renderizarCarteiraSkeletons(false);
-
-    // Cria Mapas para acesso rápido a preços
-    const precosMap = new Map(precosAtuais.map(p => [p.symbol, p]));
-
-    // Cria Mapa de Proventos (Agrupados em Lista)
-    const proventosMap = new Map();
-    proventosAtuais.forEach(p => {
-        if (!proventosMap.has(p.symbol)) {
-            proventosMap.set(p.symbol, []);
-        }
-        proventosMap.get(p.symbol).push(p);
-    });
-
-    // Ordena a carteira alfabeticamente
-    const carteiraOrdenada = [...carteiraCalculada].sort((a, b) => a.symbol.localeCompare(b.symbol));
-
-    let totalValorCarteira = 0;
-    let totalCustoCarteira = 0;
-    let dadosGrafico = [];
-
-    // PASS 1: Calcular totais globais
-    carteiraOrdenada.forEach(ativo => {
-        const dadoPreco = precosMap.get(ativo.symbol);
-        const precoAtual = dadoPreco ? (dadoPreco.regularMarketPrice ?? 0) : 0;
-
-        totalValorCarteira += (precoAtual * ativo.quantity);
-        totalCustoCarteira += (ativo.precoMedio * ativo.quantity);
-    });
-
-    // Verifica se a carteira está vazia
-    if (carteiraOrdenada.length === 0) {
-        listaCarteira.innerHTML = ''; 
-        carteiraStatus.classList.remove('hidden');
-        renderizarDashboardSkeletons(false);
-
-        // Zera Dashboard
-        if(totalCarteiraValor) totalCarteiraValor.textContent = formatBRL(0);
-        if(totalCaixaValor) totalCaixaValor.textContent = formatBRL(saldoCaixa);
-        if(totalCarteiraCusto) totalCarteiraCusto.textContent = formatBRL(0);
-        if(totalCarteiraPL) {
-            totalCarteiraPL.textContent = `${formatBRL(0)} (---%)`;
-            totalCarteiraPL.className = `text-lg font-semibold text-gray-500`;
-        }
-
-        dashboardMensagem.textContent = 'A sua carteira está vazia. Adicione ativos na aba "Carteira" para começar.';
-        dashboardLoading.classList.add('hidden');
-        dashboardStatus.classList.remove('hidden');
-
-
-        await salvarSnapshotPatrimonio(saldoCaixa);
-        return; 
-    } else {
-        carteiraStatus.classList.add('hidden');
-        dashboardStatus.classList.add('hidden');
+        _cacheQtdNaData[chave] = resultado;
+        return resultado;
     }
 
-    // Limpeza de cards antigos
-    const symbolsNaCarteira = new Set(carteiraOrdenada.map(a => a.symbol));
-    const cardsNaTela = listaCarteira.querySelectorAll('[data-symbol]');
-    cardsNaTela.forEach(card => {
-        const symbol = card.dataset.symbol;
-        if (!symbolsNaCarteira.has(symbol)) {
-            card.remove();
-        }
-    });
+    async function renderizarCarteira() {
+        // Esconde os skeletons de carregamento
+        renderizarCarteiraSkeletons(false);
 
-    // Define HOJE (zerando horas para comparação correta)
-    const hoje = new Date();
-    hoje.setHours(0, 0, 0, 0);
+        // Cria Mapas para acesso rápido a preços
+        const precosMap = new Map(precosAtuais.map(p => [p.symbol, p]));
 
-    // OTIMIZAÇÃO: Monta um Map symbol → HTMLElement UMA vez antes do loop
-    // para eliminar o querySelector repetido a cada iteração (O(n²) → O(1))
-    const existingCards = new Map();
-    listaCarteira.querySelectorAll('[data-symbol]').forEach(el => {
-        existingCards.set(el.dataset.symbol, el);
-    });
-
-    // PASS 2: Renderizar ou Atualizar cada Card
-    carteiraOrdenada.forEach((ativo, index) => { 
-        const dadoPreco = precosMap.get(ativo.symbol);
-
-        // 1. Pega TODOS os proventos (passados e futuros) desse ativo
-        const listaTodosProventos = proventosMap.get(ativo.symbol) || [];
-
-        // 2. FILTRO: Mantém APENAS os futuros (Data >= Hoje) para exibição na carteira
-        const listaProventosFuturos = listaTodosProventos.filter(p => {
-            if (!p.paymentDate) return false;
-            const parts = p.paymentDate.split('-');
-            const dataPag = new Date(parts[0], parts[1] - 1, parts[2]);
-            return dataPag >= hoje;
+        // Cria Mapa de Proventos (Agrupados em Lista)
+        const proventosMap = new Map();
+        proventosAtuais.forEach(p => {
+            if (!proventosMap.has(p.symbol)) {
+                proventosMap.set(p.symbol, []);
+            }
+            proventosMap.get(p.symbol).push(p);
         });
 
-        const dadoProvento = listaProventosFuturos.length > 0 ? listaProventosFuturos[0] : null;
+        // Ordena a carteira alfabeticamente
+        const carteiraOrdenada = [...carteiraCalculada].sort((a, b) => a.symbol.localeCompare(b.symbol));
 
-        // Dados de Mercado
-        let precoAtual = 0, variacao = 0;
-        let precoFormatado = 'N/A', variacaoFormatada = '0.00%', corVariacao = 'text-gray-500';
+        let totalValorCarteira = 0;
+        let totalCustoCarteira = 0;
+        let dadosGrafico = [];
 
-        if (dadoPreco) {
-            precoAtual = dadoPreco.regularMarketPrice ?? 0;
-            variacao = dadoPreco.regularMarketChangePercent ?? 0;
-            precoFormatado = formatBRL(precoAtual);
-            variacaoFormatada = formatPercent(variacao);
-            corVariacao = variacao > 0 ? 'text-green-500' : (variacao < 0 ? 'text-red-500' : 'text-gray-500');
-        } else {
-            precoFormatado = '...';
-            corVariacao = 'text-yellow-500';
-        }
+        // PASS 1: Calcular totais globais
+        carteiraOrdenada.forEach(ativo => {
+            const dadoPreco = precosMap.get(ativo.symbol);
+            const precoAtual = dadoPreco ? (dadoPreco.regularMarketPrice ?? 0) : 0;
 
-        // Cálculos Financeiros
-        const totalPosicao = precoAtual * ativo.quantity;
-        const custoTotal = ativo.precoMedio * ativo.quantity;
-        const lucroPrejuizo = totalPosicao - custoTotal;
-        const lucroPrejuizoPercent = (custoTotal === 0 || totalPosicao === 0) ? 0 : (lucroPrejuizo / custoTotal) * 100;
-        const percentWallet = totalValorCarteira > 0 ? (totalPosicao / totalValorCarteira) * 100 : 0;
-
-        let corPL = 'text-gray-500';
-        if (lucroPrejuizo > 0.01) { corPL = 'text-green-500'; }
-        else if (lucroPrejuizo < -0.01) { corPL = 'text-red-500'; }
-
-        // 3. CALCULA O TOTAL A RECEBER (Somando apenas a lista FILTRADA de futuros)
-        let proventoReceber = 0;
-        listaProventosFuturos.forEach(p => {
-             const dataReferencia = p.dataCom || p.paymentDate;
-             const qtdElegivel = getQuantidadeNaData(ativo.symbol, dataReferencia);
-             if (qtdElegivel > 0) {
-                 proventoReceber += (qtdElegivel * p.value);
-             }
+            totalValorCarteira += (precoAtual * ativo.quantity);
+            totalCustoCarteira += (ativo.precoMedio * ativo.quantity);
         });
 
-        const dadosRender = {
-            dadoPreco, precoFormatado, variacaoFormatada, corVariacao,
-            totalPosicao, custoTotal, lucroPrejuizo, lucroPrejuizoPercent,
-            corPL, 
-            dadoProvento,       
-            listaProventos: listaProventosFuturos, // Passa APENAS os futuros para o renderizador do card
-            proventoReceber, 
-            percentWallet
-        };
+        // Verifica se a carteira está vazia
+        if (carteiraOrdenada.length === 0) {
+            listaCarteira.innerHTML = '';
+            carteiraStatus.classList.remove('hidden');
+            renderizarDashboardSkeletons(false);
 
-        if (totalPosicao > 0) { 
-            dadosGrafico.push({ symbol: ativo.symbol, totalPosicao: totalPosicao }); 
-        }
+            // Zera Dashboard
+            if (totalCarteiraValor) totalCarteiraValor.textContent = formatBRL(0);
+            if (totalCaixaValor) totalCaixaValor.textContent = formatBRL(saldoCaixa);
+            if (totalCarteiraCusto) totalCarteiraCusto.textContent = formatBRL(0);
+            if (totalCarteiraPL) {
+                totalCarteiraPL.textContent = `${formatBRL(0)} (---%)`;
+                totalCarteiraPL.className = `text-lg font-semibold text-gray-500`;
+            }
 
-        // DOM: Cria ou Atualiza
-        // OTIMIZAÇÃO: acesso O(1) via Map em vez de querySelector O(n) dentro do loop
-        let card = existingCards.get(ativo.symbol);
+            dashboardMensagem.textContent = 'A sua carteira está vazia. Adicione ativos na aba "Carteira" para começar.';
+            dashboardLoading.classList.add('hidden');
+            dashboardStatus.classList.remove('hidden');
 
-        if (card) {
-            atualizarCardElemento(card, ativo, dadosRender);
+
+            await salvarSnapshotPatrimonio(saldoCaixa);
+            return;
         } else {
-            card = criarCardElemento(ativo, dadosRender);
-            card.classList.add('card-stagger');
-            const delay = Math.min(index * 50, 500); 
-            card.style.animationDelay = `${delay}ms`;
-
-            card.addEventListener('animationend', () => {
-                card.classList.remove('card-stagger');
-                card.style.animationDelay = '';
-                card.style.opacity = '1';
-            }, { once: true });
-
-            listaCarteira.appendChild(card);
-        }
-    });
-
-    // Atualiza Totais do Dashboard
-    if (carteiraOrdenada.length > 0) {
-        const patrimonioTotalAtivos = totalValorCarteira;
-        const totalLucroPrejuizo = totalValorCarteira - totalCustoCarteira;
-        const totalLucroPrejuizoPercent = (totalCustoCarteira === 0) ? 0 : (totalLucroPrejuizo / totalCustoCarteira) * 100;
-
-        let corPLTotal = 'text-gray-500';
-        if (totalLucroPrejuizo > 0.01) corPLTotal = 'text-green-500';
-        else if (totalLucroPrejuizo < -0.01) corPLTotal = 'text-red-500';
-
-        // Grava os valores antes de revelar os elementos, garantindo que
-        // o browser nunca pinte os campos ainda zerados (R$ 0,00).
-        if(totalCarteiraValor) totalCarteiraValor.textContent = formatBRL(patrimonioTotalAtivos);
-        if(totalCaixaValor) totalCaixaValor.textContent = formatBRL(saldoCaixa);
-        if(totalCarteiraCusto) totalCarteiraCusto.textContent = formatBRL(totalCustoCarteira);
-
-        if(totalCarteiraPL) {
-            totalCarteiraPL.innerHTML = `${formatBRL(totalLucroPrejuizo)} <span class="text-xs opacity-60 ml-1">(${totalLucroPrejuizoPercent.toFixed(2)}%)</span>`;
-            totalCarteiraPL.className = `text-sm font-semibold ${corPLTotal === 'text-green-500' ? 'text-green-400' : 'text-red-400'}`; 
+            carteiraStatus.classList.add('hidden');
+            dashboardStatus.classList.add('hidden');
         }
 
-        // Remove os skeletons somente após os valores já estarem no DOM.
-        renderizarDashboardSkeletons(false);
-
-        const patrimonioRealParaSnapshot = patrimonioTotalAtivos + saldoCaixa; 
-        renderizarTimelinePagamentos(); // Mantido pois é a timeline visual no dashboard, não o gráfico pesado
-        await salvarSnapshotPatrimonio(patrimonioRealParaSnapshot);
-    }
-
-
-    if (carteiraSearchInput && carteiraSearchInput.value) {
-        const term = carteiraSearchInput.value.trim().toUpperCase();
-        const cards = listaCarteira.querySelectorAll('.wallet-card'); 
-        cards.forEach(card => {
+        // Limpeza de cards antigos
+        const symbolsNaCarteira = new Set(carteiraOrdenada.map(a => a.symbol));
+        const cardsNaTela = listaCarteira.querySelectorAll('[data-symbol]');
+        cardsNaTela.forEach(card => {
             const symbol = card.dataset.symbol;
-            if (symbol && symbol.includes(term)) {
-                card.classList.remove('hidden');
-            } else {
-                card.classList.add('hidden');
+            if (!symbolsNaCarteira.has(symbol)) {
+                card.remove();
             }
         });
+
+        // Define HOJE (zerando horas para comparação correta)
+        const hoje = new Date();
+        hoje.setHours(0, 0, 0, 0);
+
+        // OTIMIZAÇÃO: Monta um Map symbol → HTMLElement UMA vez antes do loop
+        // para eliminar o querySelector repetido a cada iteração (O(n²) → O(1))
+        const existingCards = new Map();
+        listaCarteira.querySelectorAll('[data-symbol]').forEach(el => {
+            existingCards.set(el.dataset.symbol, el);
+        });
+
+        // PASS 2: Renderizar ou Atualizar cada Card
+        carteiraOrdenada.forEach((ativo, index) => {
+            const dadoPreco = precosMap.get(ativo.symbol);
+
+            // 1. Pega TODOS os proventos (passados e futuros) desse ativo
+            const listaTodosProventos = proventosMap.get(ativo.symbol) || [];
+
+            // 2. FILTRO: Mantém APENAS os futuros (Data >= Hoje) para exibição na carteira
+            const listaProventosFuturos = listaTodosProventos.filter(p => {
+                if (!p.paymentDate) return false;
+                const parts = p.paymentDate.split('-');
+                const dataPag = new Date(parts[0], parts[1] - 1, parts[2]);
+                return dataPag >= hoje;
+            });
+
+            const dadoProvento = listaProventosFuturos.length > 0 ? listaProventosFuturos[0] : null;
+
+            // Dados de Mercado
+            let precoAtual = 0, variacao = 0;
+            let precoFormatado = 'N/A', variacaoFormatada = '0.00%', corVariacao = 'text-gray-500';
+
+            if (dadoPreco) {
+                precoAtual = dadoPreco.regularMarketPrice ?? 0;
+                variacao = dadoPreco.regularMarketChangePercent ?? 0;
+                precoFormatado = formatBRL(precoAtual);
+                variacaoFormatada = formatPercent(variacao);
+                corVariacao = variacao > 0 ? 'text-green-500' : (variacao < 0 ? 'text-red-500' : 'text-gray-500');
+            } else {
+                precoFormatado = '...';
+                corVariacao = 'text-yellow-500';
+            }
+
+            // Cálculos Financeiros
+            const totalPosicao = precoAtual * ativo.quantity;
+            const custoTotal = ativo.precoMedio * ativo.quantity;
+            const lucroPrejuizo = totalPosicao - custoTotal;
+            const lucroPrejuizoPercent = (custoTotal === 0 || totalPosicao === 0) ? 0 : (lucroPrejuizo / custoTotal) * 100;
+            const percentWallet = totalValorCarteira > 0 ? (totalPosicao / totalValorCarteira) * 100 : 0;
+
+            let corPL = 'text-gray-500';
+            if (lucroPrejuizo > 0.01) { corPL = 'text-green-500'; }
+            else if (lucroPrejuizo < -0.01) { corPL = 'text-red-500'; }
+
+            // 3. CALCULA O TOTAL A RECEBER (Somando apenas a lista FILTRADA de futuros)
+            let proventoReceber = 0;
+            listaProventosFuturos.forEach(p => {
+                const dataReferencia = p.dataCom || p.paymentDate;
+                const qtdElegivel = getQuantidadeNaData(ativo.symbol, dataReferencia);
+                if (qtdElegivel > 0) {
+                    proventoReceber += (qtdElegivel * p.value);
+                }
+            });
+
+            const dadosRender = {
+                dadoPreco, precoFormatado, variacaoFormatada, corVariacao,
+                totalPosicao, custoTotal, lucroPrejuizo, lucroPrejuizoPercent,
+                corPL,
+                dadoProvento,
+                listaProventos: listaProventosFuturos, // Passa APENAS os futuros para o renderizador do card
+                proventoReceber,
+                percentWallet
+            };
+
+            if (totalPosicao > 0) {
+                dadosGrafico.push({ symbol: ativo.symbol, totalPosicao: totalPosicao });
+            }
+
+            // DOM: Cria ou Atualiza
+            // OTIMIZAÇÃO: acesso O(1) via Map em vez de querySelector O(n) dentro do loop
+            let card = existingCards.get(ativo.symbol);
+
+            if (card) {
+                atualizarCardElemento(card, ativo, dadosRender);
+            } else {
+                card = criarCardElemento(ativo, dadosRender);
+                card.classList.add('card-stagger');
+                const delay = Math.min(index * 50, 500);
+                card.style.animationDelay = `${delay}ms`;
+
+                card.addEventListener('animationend', () => {
+                    card.classList.remove('card-stagger');
+                    card.style.animationDelay = '';
+                    card.style.opacity = '1';
+                }, { once: true });
+
+                listaCarteira.appendChild(card);
+            }
+        });
+
+        // Atualiza Totais do Dashboard
+        if (carteiraOrdenada.length > 0) {
+            const patrimonioTotalAtivos = totalValorCarteira;
+            const totalLucroPrejuizo = totalValorCarteira - totalCustoCarteira;
+            const totalLucroPrejuizoPercent = (totalCustoCarteira === 0) ? 0 : (totalLucroPrejuizo / totalCustoCarteira) * 100;
+
+            let corPLTotal = 'text-gray-500';
+            if (totalLucroPrejuizo > 0.01) corPLTotal = 'text-green-500';
+            else if (totalLucroPrejuizo < -0.01) corPLTotal = 'text-red-500';
+
+            // Grava os valores antes de revelar os elementos, garantindo que
+            // o browser nunca pinte os campos ainda zerados (R$ 0,00).
+            if (totalCarteiraValor) totalCarteiraValor.textContent = formatBRL(patrimonioTotalAtivos);
+            if (totalCaixaValor) totalCaixaValor.textContent = formatBRL(saldoCaixa);
+            if (totalCarteiraCusto) totalCarteiraCusto.textContent = formatBRL(totalCustoCarteira);
+
+            if (totalCarteiraPL) {
+                totalCarteiraPL.innerHTML = `${formatBRL(totalLucroPrejuizo)} <span class="text-xs opacity-60 ml-1">(${totalLucroPrejuizoPercent.toFixed(2)}%)</span>`;
+                totalCarteiraPL.className = `text-sm font-semibold ${corPLTotal === 'text-green-500' ? 'text-green-400' : 'text-red-400'}`;
+            }
+
+            // Remove os skeletons somente após os valores já estarem no DOM.
+            renderizarDashboardSkeletons(false);
+
+            const patrimonioRealParaSnapshot = patrimonioTotalAtivos + saldoCaixa;
+            renderizarTimelinePagamentos(); // Mantido pois é a timeline visual no dashboard, não o gráfico pesado
+            await salvarSnapshotPatrimonio(patrimonioRealParaSnapshot);
+        }
+
+
+        if (carteiraSearchInput && carteiraSearchInput.value) {
+            const term = carteiraSearchInput.value.trim().toUpperCase();
+            const cards = listaCarteira.querySelectorAll('.wallet-card');
+            cards.forEach(card => {
+                const symbol = card.dataset.symbol;
+                if (symbol && symbol.includes(term)) {
+                    card.classList.remove('hidden');
+                } else {
+                    card.classList.add('hidden');
+                }
+            });
+        }
     }
-}
 
     function renderizarProventos() {
         let totalEstimado = 0;
@@ -3652,17 +4056,17 @@ async function renderizarCarteira() {
 
         proventosAtuais.forEach(provento => {
             if (provento && typeof provento.value === 'number' && provento.value > 0) {
-                 const parts = provento.paymentDate.split('-');
-                 const dataPagamento = new Date(parts[0], parts[1] - 1, parts[2]);
+                const parts = provento.paymentDate.split('-');
+                const dataPagamento = new Date(parts[0], parts[1] - 1, parts[2]);
 
-                 if (dataPagamento > hoje) {
-                     const dataReferencia = provento.dataCom || provento.paymentDate;
-                     const qtdElegivel = getQuantidadeNaData(provento.symbol, dataReferencia);
+                if (dataPagamento > hoje) {
+                    const dataReferencia = provento.dataCom || provento.paymentDate;
+                    const qtdElegivel = getQuantidadeNaData(provento.symbol, dataReferencia);
 
-                     if (qtdElegivel > 0) {
-                         totalEstimado += (qtdElegivel * provento.value);
-                     }
-                 }
+                    if (qtdElegivel > 0) {
+                        totalEstimado += (qtdElegivel * provento.value);
+                    }
+                }
             }
         });
         totalProventosEl.textContent = formatBRL(totalEstimado);
@@ -3674,7 +4078,7 @@ async function renderizarCarteira() {
         if (!force) {
             const cache = await getCache(cacheKey);
             if (cache) {
-				window.noticiasCache = cache;
+                window.noticiasCache = cache;
                 renderizarNoticias(cache);
                 return;
             }
@@ -3691,7 +4095,7 @@ async function renderizarCarteira() {
 
         try {
             const articles = await fetchAndCacheNoticiasBFF_NetworkOnly(cacheKey);
-			window.noticiasCache = articles;
+            window.noticiasCache = articles;
             renderizarNoticias(articles);
         } catch (e) {
             console.error("Erro ao buscar notícias (função separada):", e);
@@ -3712,7 +4116,7 @@ async function renderizarCarteira() {
                 method: 'GET',
                 headers: { 'Content-Type': 'application/json' }
             });
-            const articles = response; 
+            const articles = response;
 
             if (articles?.length > 0) {
                 await setCache(cacheKey, articles, CACHE_NOTICIAS);
@@ -3727,10 +4131,10 @@ async function renderizarCarteira() {
     async function fetchBFF(url, options = {}) {
         try {
             const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 60000); 
+            const timeoutId = setTimeout(() => controller.abort(), 60000);
 
             const response = await fetch(url, { ...options, signal: controller.signal });
-            clearTimeout(timeoutId); 
+            clearTimeout(timeoutId);
 
             if (!response.ok) {
                 const errorBody = await response.json().catch(() => ({}));
@@ -3746,7 +4150,7 @@ async function renderizarCarteira() {
         }
     }
 
-    async function buscarPrecosCarteira(force = false) { 
+    async function buscarPrecosCarteira(force = false) {
         if (carteiraCalculada.length === 0) return [];
 
         const mercadoAberto = isB3Open();
@@ -3769,7 +4173,7 @@ async function renderizarCarteira() {
 
                 if (result && !result.error) {
                     if (result.symbol.endsWith('.SA')) result.symbol = result.symbol.replace('.SA', '');
-                    await setCache(cacheKey, result, duracaoCachePreco); 
+                    await setCache(cacheKey, result, duracaoCachePreco);
                     return result;
                 } else {
                     return null;
@@ -3784,7 +4188,7 @@ async function renderizarCarteira() {
     }
 
     function processarProventosScraper(proventosScraper = []) {
-        const hoje = new Date(); 
+        const hoje = new Date();
         hoje.setHours(0, 0, 0, 0);
         const dataLimitePassado = new Date();
         dataLimitePassado.setDate(hoje.getDate() - 45);
@@ -3799,13 +4203,13 @@ async function renderizarCarteira() {
 
                 if (provento.paymentDate && typeof provento.value === 'number' && provento.value > 0 && dateRegex.test(provento.paymentDate)) {
                     const parts = provento.paymentDate.split('-');
-                    const dataPagamento = new Date(parts[0], parts[1] - 1, parts[2]); 
+                    const dataPagamento = new Date(parts[0], parts[1] - 1, parts[2]);
 
                     if (!isNaN(dataPagamento) && dataPagamento >= dataLimitePassado) {
                         return provento;
                     }
                 }
-                return null; 
+                return null;
             })
             .filter(p => p !== null);
     }
@@ -3817,7 +4221,7 @@ async function renderizarCarteira() {
             .sort((a, b) => new Date(a.date) - new Date(b.date));
 
         // Se não achar transação (ex: acabou de adicionar), busca 12 meses por segurança
-        if (txsDoAtivo.length === 0) return 12; 
+        if (txsDoAtivo.length === 0) return 12;
 
         const dataPrimeiraCompra = new Date(txsDoAtivo[0].date);
         const hoje = new Date();
@@ -3831,105 +4235,105 @@ async function renderizarCarteira() {
     }
 
 
-async function buscarProventosFuturos(force = false) {
-    const ativosParaBuscar = carteiraCalculada.map(a => a.symbol); 
-    if (ativosParaBuscar.length === 0) return [];
+    async function buscarProventosFuturos(force = false) {
+        const ativosParaBuscar = carteiraCalculada.map(a => a.symbol);
+        if (ativosParaBuscar.length === 0) return [];
 
-    const proventosPool = [];
-    const listaParaAPI = [];
+        const proventosPool = [];
+        const listaParaAPI = [];
 
-    // 1. Verifica Cache
-    await Promise.all(ativosParaBuscar.map(async (symbol) => {
-        const cacheKey = `provento_ia_${symbol}`;
-        if (force) {
-            await vestoDB.delete('apiCache', cacheKey);
-        }
-
-        const proventoCache = await getCache(cacheKey);
-        // CORREÇÃO: Verifica se é Array (versão nova) ou Objeto (versão antiga bugada)
-        if (proventoCache && !force) {
-            if (Array.isArray(proventoCache)) {
-                proventosPool.push(...proventoCache); // Adiciona todos os itens do array
-            } else {
-                proventosPool.push(proventoCache); // Fallback para cache antigo
+        // 1. Verifica Cache
+        await Promise.all(ativosParaBuscar.map(async (symbol) => {
+            const cacheKey = `provento_ia_${symbol}`;
+            if (force) {
+                await vestoDB.delete('apiCache', cacheKey);
             }
-        } else {
-            const limiteCalculado = calcularLimiteMeses(symbol);
-            listaParaAPI.push({ ticker: symbol, limit: limiteCalculado });
-        }
-    }));
 
-    // 2. Busca na API
-    if (listaParaAPI.length > 0) {
-        try {
-            const novosProventos = await callScraperProventosCarteiraAPI(listaParaAPI);
-            const dateRegex = /^\d{4}-\d{2}-\d{2}$/; 
+            const proventoCache = await getCache(cacheKey);
+            // CORREÇÃO: Verifica se é Array (versão nova) ou Objeto (versão antiga bugada)
+            if (proventoCache && !force) {
+                if (Array.isArray(proventoCache)) {
+                    proventosPool.push(...proventoCache); // Adiciona todos os itens do array
+                } else {
+                    proventosPool.push(proventoCache); // Fallback para cache antigo
+                }
+            } else {
+                const limiteCalculado = calcularLimiteMeses(symbol);
+                listaParaAPI.push({ ticker: symbol, limit: limiteCalculado });
+            }
+        }));
 
-            if (novosProventos && Array.isArray(novosProventos)) {
+        // 2. Busca na API
+        if (listaParaAPI.length > 0) {
+            try {
+                const novosProventos = await callScraperProventosCarteiraAPI(listaParaAPI);
+                const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
 
-                // --- NOVA LÓGICA DE CACHE: Agrupar por Ticker ---
-                const proventosPorTicker = {};
+                if (novosProventos && Array.isArray(novosProventos)) {
 
-                // Filtra inválidos e agrupa
-                const proventosValidos = novosProventos.filter(p => p && p.symbol && dateRegex.test(p.paymentDate));
+                    // --- NOVA LÓGICA DE CACHE: Agrupar por Ticker ---
+                    const proventosPorTicker = {};
 
-                proventosValidos.forEach(p => {
-                    if (!proventosPorTicker[p.symbol]) {
-                        proventosPorTicker[p.symbol] = [];
-                    }
-                    proventosPorTicker[p.symbol].push(p);
-                });
+                    // Filtra inválidos e agrupa
+                    const proventosValidos = novosProventos.filter(p => p && p.symbol && dateRegex.test(p.paymentDate));
 
-                // Salva no Cache (Array por Ticker)
-                await Promise.all(Object.keys(proventosPorTicker).map(async (symbol) => {
-                    const lista = proventosPorTicker[symbol];
-                    const cacheKey = `provento_ia_${symbol}`;
-                    await setCache(cacheKey, lista, CACHE_PROVENTOS);
-                    proventosPool.push(...lista);
-                }));
+                    proventosValidos.forEach(p => {
+                        if (!proventosPorTicker[p.symbol]) {
+                            proventosPorTicker[p.symbol] = [];
+                        }
+                        proventosPorTicker[p.symbol].push(p);
+                    });
 
-                const idsNesteLote = new Set();
+                    // Salva no Cache (Array por Ticker)
+                    await Promise.all(Object.keys(proventosPorTicker).map(async (symbol) => {
+                        const lista = proventosPorTicker[symbol];
+                        const cacheKey = `provento_ia_${symbol}`;
+                        await setCache(cacheKey, lista, CACHE_PROVENTOS);
+                        proventosPool.push(...lista);
+                    }));
 
-                for (const provento of proventosValidos) {
-                    const safeType = provento.type || 'REND';
-                    const safeValue = (provento.value || 0).toFixed(4);
+                    const idsNesteLote = new Set();
 
-                    // Gera ID base
-                    let idUnico = `${provento.symbol}_${provento.paymentDate}_${safeType}_${safeValue}`;
+                    for (const provento of proventosValidos) {
+                        const safeType = provento.type || 'REND';
+                        const safeValue = (provento.value || 0).toFixed(4);
 
-                    // Se esse ID já foi gerado neste loop (colisão), adiciona sufixo
-                    let contador = 2;
-                    while (idsNesteLote.has(idUnico)) {
-                        idUnico = `${provento.symbol}_${provento.paymentDate}_${safeType}_${safeValue}_v${contador}`;
-                        contador++;
-                    }
-                    idsNesteLote.add(idUnico);
+                        // Gera ID base
+                        let idUnico = `${provento.symbol}_${provento.paymentDate}_${safeType}_${safeValue}`;
 
-                    // Verifica se já temos esse ID salvo na memória global
-                    const existe = proventosConhecidos.some(p => p.id === idUnico);
+                        // Se esse ID já foi gerado neste loop (colisão), adiciona sufixo
+                        let contador = 2;
+                        while (idsNesteLote.has(idUnico)) {
+                            idUnico = `${provento.symbol}_${provento.paymentDate}_${safeType}_${safeValue}_v${contador}`;
+                            contador++;
+                        }
+                        idsNesteLote.add(idUnico);
 
-                    if (!existe) {
-                        const novoProvento = { 
-                            ...provento, 
-                            processado: false, 
-                            id: idUnico,
-                            type: safeType 
-                        };
+                        // Verifica se já temos esse ID salvo na memória global
+                        const existe = proventosConhecidos.some(p => p.id === idUnico);
 
-                        await supabaseDB.addProventoConhecido(novoProvento);
-                        proventosConhecidos.push(novoProvento);
+                        if (!existe) {
+                            const novoProvento = {
+                                ...provento,
+                                processado: false,
+                                id: idUnico,
+                                type: safeType
+                            };
+
+                            await supabaseDB.addProventoConhecido(novoProvento);
+                            proventosConhecidos.push(novoProvento);
+                        }
                     }
                 }
+            } catch (error) {
+                console.error("Erro Scraper:", error);
             }
-        } catch (error) {
-            console.error("Erro Scraper:", error);
         }
+
+        return processarProventosScraper(proventosPool);
     }
 
-    return processarProventosScraper(proventosPool); 
-}
-
-	async function callScraperProximoProventoAPI(ticker) {
+    async function callScraperProximoProventoAPI(ticker) {
         const cacheKey = `proximo_provento_${ticker.toUpperCase()}`;
         const cached = await getCache(cacheKey);
         if (cached) return cached;
@@ -3948,14 +4352,14 @@ async function buscarProventosFuturos(force = false) {
         return result;
     }
 
-	async function callScraperFundamentosAPI(ticker) {
+    async function callScraperFundamentosAPI(ticker) {
         const cacheKey = `fundamentos_${ticker.toUpperCase()}`;
         const cached = await getCache(cacheKey);
         if (cached) return cached;
 
-        const body = { 
-            mode: 'fundamentos', 
-            payload: { ticker } 
+        const body = {
+            mode: 'fundamentos',
+            payload: { ticker }
         };
         const response = await fetchBFF('/api/scraper', {
             method: 'POST',
@@ -3970,7 +4374,206 @@ async function buscarProventosFuturos(force = false) {
         return result;
     }
 
-async function buscarHistoricoProventosAgregado(force = false) {
+    // ── Rankings: Variação do Dia (Altas + Baixas) ──
+    async function carregarRankings(force = false) {
+        const container = document.getElementById('rankings-container');
+        if (!container) return;
+
+        const cacheKey = 'rankings_variacao_dia_v2';
+        const CACHE_TTL = isB3Open() ? 1000 * 60 * 15 : 1000 * 60 * 60 * 4;
+
+        if (force) {
+            await vestoDB.delete('apiCache', cacheKey);
+        }
+
+        try {
+            const containerAltas = document.getElementById('rankings-altas');
+            const containerBaixas = document.getElementById('rankings-baixas');
+
+            // Exibe Skeletons antes de carregar se for force ou não tiver cache
+            const renderSkeletonRankings = (el) => {
+                if (!el) return;
+                let skeletonHtml = '';
+                for (let i = 0; i < 5; i++) {
+                    skeletonHtml += `
+                        <div class="p-3 flex flex-col gap-1">
+                            <div class="flex items-center gap-4">
+                                <div class="w-8 h-8 rounded-xl skeleton flex-shrink-0"></div>
+                                <div class="h-3 skeleton rounded-full w-14"></div>
+                            </div>
+                            <div class="flex items-center gap-2 pl-12">
+                                <div class="h-2.5 skeleton rounded-full w-12"></div>
+                                <div class="h-2.5 skeleton rounded-full w-10"></div>
+                            </div>
+                        </div>`;
+                }
+                el.innerHTML = skeletonHtml;
+            };
+
+            container.classList.remove('hidden');
+            let data = await getCache(cacheKey);
+
+            if (!data || force) {
+                if (!data) {
+                    renderSkeletonRankings(containerAltas);
+                    renderSkeletonRankings(containerBaixas);
+                }
+
+                const response = await fetchBFF('/api/scraper', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ mode: 'rankings' })
+                });
+                data = response.json;
+
+                // Evita salvar no cache se o scraper falhar ou voltar array vazio
+                if (data && ((data.altas && data.altas.length > 0) || (data.baixas && data.baixas.length > 0))) {
+                    await setCache(cacheKey, data, CACHE_TTL);
+                }
+            }
+
+            if (!data) return;
+
+            const renderLista = (containerId, items, tipo) => {
+                const el = document.getElementById(containerId);
+                if (!el || !items || items.length === 0) {
+                    if (el) el.innerHTML = '<p class="text-[10px] text-gray-500 font-medium text-center py-6">Sem dados disponíveis</p>';
+                    return;
+                }
+
+                const isAlta = tipo === 'altas';
+
+                el.innerHTML = items.slice(0, 6).map((item) => {
+                    const ticker = item.ticker || '';
+                    const variacao = item.variacao || '';
+                    const preco = item.preco || '';
+                    const initials = ticker.substring(0, 2);
+                    const colorVar = isAlta ? 'text-emerald-400' : 'text-red-400';
+                    const logoUrlStr = `https://raw.githubusercontent.com/mqteuss/logos_b3/main/${ticker}.png`;
+
+                    let iconeHtml = '';
+                    if (logoUrlStr && isAcao(ticker)) {
+                        iconeHtml = `
+                            <img src="${logoUrlStr}" alt="${ticker}" width="32" height="32" loading="lazy" decoding="async" class="w-full h-full object-contain relative z-10"
+                                 onerror="this.style.display='none'; this.nextElementSibling.classList.remove('hidden')">
+                            <div class="hidden w-full h-full flex items-center justify-center bg-[#0a0a0a] rounded-xl text-[10px] font-bold text-gray-200 tracking-wider absolute inset-0 z-0">${initials}</div>
+                        `;
+                    } else {
+                        iconeHtml = `
+                            <div class="w-full h-full flex items-center justify-center bg-[#0a0a0a] rounded-xl text-[10px] font-bold text-gray-200 tracking-wider absolute inset-0 z-0">${initials}</div>
+                        `;
+                    }
+
+                    return `
+                        <div class="py-2.5 px-0.5 hover:bg-white/[0.03] active:bg-white/[0.05] cursor-pointer transition-colors flex items-center justify-between group rounded-xl"
+                             onclick="window.abrirDetalhesAtivo('${ticker}')">
+                            <div class="flex items-center gap-2.5">
+                                <div class="w-7 h-7 rounded-[10px] flex items-center justify-center flex-shrink-0 relative overflow-hidden bg-[#0D0D0D] border border-white/5 shadow-inner group-hover:border-white/10 transition-colors">
+                                    ${iconeHtml}
+                                    </div>
+                                <span class="text-[12px] font-bold text-gray-200 tracking-tight">${ticker}</span>
+                            </div>
+                            <div class="flex flex-col items-end gap-0">
+                                <span class="text-[11px] font-bold ${colorVar} tabular-nums tracking-wide">${variacao}</span>
+                                <span class="text-[9px] font-medium text-gray-500 tabular-nums">${preco}</span>
+                            </div>
+                        </div>`;
+                }).join('');
+
+                // Apply the divide-y wrapper layout to the container dynamically
+                el.classList.add('space-y-0.5');
+            };
+
+            renderLista('rankings-altas', data.altas, 'altas');
+            renderLista('rankings-baixas', data.baixas, 'baixas');
+            container.classList.remove('hidden');
+
+        } catch (e) {
+            console.error('Erro ao carregar rankings:', e);
+        }
+    }
+
+    // ── Market Indices ──
+    async function carregarMarketIndices(force = false) {
+        const container = document.getElementById('market-indices-container');
+        const list = document.getElementById('market-indices-list');
+        if (!container || !list) return;
+
+        const cacheKey = 'market_indices_v1';
+        const CACHE_TTL = isB3Open() ? 1000 * 60 * 15 : 1000 * 60 * 60 * 4;
+
+        if (force) {
+            await vestoDB.delete('apiCache', cacheKey);
+        }
+
+        try {
+            const renderSkeletonIndices = () => {
+                let skeletonHtml = '';
+                for (let i = 0; i < 4; i++) {
+                    skeletonHtml += `
+                        <div class="px-3 py-1.5 rounded-full bg-[#151515] border border-white/5 flex items-center gap-2 shadow-sm flex-shrink-0">
+                            <div class="w-8 h-3 skeleton rounded-full"></div>
+                            <div class="w-10 h-3 skeleton rounded-full"></div>
+                        </div>`;
+                }
+                list.innerHTML = skeletonHtml;
+            };
+
+            container.classList.remove('hidden');
+            let data = await getCache(cacheKey);
+
+            if (!data || force) {
+                if (!data) renderSkeletonIndices();
+
+                const response = await fetchBFF('/api/scraper', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ mode: 'indices' })
+                });
+                data = response.json;
+
+                if (data && data.length > 0) {
+                    await setCache(cacheKey, data, CACHE_TTL);
+                }
+            }
+
+            if (!data || data.length === 0) {
+                container.classList.add('hidden');
+                return;
+            }
+
+            list.innerHTML = data.map(item => {
+                const isPositive = item.variacao.startsWith('+');
+                const isNegative = item.variacao.startsWith('-');
+                let colorClass = 'text-gray-400 border-white/5 bg-[#1A1A1C]'; // Default neutral
+                let iconHtml = '';
+
+                if (isPositive) {
+                    colorClass = 'text-emerald-400 border-emerald-500/20 bg-emerald-500/5';
+                    iconHtml = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-2.5 h-2.5 mb-0.5"><path fill-rule="evenodd" d="M10 17a.75.75 0 01-.75-.75V5.612L5.29 9.77a.75.75 0 01-1.08-1.04l5.25-5.5a.75.75 0 011.08 0l5.25 5.5a.75.75 0 11-1.08 1.04l-3.96-4.158V16.25A.75.75 0 0110 17z" clip-rule="evenodd" /></svg>`;
+                } else if (isNegative) {
+                    colorClass = 'text-red-400 border-red-500/20 bg-red-500/5';
+                    iconHtml = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-2.5 h-2.5 mt-0.5"><path fill-rule="evenodd" d="M10 3a.75.75 0 01.75.75v10.638l3.96-4.158a.75.75 0 111.08 1.04l-5.25 5.5a.75.75 0 01-1.08 0l-5.25-5.5a.75.75 0 111.08-1.04l3.96 4.158V3.75A.75.75 0 0110 3z" clip-rule="evenodd" /></svg>`;
+                }
+
+                return `
+                    <div class="px-3 py-1.5 rounded-full border ${colorClass} flex items-center justify-center gap-1.5 shadow-sm whitespace-nowrap flex-shrink-0 cursor-default">
+                        <span class="text-[10px] font-bold tracking-wider text-gray-200">${item.nome}</span>
+                        <div class="flex items-center gap-0.5">
+                           ${iconHtml}
+                           <span class="text-[11px] font-bold tabular-nums tracking-wide">${item.variacao}</span>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+        } catch (e) {
+            console.error('Erro ao carregar índices de mercado:', e);
+            container.classList.add('hidden');
+        }
+    }
+
+    async function buscarHistoricoProventosAgregado(force = false) {
         // ALTERAÇÃO: Remove o filtro exclusivo de FIIs
         const ativosCarteira = carteiraCalculada.map(a => a.symbol);
 
@@ -3992,7 +4595,7 @@ async function buscarHistoricoProventosAgregado(force = false) {
                 }
             } catch (e) {
                 console.error("Erro ao buscar histórico agregado:", e);
-                return { labels: [], data: [] }; 
+                return { labels: [], data: [] };
             }
         }
 
@@ -4005,8 +4608,8 @@ async function buscarHistoricoProventosAgregado(force = false) {
             const dataDireito = item.dataCom || item.paymentDate;
 
             if (dataVisualizacao) {
-                const [ano, mes] = dataVisualizacao.split('-'); 
-                const chaveMes = `${mes}/${ano.substring(2)}`; 
+                const [ano, mes] = dataVisualizacao.split('-');
+                const chaveMes = `${mes}/${ano.substring(2)}`;
 
                 const qtdNaData = getQuantidadeNaData(item.symbol, dataDireito);
 
@@ -4028,52 +4631,52 @@ async function buscarHistoricoProventosAgregado(force = false) {
         return { labels, data };
     }
 
-function isNotificationDismissed(id) {
-    return dismissedNotifsSet.has(id);
-}
-
-function verificarNotificacoesFinanceiras() {
-    const list = document.getElementById('notifications-list');
-    const btnClear = document.getElementById('btn-clear-notifications');
-
-    // Setup do botão limpar
-    if (btnClear && !btnClear.dataset.hasListener) {
-        btnClear.addEventListener('click', limparTodasNotificacoes);
-        btnClear.dataset.hasListener = 'true';
+    function isNotificationDismissed(id) {
+        return dismissedNotifsSet.has(id);
     }
 
-    list.innerHTML = '';
-    let count = 0;
-    // Usa o Set em RAM — sem I/O de localStorage dentro desta função
-    const dismissed = dismissedNotifsSet;
+    function verificarNotificacoesFinanceiras() {
+        const list = document.getElementById('notifications-list');
+        const btnClear = document.getElementById('btn-clear-notifications');
 
-    const hoje = new Date();
-    const offset = hoje.getTimezoneOffset() * 60000;
-    const hojeLocal = new Date(hoje.getTime() - offset).toISOString().split('T')[0];
-    const hojeDateObj = new Date(hojeLocal + 'T00:00:00'); 
+        // Setup do botão limpar
+        if (btnClear && !btnClear.dataset.hasListener) {
+            btnClear.addEventListener('click', limparTodasNotificacoes);
+            btnClear.dataset.hasListener = 'true';
+        }
 
-    const fmtDia = (dataStr) => {
-        if (!dataStr) return '?';
-        const parts = dataStr.split('-');
-        return `${parts[2]}/${parts[1]}`;
-    };
+        list.innerHTML = '';
+        let count = 0;
+        // Usa o Set em RAM — sem I/O de localStorage dentro desta função
+        const dismissed = dismissedNotifsSet;
 
-    // Helper CreateCard (Seu código original mantido)
-    const createCard = (id, type, title, htmlMsg, iconSvg, linkUrl = null) => {
-        const div = document.createElement('div');
-        div.className = `notif-item notif-type-${type} notif-animate-enter group cursor-default`;
-        div.setAttribute('data-notif-id', id);
+        const hoje = new Date();
+        const offset = hoje.getTimezoneOffset() * 60000;
+        const hojeLocal = new Date(hoje.getTime() - offset).toISOString().split('T')[0];
+        const hojeDateObj = new Date(hojeLocal + 'T00:00:00');
 
-        let iconColorClass = 'text-gray-400'; 
-        if (type === 'payment') iconColorClass = 'text-green-500';
-        if (type === 'datacom') iconColorClass = 'text-yellow-500';
-        if (type === 'news')    iconColorClass = 'text-blue-400';
+        const fmtDia = (dataStr) => {
+            if (!dataStr) return '?';
+            const parts = dataStr.split('-');
+            return `${parts[2]}/${parts[1]}`;
+        };
 
-        const linkHtml = linkUrl 
-            ? `<a href="${linkUrl}" target="_blank" class="text-blue-400 hover:text-blue-300 underline decoration-blue-500/30 ml-1">Ler</a>` 
-            : '';
+        // Helper CreateCard (Seu código original mantido)
+        const createCard = (id, type, title, htmlMsg, iconSvg, linkUrl = null) => {
+            const div = document.createElement('div');
+            div.className = `notif-item notif-type-${type} notif-animate-enter group cursor-default`;
+            div.setAttribute('data-notif-id', id);
 
-        div.innerHTML = `
+            let iconColorClass = 'text-gray-400';
+            if (type === 'payment') iconColorClass = 'text-green-500';
+            if (type === 'datacom') iconColorClass = 'text-yellow-500';
+            if (type === 'news') iconColorClass = 'text-blue-400';
+
+            const linkHtml = linkUrl
+                ? `<a href="${linkUrl}" target="_blank" class="text-blue-400 hover:text-blue-300 underline decoration-blue-500/30 ml-1">Ler</a>`
+                : '';
+
+            div.innerHTML = `
             <div class="notif-icon-box">
                 <div class="${iconColorClass} w-4 h-4">${iconSvg}</div>
             </div>
@@ -4091,256 +4694,257 @@ function verificarNotificacoesFinanceiras() {
             </button>
         `;
 
-        if (linkUrl) {
-            div.addEventListener('click', (e) => {
-                if(!e.target.closest('button') && !e.target.closest('a')) { window.open(linkUrl, '_blank'); }
-            });
-            div.classList.add('cursor-pointer', 'hover:bg-[#18181b]');
-        }
-        return div;
-    };
+            if (linkUrl) {
+                div.addEventListener('click', (e) => {
+                    if (!e.target.closest('button') && !e.target.closest('a')) { window.open(linkUrl, '_blank'); }
+                });
+                div.classList.add('cursor-pointer', 'hover:bg-[#18181b]');
+            }
+            return div;
+        };
 
-    const getProps = (p) => ({
-        paymentDate: p.paymentDate || p.paymentdate,
-        dataCom: p.dataCom || p.datacom,
-        createdAt: p.created_at || new Date().toISOString()
-    });
+        const getProps = (p) => ({
+            paymentDate: p.paymentDate || p.paymentdate,
+            dataCom: p.dataCom || p.datacom,
+            createdAt: p.created_at || new Date().toISOString()
+        });
 
-    // 1. PAGAMENTOS HOJE
-    const pagamentosHoje = proventosConhecidos.filter(p => getProps(p).paymentDate === hojeLocal);
-    pagamentosHoje.forEach(p => {
-        const notifId = `pay_${p.id || p.symbol + p.paymentDate}`;
-        if (dismissed.has(notifId)) return;
+        // 1. PAGAMENTOS HOJE
+        const pagamentosHoje = proventosConhecidos.filter(p => getProps(p).paymentDate === hojeLocal);
+        pagamentosHoje.forEach(p => {
+            const notifId = `pay_${p.id || p.symbol + p.paymentDate}`;
+            if (dismissed.has(notifId)) return;
 
-        const props = getProps(p);
-        const qtd = getQuantidadeNaData(p.symbol, props.dataCom || props.paymentDate);
+            const props = getProps(p);
+            const qtd = getQuantidadeNaData(p.symbol, props.dataCom || props.paymentDate);
 
-        if (qtd > 0) {
-            count++;
-            const msg = `Recebeu <strong class="text-white">${formatBRL(p.value * qtd)}</strong> de <strong class="text-white">${p.symbol}</strong> (${qtd} cotas).`;
-            const icon = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6m0 0v6m0-6h6m-6 0H6" /></svg>`;
-            list.appendChild(createCard(notifId, 'payment', 'Pagamento Recebido', msg, icon));
-        }
-    });
-
-    // 2. DATA COM HOJE
-    const dataComHoje = proventosConhecidos.filter(p => getProps(p).dataCom === hojeLocal);
-    dataComHoje.forEach(p => {
-        const notifId = `com_${p.id || p.symbol + 'com'}`;
-        if (dismissed.has(notifId)) return;
-
-        const props = getProps(p);
-        count++;
-        const msg = `Data Com de <strong class="text-white">${p.symbol}</strong> hoje (${fmtDia(hojeLocal)}).<br>Valor: <strong class="text-white">${formatBRL(p.value)}</strong> • Paga em: ${fmtDia(props.paymentDate)}`;
-        const icon = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>`;
-        list.appendChild(createCard(notifId, 'datacom', 'Data de Corte', msg, icon));
-    });
-
-    // 3. NOVOS ANÚNCIOS
-    const novosAnuncios = proventosConhecidos.filter(p => {
-        const props = getProps(p);
-        const dataCriacao = props.createdAt.split('T')[0];
-        if (dataCriacao !== hojeLocal) return false;
-        if (props.paymentDate === hojeLocal || props.dataCom === hojeLocal) return false; 
-        const dataPagamentoObj = new Date((props.paymentDate || '') + 'T00:00:00');
-        return dataPagamentoObj >= hojeDateObj;
-    });
-
-    novosAnuncios.forEach(p => {
-        const notifId = `news_${p.id || p.symbol + 'news'}`;
-        if (dismissed.has(notifId)) return;
-        const props = getProps(p);
-        count++;
-        const msg = `<strong class="text-white">${p.symbol}</strong> anunciou <strong class="text-white">${formatBRL(p.value)}</strong>.<br>Com: ${fmtDia(props.dataCom)} • Pag: ${fmtDia(props.paymentDate)}`;
-        const icon = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>`;
-        list.appendChild(createCard(notifId, 'news', 'Novo Anúncio', msg, icon));
-    });
-
-    // 4. NOTÍCIAS DE MERCADO (CORRIGIDO: USA carteiraCalculada)
-    if (window.noticiasCache && window.noticiasCache.length > 0 && carteiraCalculada.length > 0) {
-
-        const meusTickers = [...new Set(carteiraCalculada.map(item => item.symbol.toUpperCase()))];
-
-        window.noticiasCache.slice(0, 30).forEach(noticia => {
-            const tickerEncontrado = meusTickers.find(ticker => {
-                return noticia.title.toUpperCase().includes(ticker); 
-            });
-
-            if (tickerEncontrado) {
-                const safeId = 'news_mkt_' + noticia.title.replace(/[^a-zA-Z0-9]/g, '').slice(0, 20);
-                if (dismissed.has(safeId)) return;
-
+            if (qtd > 0) {
                 count++;
-                let dataPub = '';
-                if (noticia.pubDate) {
-                   const d = new Date(noticia.pubDate);
-                   dataPub = !isNaN(d) ? ` • ${d.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}` : '';
-                }
-
-                const msg = `Notícia sobre <strong class="text-white">${tickerEncontrado}</strong> saiu no mercado.${dataPub}<br><span class="text-gray-400 italic">"${noticia.title.slice(0, 50)}..."</span>`;
-                const icon = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z" /></svg>`;
-
-                list.appendChild(createCard(safeId, 'news', 'Radar de Notícias', msg, icon, noticia.link));
+                const msg = `Recebeu <strong class="text-white">${formatBRL(p.value * qtd)}</strong> de <strong class="text-white">${p.symbol}</strong> (${qtd} cotas).`;
+                const icon = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6m0 0v6m0-6h6m-6 0H6" /></svg>`;
+                list.appendChild(createCard(notifId, 'payment', 'Pagamento Recebido', msg, icon));
             }
         });
-    }
 
-    checkEmptyState();
-}
+        // 2. DATA COM HOJE
+        const dataComHoje = proventosConhecidos.filter(p => getProps(p).dataCom === hojeLocal);
+        dataComHoje.forEach(p => {
+            const notifId = `com_${p.id || p.symbol + 'com'}`;
+            if (dismissed.has(notifId)) return;
 
-// OTIMIZAÇÃO: Debounce genérico — agrupa chamadas que chegam em sequência
-// e executa apenas a última após `delay` ms de silêncio.
-function debounce(fn, delay) {
-    let timer = null;
-    return function(...args) {
-        clearTimeout(timer);
-        timer = setTimeout(() => fn.apply(this, args), delay);
-    };
-}
+            const props = getProps(p);
+            count++;
+            const msg = `Data Com de <strong class="text-white">${p.symbol}</strong> hoje (${fmtDia(hojeLocal)}).<br>Valor: <strong class="text-white">${formatBRL(p.value)}</strong> • Paga em: ${fmtDia(props.paymentDate)}`;
+            const icon = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>`;
+            list.appendChild(createCard(notifId, 'datacom', 'Data de Corte', msg, icon));
+        });
 
-// Versão debounced de renderizarCarteira (100 ms).
-// Garante que, se preços e proventos resolverem quase ao mesmo tempo,
-// a re-renderização visual ocorra apenas UMA vez com os dados consolidados.
-const renderizarCarteiraDebounced = debounce(renderizarCarteira, 100);
+        // 3. NOVOS ANÚNCIOS
+        const novosAnuncios = proventosConhecidos.filter(p => {
+            const props = getProps(p);
+            const dataCriacao = props.createdAt.split('T')[0];
+            if (dataCriacao !== hojeLocal) return false;
+            if (props.paymentDate === hojeLocal || props.dataCom === hojeLocal) return false;
+            const dataPagamentoObj = new Date((props.paymentDate || '') + 'T00:00:00');
+            return dataPagamentoObj >= hojeDateObj;
+        });
 
-async function atualizarTodosDados(force = false) { 
+        novosAnuncios.forEach(p => {
+            const notifId = `news_${p.id || p.symbol + 'news'}`;
+            if (dismissed.has(notifId)) return;
+            const props = getProps(p);
+            count++;
+            const msg = `<strong class="text-white">${p.symbol}</strong> anunciou <strong class="text-white">${formatBRL(p.value)}</strong>.<br>Com: ${fmtDia(props.dataCom)} • Pag: ${fmtDia(props.paymentDate)}`;
+            const icon = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>`;
+            list.appendChild(createCard(notifId, 'news', 'Novo Anúncio', msg, icon));
+        });
 
-    if (force) {
-        // 1. Feedback Tátil (Vibração leve em Android)
-        if (navigator.vibrate) navigator.vibrate(50);
+        // 4. NOTÍCIAS DE MERCADO (CORRIGIDO: USA carteiraCalculada)
+        if (window.noticiasCache && window.noticiasCache.length > 0 && carteiraCalculada.length > 0) {
 
-        // 2. Feedback Visual (Mostra os esqueletos de carregamento)
-        renderizarDashboardSkeletons(true);
-        renderizarCarteiraSkeletons(true);
+            const meusTickers = [...new Set(carteiraCalculada.map(item => item.symbol.toUpperCase()))];
 
-        // Opcional: Esconder status antigos enquanto carrega
-        dashboardStatus.classList.add('hidden'); 
-    }
+            window.noticiasCache.slice(0, 30).forEach(noticia => {
+                const tickerEncontrado = meusTickers.find(ticker => {
+                    return noticia.title.toUpperCase().includes(ticker);
+                });
 
-    // Fazemos isso primeiro para mostrar algo imediatamente (mesmo que velho)
-    calcularCarteira();
-    await processarDividendosPagos(); 
-    renderizarHistorico();
-    renderizarGraficoPatrimonio(); 
+                if (tickerEncontrado) {
+                    const safeId = 'news_mkt_' + noticia.title.replace(/[^a-zA-Z0-9]/g, '').slice(0, 20);
+                    if (dismissed.has(safeId)) return;
 
-    // Mostra loading se tiver carteira e não for um refresh forçado (que já tratou acima)
-    if (carteiraCalculada.length > 0 && !force) {
-        dashboardStatus.classList.remove('hidden');
-        dashboardLoading.classList.remove('hidden');
-    }
+                    count++;
+                    let dataPub = '';
+                    if (noticia.pubDate) {
+                        const d = new Date(noticia.pubDate);
+                        dataPub = !isNaN(d) ? ` • ${d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : '';
+                    }
 
-    // Animação do ícone de refresh
-    const refreshIcon = refreshButton.querySelector('svg'); 
-    if (force) {
-        refreshIcon.classList.add('spin-animation');
-    }
+                    const msg = `Notícia sobre <strong class="text-white">${tickerEncontrado}</strong> saiu no mercado.${dataPub}<br><span class="text-gray-400 italic">"${noticia.title.slice(0, 50)}..."</span>`;
+                    const icon = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z" /></svg>`;
 
-    // Se não for forçado, tenta usar cache de proventos primeiro para agilizar
-    if (!force) {
-        const proventosFuturosCache = processarProventosScraper(proventosConhecidos);
-        if (proventosFuturosCache.length > 0) {
-            proventosAtuais = proventosFuturosCache;
-            renderizarProventos();
+                    list.appendChild(createCard(safeId, 'news', 'Radar de Notícias', msg, icon, noticia.link));
+                }
+            });
         }
+
+        checkEmptyState();
     }
 
-    // Se a carteira estiver vazia, reseta tudo e para por aqui
-    if (carteiraCalculada.length === 0) {
-            precosAtuais = []; 
-            proventosAtuais = []; 
-            await renderizarCarteira(); 
-            renderizarProventos(); 
-            renderizarGraficoHistorico({ labels: [], data: [] }); 
+    // OTIMIZAÇÃO: Debounce genérico — agrupa chamadas que chegam em sequência
+    // e executa apenas a última após `delay` ms de silêncio.
+    function debounce(fn, delay) {
+        let timer = null;
+        return function (...args) {
+            clearTimeout(timer);
+            timer = setTimeout(() => fn.apply(this, args), delay);
+        };
+    }
+
+    // Versão debounced de renderizarCarteira (100 ms).
+    // Garante que, se preços e proventos resolverem quase ao mesmo tempo,
+    // a re-renderização visual ocorra apenas UMA vez com os dados consolidados.
+    const renderizarCarteiraDebounced = debounce(renderizarCarteira, 100);
+    window.renderizarCarteiraGlobal = renderizarCarteiraDebounced;
+
+    async function atualizarTodosDados(force = false) {
+
+        if (force) {
+            // 1. Feedback Tátil (Vibração leve em Android)
+            if (navigator.vibrate) navigator.vibrate(50);
+
+            // 2. Feedback Visual (Mostra os esqueletos de carregamento)
+            renderizarDashboardSkeletons(true);
+            renderizarCarteiraSkeletons(true);
+
+            // Opcional: Esconder status antigos enquanto carrega
+            dashboardStatus.classList.add('hidden');
+        }
+
+        // Fazemos isso primeiro para mostrar algo imediatamente (mesmo que velho)
+        calcularCarteira();
+        await processarDividendosPagos();
+        renderizarHistorico();
+        renderizarGraficoPatrimonio();
+
+        // Mostra loading se tiver carteira e não for um refresh forçado (que já tratou acima)
+        if (carteiraCalculada.length > 0 && !force) {
+            dashboardStatus.classList.remove('hidden');
+            dashboardLoading.classList.remove('hidden');
+        }
+
+        // Animação do ícone de refresh
+        const refreshIcon = refreshButton.querySelector('svg');
+        if (force) {
+            refreshIcon.classList.add('spin-animation');
+        }
+
+        // Se não for forçado, tenta usar cache de proventos primeiro para agilizar
+        if (!force) {
+            const proventosFuturosCache = processarProventosScraper(proventosConhecidos);
+            if (proventosFuturosCache.length > 0) {
+                proventosAtuais = proventosFuturosCache;
+                renderizarProventos();
+            }
+        }
+
+        // Se a carteira estiver vazia, reseta tudo e para por aqui
+        if (carteiraCalculada.length === 0) {
+            precosAtuais = [];
+            proventosAtuais = [];
+            await renderizarCarteira();
+            renderizarProventos();
+            renderizarGraficoHistorico({ labels: [], data: [] });
             refreshIcon.classList.remove('spin-animation');
             return;
-    }
-
-    // Iniciamos todas as requisições ao mesmo tempo para ganhar tempo
-    const promessaPrecos = buscarPrecosCarteira(force); 
-    const promessaProventos = buscarProventosFuturos(force);
-    const promessaHistorico = buscarHistoricoProventosAgregado(force);
-
-    // Tratamento individual das promessas para renderizar assim que chegarem.
-    // OTIMIZAÇÃO: usamos renderizarCarteiraDebounced (100 ms) em vez de chamar
-    // renderizarCarteira() diretamente. Se preços e proventos resolverem quase
-    // ao mesmo tempo, o debounce garante que a renderização visual ocorra apenas
-    // UMA vez com os dados já consolidados, evitando o "double render".
-    promessaPrecos.then(async precos => {
-        if (precos.length > 0) {
-            precosAtuais = precos;
-            renderizarCarteiraDebounced(); // debounced — aguarda 100 ms antes de renderizar
-        } else if (precosAtuais.length === 0) {
-            renderizarCarteiraDebounced();
-        }
-    }).catch(async err => {
-        console.error("Erro ao buscar preços (BFF):", err);
-        showToast("Erro ao buscar preços.");
-        if (precosAtuais.length === 0) { renderizarCarteiraDebounced(); }
-    });
-
-    promessaProventos.then(async proventosFuturos => {
-        // Atualiza a lista com o que veio da API
-        proventosAtuais = processarProventosScraper(proventosConhecidos);
-
-        // Força o recálculo do saldo "Recebidos" agora que temos dados novos da nuvem
-        await processarDividendosPagos();
-
-        renderizarProventos(); // Atualiza o widget de proventos
-
-        // Re-renderiza a carteira para atualizar as tags de "Data Com" nos cards.
-        // Também via debounce — se preços já resolveram, esta chamada será "absorvida"
-        // pelo mesmo timer e a renderização final acontece uma única vez.
-        if (precosAtuais.length > 0) {
-            renderizarCarteiraDebounced();
         }
 
-        // Atualiza gráfico histórico se houver dados novos
-        if (typeof renderizarHistoricoProventos === 'function') {
-             renderizarHistoricoProventos();
-        }
+        // Iniciamos todas as requisições ao mesmo tempo para ganhar tempo
+        const promessaPrecos = buscarPrecosCarteira(force);
+        const promessaProventos = buscarProventosFuturos(force);
+        const promessaHistorico = buscarHistoricoProventosAgregado(force);
 
-    }).catch(async err => {
-        console.error("Erro ao buscar proventos (BFF):", err);
-        if (proventosConhecidos.length > 0) {
+        // Tratamento individual das promessas para renderizar assim que chegarem.
+        // OTIMIZAÇÃO: usamos renderizarCarteiraDebounced (100 ms) em vez de chamar
+        // renderizarCarteira() diretamente. Se preços e proventos resolverem quase
+        // ao mesmo tempo, o debounce garante que a renderização visual ocorra apenas
+        // UMA vez com os dados já consolidados, evitando o "double render".
+        promessaPrecos.then(async precos => {
+            if (precos.length > 0) {
+                precosAtuais = precos;
+                renderizarCarteiraDebounced(); // debounced — aguarda 100 ms antes de renderizar
+            } else if (precosAtuais.length === 0) {
+                renderizarCarteiraDebounced();
+            }
+        }).catch(async err => {
+            console.error("Erro ao buscar preços (BFF):", err);
+            showToast("Erro ao buscar preços.");
+            if (precosAtuais.length === 0) { renderizarCarteiraDebounced(); }
+        });
+
+        promessaProventos.then(async proventosFuturos => {
+            // Atualiza a lista com o que veio da API
+            proventosAtuais = processarProventosScraper(proventosConhecidos);
+
+            // Força o recálculo do saldo "Recebidos" agora que temos dados novos da nuvem
+            await processarDividendosPagos();
+
+            renderizarProventos(); // Atualiza o widget de proventos
+
+            // Re-renderiza a carteira para atualizar as tags de "Data Com" nos cards.
+            // Também via debounce — se preços já resolveram, esta chamada será "absorvida"
+            // pelo mesmo timer e a renderização final acontece uma única vez.
+            if (precosAtuais.length > 0) {
+                renderizarCarteiraDebounced();
+            }
+
+            // Atualiza gráfico histórico se houver dados novos
+            if (typeof renderizarHistoricoProventos === 'function') {
+                renderizarHistoricoProventos();
+            }
+
+        }).catch(async err => {
+            console.error("Erro ao buscar proventos (BFF):", err);
+            if (proventosConhecidos.length > 0) {
                 proventosAtuais = processarProventosScraper(proventosConhecidos);
                 renderizarProventos();
                 if (precosAtuais.length > 0) { renderizarCarteiraDebounced(); }
-        } else if (proventosAtuais.length === 0) {
+            } else if (proventosAtuais.length === 0) {
                 totalProventosEl.textContent = "Erro";
-        }
-    });
+            }
+        });
 
-    promessaHistorico.then(({ labels, data }) => {
-        renderizarGraficoHistorico({ labels, data }); // Atualiza o gráfico de barras
-    }).catch(err => {
-        console.error("Erro ao buscar histórico agregado (BFF):", err);
-        renderizarGraficoHistorico({ labels: [], data: [] }); 
-    });
+        promessaHistorico.then(({ labels, data }) => {
+            renderizarGraficoHistorico({ labels, data }); // Atualiza o gráfico de barras
+        }).catch(err => {
+            console.error("Erro ao buscar histórico agregado (BFF):", err);
+            renderizarGraficoHistorico({ labels: [], data: [] });
+        });
 
-    try {
-        // Espera tudo terminar (sucesso ou falha) para limpar o estado de loading
-        await Promise.allSettled([promessaPrecos, promessaProventos, promessaHistorico]); 
-    } finally {
-        refreshIcon.classList.remove('spin-animation');
-        dashboardStatus.classList.add('hidden');
-        dashboardLoading.classList.add('hidden');
+        try {
+            // Espera tudo terminar (sucesso ou falha) para limpar o estado de loading
+            await Promise.allSettled([promessaPrecos, promessaProventos, promessaHistorico]);
+        } finally {
+            refreshIcon.classList.remove('spin-animation');
+            dashboardStatus.classList.add('hidden');
+            dashboardLoading.classList.add('hidden');
 
-        // Quando force=true (refresh manual), os skeletons foram ativados aqui dentro,
-        // então é seguro desativá-los — os cards já têm valores anteriores no DOM.
-        // Quando force=false (carga inicial), NÃO desativamos aqui: renderizarCarteira()
-        // já chama renderizarDashboardSkeletons(false) APÓS gravar os valores nos
-        // elementos, evitando o flash de "R$ 0,00" causado pelo debounce de 100 ms.
-        if (force) {
-            renderizarDashboardSkeletons(false);
-            renderizarCarteiraSkeletons(false);
-        }
+            // Quando force=true (refresh manual), os skeletons foram ativados aqui dentro,
+            // então é seguro desativá-los — os cards já têm valores anteriores no DOM.
+            // Quando force=false (carga inicial), NÃO desativamos aqui: renderizarCarteira()
+            // já chama renderizarDashboardSkeletons(false) APÓS gravar os valores nos
+            // elementos, evitando o flash de "R$ 0,00" causado pelo debounce de 100 ms.
+            if (force) {
+                renderizarDashboardSkeletons(false);
+                renderizarCarteiraSkeletons(false);
+            }
 
-        // Atualiza as notificações
-        if (typeof verificarNotificacoesFinanceiras === 'function') {
-            verificarNotificacoesFinanceiras();
+            // Atualiza as notificações
+            if (typeof verificarNotificacoesFinanceiras === 'function') {
+                verificarNotificacoesFinanceiras();
+            }
         }
     }
-}
 
     async function handleToggleFavorito() {
         const symbol = detalhesFavoritoBtn.dataset.symbol;
@@ -4358,15 +4962,15 @@ async function atualizarTodosDados(force = false) {
                 watchlist.push(newItem);
             }
 
-            atualizarIconeFavorito(symbol); 
-            renderizarWatchlist(); 
+            atualizarIconeFavorito(symbol);
+            renderizarWatchlist();
         } catch (e) {
             console.error("Erro ao salvar favorito:", e);
             showToast("Erro ao salvar favorito.");
         }
     }
 
-async function handleCompartilharAtivo() {
+    async function handleCompartilharAtivo() {
         if (!currentDetalhesSymbol) return;
 
         let precoTexto = document.querySelector('#detalhes-preco h2')?.textContent || '';
@@ -4418,10 +5022,10 @@ async function handleCompartilharAtivo() {
         });
     }
 
-async function handleSalvarTransacao() {
+    async function handleSalvarTransacao() {
         let ticker = tickerInput.value.trim().toUpperCase();
         let novaQuantidade = parseInt(quantityInput.value, 10);
-        let novoPreco = parseFloat(precoMedioInput.value.replace(',', '.')); 
+        let novoPreco = parseFloat(precoMedioInput.value.replace(',', '.'));
         let dataTransacao = dateInput.value;
         let transacaoID = transacaoIdInput.value;
 
@@ -4430,16 +5034,16 @@ async function handleSalvarTransacao() {
 
         if (ticker.endsWith('.SA')) ticker = ticker.replace('.SA', '');
 
-        if (!ticker || !novaQuantidade || novaQuantidade <= 0 || !novoPreco || novoPreco < 0 || !dataTransacao) { 
-            showToast("Preencha todos os campos."); 
+        if (!ticker || !novaQuantidade || novaQuantidade <= 0 || !novoPreco || novoPreco < 0 || !dataTransacao) {
+            showToast("Preencha todos os campos.");
             if (!ticker) tickerInput.classList.add('border-red-500');
             if (!novaQuantidade || novaQuantidade <= 0) quantityInput.classList.add('border-red-500');
-            if (!novoPreco || novoPreco < 0) precoMedioInput.classList.add('border-red-500'); 
+            if (!novoPreco || novoPreco < 0) precoMedioInput.classList.add('border-red-500');
             if (!dataTransacao) dateInput.classList.add('border-red-500');
             setTimeout(() => {
                 tickerInput.classList.remove('border-red-500');
                 quantityInput.classList.remove('border-red-500');
-                precoMedioInput.classList.remove('border-red-500'); 
+                precoMedioInput.classList.remove('border-red-500');
                 dateInput.classList.remove('border-red-500');
             }, 2000);
             return;
@@ -4461,24 +5065,24 @@ async function handleSalvarTransacao() {
             if (!ativoExistente) {
                 const tickerParaApi = isFII(ticker) ? `${ticker}.SA` : ticker;
                 try {
-                     const quoteData = await fetchBFF(`/api/brapi?path=/quote/${tickerParaApi}?range=1d&interval=1d`);
-                     if (!quoteData.results || quoteData.results[0].error) {
-                         throw new Error(quoteData.results?.[0]?.error || 'Ativo não encontrado');
-                     }
+                    const quoteData = await fetchBFF(`/api/brapi?path=/quote/${tickerParaApi}?range=1d&interval=1d`);
+                    if (!quoteData.results || quoteData.results[0].error) {
+                        throw new Error(quoteData.results?.[0]?.error || 'Ativo não encontrado');
+                    }
                 } catch (error) {
-                     showToast("Ativo não encontrado."); 
-                     tickerInput.value = '';
-                     tickerInput.placeholder = "Ativo não encontrado";
-                     tickerInput.classList.add('border-red-500');
-                     setTimeout(() => { 
-                        tickerInput.placeholder = "Pesquisar ativo"; 
+                    showToast("Ativo não encontrado.");
+                    tickerInput.value = '';
+                    tickerInput.placeholder = "Ativo não encontrado";
+                    tickerInput.classList.add('border-red-500');
+                    setTimeout(() => {
+                        tickerInput.placeholder = "Pesquisar ativo";
                         tickerInput.classList.remove('border-red-500');
-                     }, 2000);
-                     addButton.innerHTML = `Adicionar`;
-                     addButton.disabled = false;
-                     return;
+                    }, 2000);
+                    addButton.innerHTML = `Adicionar`;
+                    addButton.disabled = false;
+                    return;
                 }
-            } 
+            }
         }
 
         const dataISO = new Date(dataTransacao + 'T12:00:00').toISOString();
@@ -4524,7 +5128,7 @@ async function handleSalvarTransacao() {
         addButton.disabled = false;
         hideAddModal();
 
-        await removerCacheAtivo(ticker); 
+        await removerCacheAtivo(ticker);
         const ativoExistente = carteiraCalculada.find(a => a.symbol === ticker);
         const forceUpdate = (!ativoExistente && isFII(ticker));
 
@@ -4533,14 +5137,14 @@ async function handleSalvarTransacao() {
 
     function handleRemoverAtivo(symbol) {
         showModal(
-            'Remover Ativo', 
-            `Tem certeza? Isso removerá ${symbol} e TODO o seu histórico de compras deste ativo.`, 
-            async () => { 
+            'Remover Ativo',
+            `Tem certeza? Isso removerá ${symbol} e TODO o seu histórico de compras deste ativo.`,
+            async () => {
                 transacoes = transacoes.filter(t => t.symbol !== symbol);
                 invalidarCacheQtdNaData();
 
                 await supabaseDB.deleteTransacoesDoAtivo(symbol);
-                await removerCacheAtivo(symbol); 
+                await removerCacheAtivo(symbol);
                 await removerProventosConhecidos(symbol);
 
                 await supabaseDB.deleteWatchlist(symbol);
@@ -4553,53 +5157,53 @@ async function handleSalvarTransacao() {
                 mesesProcessados = [];
                 await salvarHistoricoProcessado();
 
-                await atualizarTodosDados(true); 
+                await atualizarTodosDados(true);
             }
         );
     }
 
-function handleAbrirModalEdicao(id) {
-    const tx = transacoes.find(t => t.id === id);
-    if (!tx) { showToast("Erro: Transação não encontrada."); return; }
+    function handleAbrirModalEdicao(id) {
+        const tx = transacoes.find(t => t.id === id);
+        if (!tx) { showToast("Erro: Transação não encontrada."); return; }
 
-    transacaoEmEdicao = tx;
-    addModalTitle.textContent = tx.type === 'sell' ? 'Editar Venda' : 'Editar Compra';
+        transacaoEmEdicao = tx;
+        addModalTitle.textContent = tx.type === 'sell' ? 'Editar Venda' : 'Editar Compra';
 
-    transacaoIdInput.value = tx.id;
-    tickerInput.value = tx.symbol;
-    tickerInput.disabled = true;
-    dateInput.value = formatDateToInput(tx.date);
-    quantityInput.value = tx.quantity;
-    precoMedioInput.value = tx.price;
+        transacaoIdInput.value = tx.id;
+        tickerInput.value = tx.symbol;
+        tickerInput.disabled = true;
+        dateInput.value = formatDateToInput(tx.date);
+        quantityInput.value = tx.quantity;
+        precoMedioInput.value = tx.price;
 
-    // Atualiza Total Inicial
-    const totalPreview = document.getElementById('total-transacao-preview');
-    if(totalPreview) totalPreview.textContent = formatBRL(tx.quantity * tx.price);
+        // Atualiza Total Inicial
+        const totalPreview = document.getElementById('total-transacao-preview');
+        if (totalPreview) totalPreview.textContent = formatBRL(tx.quantity * tx.price);
 
-    // ALTERAÇÃO: Aciona o botão correto para animar o toggle
-    if (tx.type === 'sell') {
-        document.getElementById('btn-opt-venda').click();
-    } else {
-        document.getElementById('btn-opt-compra').click();
+        // ALTERAÇÃO: Aciona o botão correto para animar o toggle
+        if (tx.type === 'sell') {
+            document.getElementById('btn-opt-venda').click();
+        } else {
+            document.getElementById('btn-opt-compra').click();
+        }
+
+        addButton.textContent = 'Atualizar';
+        showAddModal();
     }
-
-    addButton.textContent = 'Atualizar';
-    showAddModal();
-}
 
     function handleExcluirTransacao(id, symbol) {
         const tx = transacoes.find(t => t.id === id);
         if (!tx) {
-             showToast("Erro: Transação não encontrada.");
-             return;
+            showToast("Erro: Transação não encontrada.");
+            return;
         }
 
         const msg = `Excluir esta compra?\n\nAtivo: ${tx.symbol}\nData: ${formatDate(tx.date)}\nQtd: ${tx.quantity}\nPreço: ${formatBRL(tx.price)}`;
 
         showModal(
-            'Excluir Transação', 
-            msg, 
-            async () => { 
+            'Excluir Transação',
+            msg,
+            async () => {
                 await supabaseDB.deleteTransacao(id);
                 transacoes = transacoes.filter(t => t.id !== id);
                 invalidarCacheQtdNaData();
@@ -4619,16 +5223,16 @@ function handleAbrirModalEdicao(id) {
                     const isFavorite = watchlist.some(item => item.symbol === symbol);
                     if (isFavorite) {
                         setTimeout(() => {
-                             showModal(
+                            showModal(
                                 'Manter nos Favoritos?',
                                 `${symbol} não está mais na sua carteira. Deseja mantê-lo na sua lista de favoritos?`,
-                                () => {} 
+                                () => { }
                             );
-                        }, 300); 
+                        }, 300);
                     }
                 }
 
-                await atualizarTodosDados(true); 
+                await atualizarTodosDados(true);
                 showToast("Transação excluída.", 'success');
             }
         );
@@ -4657,7 +5261,7 @@ function handleAbrirModalEdicao(id) {
         try {
             const session = await supabaseDB.initialize();
             if (!session || !session.user || !session.user.email) {
-                 throw new Error("Erro de sessão. Faça login novamente.");
+                throw new Error("Erro de sessão. Faça login novamente.");
             }
             const userEmail = session.user.email;
 
@@ -4699,8 +5303,8 @@ function handleAbrirModalEdicao(id) {
 
         detalhesMensagem.classList.remove('hidden');
         detalhesLoading.classList.add('hidden');
-        detalhesTituloTexto.textContent = 'Detalhes'; 
-        detalhesNomeLongo.textContent = ''; 
+        detalhesTituloTexto.textContent = 'Detalhes';
+        detalhesNomeLongo.textContent = '';
         detalhesPreco.innerHTML = '';
         detalhesHistoricoContainer.classList.add('hidden');
         detalhesAiProvento.innerHTML = '';
@@ -4729,69 +5333,77 @@ function handleAbrirModalEdicao(id) {
         detalhesFavoritoBtn.dataset.symbol = '';
 
         currentDetalhesSymbol = null;
-        currentDetalhesMeses = 3; 
-        currentDetalhesHistoricoJSON = null; 
+        currentDetalhesMeses = 3;
+        currentDetalhesHistoricoJSON = null;
 
     }
 
-//  LÓGICA DO GRÁFICO DE COTAÇÃO (VISUAL MELHORADO & SEM CACHE PERSISTENTE)
+    //  LÓGICA DO GRÁFICO DE COTAÇÃO (VISUAL MELHORADO & SEM CACHE PERSISTENTE)
 
-let cotacaoChartInstance = null;
-// Token de cancelamento: incrementado em limparDetalhes para invalidar fetches em voo
-let currentChartFetchId = 0;
-// Cache agora usa chave composta: "PETR4_1D", "VALE3_5A"
-window.tempChartCache = {}; 
-// Tipo de gráfico de preço: 'line' | 'candlestick'
-let currentPriceChartType = 'line';
-// Listener de eventos do canvas de candlestick (para cleanup)
-let candlestickEventCleanup = null;
+    let cotacaoChartInstance = null;
+    // Token de cancelamento: incrementado em limparDetalhes para invalidar fetches em voo
+    let currentChartFetchId = 0;
+    // Cache agora usa chave composta: "PETR4_1D", "VALE3_5A"
+    window.tempChartCache = {};
+    // Tipo de gráfico de preço: 'line' | 'candlestick'
+    let currentPriceChartType = 'line';
+    // Listener de eventos do canvas de candlestick (para cleanup)
+    let candlestickEventCleanup = null;
 
-async function callScraperCotacaoHistoricaAPI(ticker, range) {
-    const body = { 
-        mode: 'cotacao_historica', 
-        payload: { ticker, range } // Envia o range
-    };
-    const data = await fetchBFF('/api/scraper', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body)
-    });
-    return data.json; 
-}
-
-async function fetchCotacaoHistorica(symbol) {
-    const symbolAlvo = symbol;
-    let container = document.getElementById('detalhes-cotacao-container');
-
-    if (!container) {
-        const anchor = document.getElementById('detalhes-cotacao-anchor');
-        if (anchor) {
-            container = document.createElement('div');
-            container.id = 'detalhes-cotacao-container';
-            container.className = "w-full";
-            anchor.appendChild(container);
-        } else { return; }
+    async function callScraperCotacaoHistoricaAPI(ticker, range) {
+        const body = {
+            mode: 'cotacao_historica',
+            payload: { ticker, range } // Envia o range
+        };
+        const response = await fetchBFF('/api/scraper', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body)
+        });
+        return response.json;
     }
 
-    container.innerHTML = `
+    async function fetchCotacaoHistorica(symbol) {
+        const symbolAlvo = symbol;
+        let container = document.getElementById('detalhes-cotacao-container');
+
+        if (!container) {
+            const anchor = document.getElementById('detalhes-cotacao-anchor');
+            if (anchor) {
+                container = document.createElement('div');
+                container.id = 'detalhes-cotacao-container';
+                container.className = "w-full";
+                anchor.appendChild(container);
+            } else { return; }
+        }
+
+        const isLight = document.body.classList.contains('light-mode');
+        const bgKpiColors = isLight ? 'bg-[#e5e7eb] border-gray-300' : 'bg-[#151515] border-white/5';
+        const txtKpiValues = isLight ? 'text-gray-800 font-bold' : 'text-gray-200 font-bold';
+
+        const wrapperBg = isLight ? 'bg-white border-gray-200' : 'bg-[#0f0f0f] border-[#1a1a1a]';
+        const filterBg = isLight ? 'bg-white/90 border-gray-200' : 'bg-[#151515]/90 border-white/5';
+        const btnTypeLineBg = isLight ? 'bg-gray-200 text-gray-800' : 'bg-[#2C2C2E] text-white';
+
+        container.innerHTML = `
         <div class="flex flex-col mb-2 px-1">
             
             <div class="flex items-center justify-between gap-1 mb-3 pl-1 w-full">
-                <h4 class="text-[10px] font-bold text-gray-300 uppercase tracking-widest truncate">Cotação - ${symbol}</h4>
+                <h4 class="text-[10px] font-bold ${isLight ? 'text-gray-600' : 'text-gray-300'} uppercase tracking-widest truncate">Cotação - ${symbol}</h4>
                 
-                <div class="flex items-center gap-1.5 text-[9px] bg-[#151515] border border-white/5 px-2 py-0.5 rounded-md shadow-sm whitespace-nowrap flex-shrink-0">
-                    <span class="text-gray-500 font-medium">A:<span id="stat-open" class="text-gray-200 font-bold ml-0.5">--</span></span>
-                    <span class="text-white/10">|</span>
-                    <span class="text-gray-500 font-medium">V:<span id="stat-var" class="text-gray-200 font-bold ml-0.5">--</span></span>
-                    <span class="text-white/10">|</span>
-                    <span class="text-gray-500 font-medium">F:<span id="stat-close" class="text-gray-200 font-bold ml-0.5">--</span></span>
+                <div class="flex items-center gap-1.5 text-[9px] ${bgKpiColors} px-2 py-0.5 rounded-md shadow-sm whitespace-nowrap flex-shrink-0">
+                    <span class="text-gray-500 font-medium">A:<span id="stat-open" class="${txtKpiValues} ml-0.5">--</span></span>
+                    <span class="${isLight ? 'text-gray-300' : 'text-white/10'}">|</span>
+                    <span class="text-gray-500 font-medium">V:<span id="stat-var" class="${txtKpiValues} ml-0.5">--</span></span>
+                    <span class="${isLight ? 'text-gray-300' : 'text-white/10'}">|</span>
+                    <span class="text-gray-500 font-medium">F:<span id="stat-close" class="${txtKpiValues} ml-0.5">--</span></span>
                 </div>
             </div>
 
-            <div id="chart-wrapper-cotacao" class="relative w-full bg-[#0f0f0f] rounded-2xl border border-[#1a1a1a] shadow-inner overflow-hidden" style="height: 320px;">
+            <div id="chart-wrapper-cotacao" class="relative w-full ${wrapperBg} rounded-2xl shadow-inner overflow-hidden" style="height: 320px;">
                 
                 <div class="absolute top-2 left-2 right-2 z-20 flex justify-between items-center gap-2 pointer-events-auto">
-                    <div class="relative flex items-center gap-0.5 p-1 bg-[#151515]/90 backdrop-blur-md rounded-xl overflow-x-auto no-scrollbar flex-1 border border-white/5 shadow-lg" id="chart-filters">
+                    <div class="relative flex items-center gap-0.5 p-1 ${filterBg} backdrop-blur-md rounded-xl overflow-x-auto no-scrollbar flex-1" id="chart-filters">
                         <div id="cotacao-slider" class="absolute top-1 bottom-1 left-0 bg-[#2C2C2E] rounded-lg shadow-sm transition-all duration-300 ease-out z-0" style="width: 0px;"></div>
                         ${window.gerarBotaoFiltro('1D', symbol, true)}
                         ${window.gerarBotaoFiltro('5D', symbol)}
@@ -4803,16 +5415,17 @@ async function fetchCotacaoHistorica(symbol) {
                         ${window.gerarBotaoFiltro('Tudo', symbol)}
                     </div>
                     
-                    <div class="flex gap-1 p-1 bg-[#151515]/90 backdrop-blur-md rounded-xl flex-shrink-0 border border-white/5 shadow-lg" id="chart-type-toggle">
+                    <div class="relative flex gap-1 p-1 ${filterBg} backdrop-blur-md rounded-xl flex-shrink-0" id="chart-type-toggle">
+                        <div id="chart-type-slider" class="absolute top-1 bottom-1 bg-[#2C2C2E] rounded-lg shadow-sm transition-all duration-300 ease-out pointer-events-none z-0" style="width: 0px;"></div>
                         <button id="btn-type-line" onclick="window.mudarTipoGrafico('line', '${symbol}')"
-                            class="chart-type-btn px-2.5 py-1.5 rounded-lg text-[10px] font-bold uppercase transition-colors duration-200 select-none bg-[#2C2C2E] text-white"
+                            class="chart-type-btn px-2.5 py-1.5 rounded-lg text-[10px] font-bold uppercase transition-colors duration-200 select-none relative z-10 text-white"
                             title="Gráfico de Linha">
                             <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
                                 <polyline points="1,11 4,7 7,9 10,4 13,3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
                             </svg>
                         </button>
                         <button id="btn-type-candlestick" onclick="window.mudarTipoGrafico('candlestick', '${symbol}')"
-                            class="chart-type-btn px-2.5 py-1.5 rounded-lg text-[10px] font-bold uppercase transition-colors duration-200 select-none text-gray-500 hover:text-gray-300"
+                            class="chart-type-btn px-2.5 py-1.5 rounded-lg text-[10px] font-bold uppercase transition-colors duration-200 select-none relative z-10 text-gray-500"
                             title="Gráfico de Velas">
                             <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
                                 <line x1="2.5" y1="1" x2="2.5" y2="3" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
@@ -4838,1203 +5451,1242 @@ async function fetchCotacaoHistorica(symbol) {
         </div>
     `;
 
-    setTimeout(() => {
-        const activeBtn = document.getElementById('btn-1D');
-        const slider = document.getElementById('cotacao-slider');
-        if (activeBtn && slider) {
-            slider.style.width = `${activeBtn.offsetWidth}px`;
-            slider.style.transform = `translateX(${activeBtn.offsetLeft}px)`;
-        }
-    }, 50);
+        setTimeout(() => {
+            const activeBtn = document.getElementById('btn-1D');
+            const slider = document.getElementById('cotacao-slider');
+            if (activeBtn && slider) {
+                slider.style.width = `${activeBtn.offsetWidth}px`;
+                slider.style.transform = `translateX(${activeBtn.offsetLeft}px)`;
+            }
+            // Initialize chart type slider on the 'line' button
+            const typeSlider = document.getElementById('chart-type-slider');
+            const btnLine = document.getElementById('btn-type-line');
+            const toggleBar = document.getElementById('chart-type-toggle');
+            if (typeSlider && btnLine && toggleBar) {
+                typeSlider.style.transition = 'none';
+                const barRect = toggleBar.getBoundingClientRect();
+                const btnRect = btnLine.getBoundingClientRect();
+                typeSlider.style.left = (btnRect.left - barRect.left) + 'px';
+                typeSlider.style.width = btnRect.width + 'px';
+                requestAnimationFrame(() => { typeSlider.style.transition = ''; });
+            }
+        }, 50);
 
-    currentPriceChartType = 'line';
-    if (currentDetalhesSymbol !== symbolAlvo) return;
-    await carregarDadosGrafico('1D', symbol);
-}
+        currentPriceChartType = 'line';
+        if (currentDetalhesSymbol !== symbolAlvo) return;
+        await carregarDadosGrafico('1D', symbol);
+    }
 
-window.gerarBotaoFiltro = function(label, symbol, isActive = false) {
-    const textClass = isActive ? 'text-white' : 'text-gray-500 hover:text-gray-300';
+    window.gerarBotaoFiltro = function (label, symbol, isActive = false) {
+        const isLight = document.body.classList.contains('light-mode');
+        const txtActive = isLight ? 'text-gray-800' : 'text-white';
+        const txtHover = isLight ? 'text-gray-800' : 'text-gray-300';
+        const textClass = isActive ? txtActive : `text-gray-500 hover:${txtHover}`;
 
-    return `<button id="btn-${label}" onclick="window.mudarPeriodoGrafico('${label}', '${symbol}')" 
+        return `<button id="btn-${label}" onclick="window.mudarPeriodoGrafico('${label}', '${symbol}')" 
             class="relative z-10 chart-filter-btn flex-1 px-1 py-1.5 rounded-lg text-[10px] font-bold tracking-wider uppercase transition-colors duration-300 select-none text-center ${textClass}" 
             data-range="${label}">
         ${label}
     </button>`;
-};
+    };
 
-// Função orquestradora de dados (Cache vs API)
-async function carregarDadosGrafico(range, symbol) {
-    const cacheKey = `${symbol}_${range}`;
-    // FIX: Captura o token atual — se mudar antes da resposta, o modal foi fechado
-    const fetchId = currentChartFetchId;
+    // Função orquestradora de dados (Cache vs API)
+    window.carregarDadosGrafico = carregarDadosGrafico;
+    async function carregarDadosGrafico(range, symbol) {
+        const cacheKey = `${symbol}_${range}`;
+        // FIX: Captura o token atual — se mudar antes da resposta, o modal foi fechado
+        const fetchId = currentChartFetchId;
 
-    try {
-        let data = window.tempChartCache[cacheKey];
+        try {
+            let data = window.tempChartCache[cacheKey];
 
-        if (!data) {
-            // UI Loading state se necessário (opcional aqui pois já iniciou com skeleton)
-            const wrapper = document.getElementById('chart-area-wrapper');
-            if(wrapper && !wrapper.querySelector('.animate-pulse')) {
-                 wrapper.innerHTML = `<div class="flex flex-col items-center justify-center h-full animate-pulse"><span class="text-[10px] text-gray-600">CARREGANDO...</span></div>`;
+            if (!data) {
+                // UI Loading state se necessário (opcional aqui pois já iniciou com skeleton)
+                const wrapper = document.getElementById('chart-area-wrapper');
+                if (wrapper && !wrapper.querySelector('.animate-pulse')) {
+                    wrapper.innerHTML = `<div class="flex flex-col items-center justify-center h-full animate-pulse"><span class="text-[10px] text-gray-600">CARREGANDO...</span></div>`;
+                }
+
+                // Busca API
+                const response = await callScraperCotacaoHistoricaAPI(symbol, range);
+
+                // FIX: Se o modal foi fechado durante o fetch, abandona silenciosamente
+                if (fetchId !== currentChartFetchId) return;
+
+                if (response && response.points && response.points.length > 0) {
+                    data = response.points;
+                    window.tempChartCache[cacheKey] = data; // Salva no cache específico
+                } else {
+                    throw new Error("Dados vazios");
+                }
             }
 
-            // Busca API
-            const response = await callScraperCotacaoHistoricaAPI(symbol, range);
-
-            // FIX: Se o modal foi fechado durante o fetch, abandona silenciosamente
+            // FIX: Verificação final antes de renderizar (pode já estar em cache mas modal fechou)
             if (fetchId !== currentChartFetchId) return;
 
-            if (response && response.points && response.points.length > 0) {
-                data = response.points;
-                window.tempChartCache[cacheKey] = data; // Salva no cache específico
-            } else {
-                throw new Error("Dados vazios");
-            }
-        }
+            renderPriceChart(data, range);
 
-        // FIX: Verificação final antes de renderizar (pode já estar em cache mas modal fechou)
-        if (fetchId !== currentChartFetchId) return;
-
-        renderPriceChart(data, range);
-
-    } catch (e) {
-        if (fetchId !== currentChartFetchId) return; // FIX: Ignora erros de fetches cancelados
-        console.error("Erro gráfico:", e);
-        const wrapper = document.getElementById('chart-area-wrapper');
-        if(wrapper) wrapper.innerHTML = `
+        } catch (e) {
+            if (fetchId !== currentChartFetchId) return; // FIX: Ignora erros de fetches cancelados
+            console.error("Erro gráfico:", e);
+            const wrapper = document.getElementById('chart-area-wrapper');
+            if (wrapper) wrapper.innerHTML = `
             <div class="flex flex-col items-center justify-center h-full text-gray-500">
                 <span class="text-xs">Indisponível para ${range}</span>
                 <button onclick="carregarDadosGrafico('${range}', '${symbol}')" class="mt-2 text-[10px] text-blue-500">Tentar novamente</button>
             </div>`;
+        }
     }
-}
 
-window.mudarTipoGrafico = function(tipo, symbol) {
-    currentPriceChartType = tipo;
+    window.mudarTipoGrafico = function (tipo, symbol) {
+        currentPriceChartType = tipo;
 
-    const btnLine   = document.getElementById('btn-type-line');
-    const btnCandle = document.getElementById('btn-type-candlestick');
-    if (btnLine && btnCandle) {
-        const activeCls   = ['bg-[#2C2C2E]', 'text-white'];
-        const inactiveCls = ['text-gray-500', 'hover:text-gray-300'];
-        if (tipo === 'line') {
-            btnLine.classList.add(...activeCls);    btnLine.classList.remove(...inactiveCls);
-            btnCandle.classList.remove(...activeCls); btnCandle.classList.add(...inactiveCls);
+        const btnLine = document.getElementById('btn-type-line');
+        const btnCandle = document.getElementById('btn-type-candlestick');
+        const typeSlider = document.getElementById('chart-type-slider');
+        const toggleBar = document.getElementById('chart-type-toggle');
+
+        if (btnLine && btnCandle) {
+            const activeBtn = tipo === 'line' ? btnLine : btnCandle;
+            const inactiveBtn = tipo === 'line' ? btnCandle : btnLine;
+
+            activeBtn.classList.add('text-white');
+            activeBtn.classList.remove('text-gray-500');
+            inactiveBtn.classList.remove('text-white');
+            inactiveBtn.classList.add('text-gray-500');
+
+            // Move slider
+            if (typeSlider && toggleBar) {
+                const barRect = toggleBar.getBoundingClientRect();
+                const btnRect = activeBtn.getBoundingClientRect();
+                typeSlider.style.left = (btnRect.left - barRect.left) + 'px';
+                typeSlider.style.width = btnRect.width + 'px';
+            }
+        }
+
+        // Re-renderiza com os dados já cacheados (sem nova chamada de API)
+        const activeRangeBtn = document.querySelector('#chart-filters .chart-filter-btn.text-white');
+        const range = activeRangeBtn?.dataset?.range || '1D';
+        const cacheKey = `${symbol}_${range}`;
+        const cached = window.tempChartCache[cacheKey];
+        if (cached) {
+            renderPriceChart(cached, range);
+        }
+    };
+
+    window.mudarPeriodoGrafico = function (range, symbol) {
+        const isLight = document.body.classList.contains('light-mode');
+        const txtActive = isLight ? 'text-gray-800' : 'text-white';
+        const txtHover = isLight ? 'hover:text-gray-800' : 'hover:text-gray-300';
+
+        // 1. Volta todos os textos para cinza
+        const botoes = document.querySelectorAll('#chart-filters button');
+        botoes.forEach(btn => {
+            btn.classList.remove('text-white', 'text-gray-800');
+            btn.classList.add('text-gray-500', txtHover);
+        });
+
+        const activeBtn = document.getElementById(`btn-${range}`);
+        const slider = document.getElementById('cotacao-slider');
+
+        if (activeBtn) {
+            // 2. Acende o texto do botão clicado
+            activeBtn.classList.remove('text-gray-500', txtHover);
+            activeBtn.classList.add(txtActive);
+
+            // 3. Move o slider (animação mágica)
+            if (slider) {
+                slider.style.width = `${activeBtn.offsetWidth}px`;
+                slider.style.transform = `translateX(${activeBtn.offsetLeft}px)`;
+            }
+        }
+
+        carregarDadosGrafico(range, symbol);
+    };
+
+    function renderPriceChart(dataPoints, range) {
+        if (currentPriceChartType === 'candlestick') {
+            renderCandlestickChart(dataPoints, range);
         } else {
-            btnCandle.classList.add(...activeCls);  btnCandle.classList.remove(...inactiveCls);
-            btnLine.classList.remove(...activeCls);   btnLine.classList.add(...inactiveCls);
+            renderLineChart(dataPoints, range);
         }
     }
 
-    // Re-renderiza com os dados já cacheados (sem nova chamada de API)
-    const activeRangeBtn = document.querySelector('#chart-filters .chart-filter-btn.text-white');
-    const range = activeRangeBtn?.dataset?.range || '1D';
-    const cacheKey = `${symbol}_${range}`;
-    const cached = window.tempChartCache[cacheKey];
-    if (cached) {
-        renderPriceChart(cached, range);
-    }
-};
+    function renderLineChart(dataPoints, range) {
+        const wrapper = document.getElementById('chart-area-wrapper');
+        if (!wrapper) return;
 
-window.mudarPeriodoGrafico = function(range, symbol) {
-    // 1. Volta todos os textos para cinza
-    const botoes = document.querySelectorAll('#chart-filters button');
-    botoes.forEach(btn => {
-        btn.classList.remove('text-white');
-        btn.classList.add('text-gray-500', 'hover:text-gray-300');
-    });
-
-    const activeBtn = document.getElementById(`btn-${range}`);
-    const slider = document.getElementById('cotacao-slider');
-
-    if (activeBtn) {
-        // 2. Acende o texto do botão clicado
-        activeBtn.classList.remove('text-gray-500', 'hover:text-gray-300');
-        activeBtn.classList.add('text-white');
-
-        // 3. Move o slider (animação mágica)
-        if (slider) {
-            slider.style.width = `${activeBtn.offsetWidth}px`;
-            slider.style.transform = `translateX(${activeBtn.offsetLeft}px)`;
+        if (cotacaoChartInstance) {
+            cotacaoChartInstance.destroy();
+            cotacaoChartInstance = null;
         }
-    }
+        if (candlestickEventCleanup) { candlestickEventCleanup(); candlestickEventCleanup = null; }
 
-    carregarDadosGrafico(range, symbol);
-};
+        wrapper.innerHTML = '<canvas id="canvas-cotacao" style="width: 100%; height: 100%;"></canvas>';
+        const ctx = document.getElementById('canvas-cotacao').getContext('2d');
 
-function renderPriceChart(dataPoints, range) {
-    if (currentPriceChartType === 'candlestick') {
-        renderCandlestickChart(dataPoints, range);
-    } else {
-        renderLineChart(dataPoints, range);
-    }
-}
+        const labels = dataPoints.map(p => p.date);
+        const values = dataPoints.map(p => p.price);
 
-function renderLineChart(dataPoints, range) {
-    const wrapper = document.getElementById('chart-area-wrapper');
-    if (!wrapper) return;
+        const startPrice = dataPoints[0].open || values[0];
+        const endPrice = values[values.length - 1];
 
-    if (cotacaoChartInstance) {
-        cotacaoChartInstance.destroy();
-        cotacaoChartInstance = null;
-    }
-    if (candlestickEventCleanup) { candlestickEventCleanup(); candlestickEventCleanup = null; }
+        // ATUALIZAÇÃO DOS VALORES A/V/F (Interativo com o Dedo)
+        const updateHeaderStats = (currentPrice) => {
+            const elOpen = document.getElementById('stat-open');
+            const elClose = document.getElementById('stat-close');
+            const elVar = document.getElementById('stat-var');
 
-    wrapper.innerHTML = '<canvas id="canvas-cotacao" style="width: 100%; height: 100%;"></canvas>';
-    const ctx = document.getElementById('canvas-cotacao').getContext('2d');
+            if (!elOpen || !elClose || !elVar) return;
 
-    const labels = dataPoints.map(p => p.date);
-    const values = dataPoints.map(p => p.price);
-    
-    const startPrice = dataPoints[0].open || values[0]; 
-    const endPrice = values[values.length - 1];
+            elOpen.innerText = startPrice.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+            elClose.innerText = currentPrice.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
-    // ATUALIZAÇÃO DOS VALORES A/V/F (Interativo com o Dedo)
-    const updateHeaderStats = (currentPrice) => {
-        const elOpen = document.getElementById('stat-open');
-        const elClose = document.getElementById('stat-close');
-        const elVar = document.getElementById('stat-var');
+            const diff = currentPrice - startPrice;
+            const percent = (diff / startPrice) * 100;
+            const sign = diff >= 0 ? '+' : '';
 
-        if (!elOpen || !elClose || !elVar) return;
+            elVar.innerText = `${sign}${percent.toFixed(2).replace('.', ',')}%`;
+            // Sem text-xs para herdar o text-[9px] do pai
+            elVar.className = diff >= 0 ? 'text-[#00C805] font-bold ml-0.5' : 'text-[#FF3B30] font-bold ml-0.5';
+        };
 
-        elOpen.innerText = startPrice.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-        elClose.innerText = currentPrice.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-        
-        const diff = currentPrice - startPrice;
-        const percent = (diff / startPrice) * 100;
-        const sign = diff >= 0 ? '+' : '';
+        updateHeaderStats(endPrice); // Estado inicial (repouso)
 
-        elVar.innerText = `${sign}${percent.toFixed(2).replace('.', ',')}%`;
-        // Sem text-xs para herdar o text-[9px] do pai
-        elVar.className = diff >= 0 ? 'text-[#00C805] font-bold ml-0.5' : 'text-[#FF3B30] font-bold ml-0.5';
-    };
+        const isPositive = ((endPrice - startPrice) / startPrice) * 100 >= 0;
+        const colorLine = isPositive ? '#00C805' : '#FF3B30';
+        const colorFillStart = isPositive ? 'rgba(0, 200, 5, 0.15)' : 'rgba(255, 59, 48, 0.15)';
+        const colorCrosshairLine = '#A3A3A3';
+        const colorBadgeBackground = '#404040';
+        const colorBadgeText = '#FFFFFF';
 
-    updateHeaderStats(endPrice); // Estado inicial (repouso)
+        const gradient = ctx.createLinearGradient(0, 0, 0, 300);
+        gradient.addColorStop(0, colorFillStart);
+        gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
 
-    const isPositive = ((endPrice - startPrice) / startPrice) * 100 >= 0;
-    const colorLine = isPositive ? '#00C805' : '#FF3B30'; 
-    const colorFillStart = isPositive ? 'rgba(0, 200, 5, 0.15)' : 'rgba(255, 59, 48, 0.15)';
-    const colorCrosshairLine = '#A3A3A3'; 
-    const colorBadgeBackground = '#404040'; 
-    const colorBadgeText = '#FFFFFF'; 
+        const isIntraday = (range === '1D' || range === '5D');
 
-    const gradient = ctx.createLinearGradient(0, 0, 0, 300);
-    gradient.addColorStop(0, colorFillStart);
-    gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
+        Chart.Tooltip.positioners.followFinger = function (elements, eventPosition) {
+            if (!elements.length) return false;
+            return { x: elements[0].element.x, y: eventPosition.y };
+        };
 
-    const isIntraday = (range === '1D' || range === '5D');
+        const lastPricePlugin = {
+            id: 'lastPriceLine',
+            afterDraw: (chart) => {
+                const ctx = chart.ctx;
+                const meta = chart.getDatasetMeta(0);
+                if (!meta.data || meta.data.length === 0) return;
 
-    Chart.Tooltip.positioners.followFinger = function(elements, eventPosition) {
-        if (!elements.length) return false;
-        return { x: elements[0].element.x, y: eventPosition.y };
-    };
+                const lastPoint = meta.data[meta.data.length - 1];
+                const y = lastPoint.y;
+                const rightEdge = chart.chartArea.right;
+                const leftEdge = chart.chartArea.left;
 
-    const lastPricePlugin = {
-        id: 'lastPriceLine',
-        afterDraw: (chart) => {
-            const ctx = chart.ctx;
-            const meta = chart.getDatasetMeta(0);
-            if (!meta.data || meta.data.length === 0) return;
+                ctx.save();
+                ctx.beginPath();
+                ctx.moveTo(leftEdge, y);
+                ctx.lineTo(rightEdge, y);
+                ctx.lineWidth = 1;
+                ctx.strokeStyle = colorLine;
+                ctx.setLineDash([2, 2]);
+                ctx.stroke();
+                ctx.setLineDash([]);
 
-            const lastPoint = meta.data[meta.data.length - 1];
-            const y = lastPoint.y; 
-            const rightEdge = chart.chartArea.right; 
-            const leftEdge = chart.chartArea.left;
+                const text = endPrice.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                ctx.font = 'bold 9px sans-serif';
+                const textWidth = ctx.measureText(text).width;
+                const paddingX = 4;
+                const badgeHeight = 16;
+                const badgeWidth = textWidth + (paddingX * 2);
+                const badgeX = rightEdge;
+                const badgeY = y - (badgeHeight / 2);
 
-            ctx.save();
-            ctx.beginPath();
-            ctx.moveTo(leftEdge, y);
-            ctx.lineTo(rightEdge, y);
-            ctx.lineWidth = 1;
-            ctx.strokeStyle = colorLine; 
-            ctx.setLineDash([2, 2]); 
-            ctx.stroke();
-            ctx.setLineDash([]);
+                ctx.fillStyle = colorLine;
+                ctx.beginPath();
+                ctx.roundRect(badgeX, badgeY, badgeWidth, badgeHeight, 3);
+                ctx.fill();
 
-            const text = endPrice.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-            ctx.font = 'bold 9px sans-serif'; 
-            const textWidth = ctx.measureText(text).width;
-            const paddingX = 4;
-            const badgeHeight = 16; 
-            const badgeWidth = textWidth + (paddingX * 2);
-            const badgeX = rightEdge; 
-            const badgeY = y - (badgeHeight / 2);
+                ctx.fillStyle = '#FFFFFF';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(text, badgeX + paddingX, y + 1);
+                ctx.restore();
+            }
+        };
 
-            ctx.fillStyle = colorLine;
-            ctx.beginPath();
-            ctx.roundRect(badgeX, badgeY, badgeWidth, badgeHeight, 3);
-            ctx.fill();
-
-            ctx.fillStyle = '#FFFFFF';
-            ctx.textBaseline = 'middle';
-            ctx.fillText(text, badgeX + paddingX, y + 1); 
-            ctx.restore();
-        }
-    };
-
-    const activeCrosshairPlugin = {
-        id: 'activeCrosshair',
-        afterDraw: (chart) => {
-            if (!chart.tooltip?._active?.length || !chart.tooltip._eventPosition) {
-                if (chart.lastHeaderUpdate !== 'end') {
-                    updateHeaderStats(endPrice);
-                    chart.lastHeaderUpdate = 'end';
+        const activeCrosshairPlugin = {
+            id: 'activeCrosshair',
+            afterDraw: (chart) => {
+                if (!chart.tooltip?._active?.length || !chart.tooltip._eventPosition) {
+                    if (chart.lastHeaderUpdate !== 'end') {
+                        updateHeaderStats(endPrice);
+                        chart.lastHeaderUpdate = 'end';
+                    }
+                    return;
                 }
-                return;
+
+                const event = chart.tooltip._eventPosition;
+                const ctx = chart.ctx;
+                const x = event.x;
+                const y = event.y;
+
+                const topY = chart.scales.y.top;
+                const bottomY = chart.scales.y.bottom;
+                const leftX = chart.scales.x.left;
+                const rightX = chart.scales.x.right;
+
+                if (x < leftX || x > rightX || y < topY || y > bottomY) return;
+
+                // Atualiza o valor F: e V: em tempo real enquanto arrasta o dedo
+                const activePoint = chart.tooltip._active[0];
+                const focusedPrice = dataPoints[activePoint.index].price;
+                if (chart.lastHeaderValue !== focusedPrice) {
+                    updateHeaderStats(focusedPrice);
+                    chart.lastHeaderValue = focusedPrice;
+                    chart.lastHeaderUpdate = 'active';
+                }
+
+                ctx.save();
+                ctx.lineWidth = 1;
+                ctx.strokeStyle = colorCrosshairLine;
+                ctx.setLineDash([4, 4]);
+
+                // Eixo X
+                ctx.beginPath();
+                ctx.moveTo(x, topY);
+                ctx.lineTo(x, bottomY);
+                ctx.stroke();
+
+                const xIndex = chart.scales.x.getValueForPixel(x);
+                const validIndex = Math.max(0, Math.min(xIndex, dataPoints.length - 1));
+                const rawDate = new Date(dataPoints[validIndex].date);
+
+                let dateText = "";
+                if (isIntraday) {
+                    dateText = rawDate.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }) + ' ' +
+                        rawDate.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+                } else {
+                    dateText = rawDate.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit' });
+                }
+
+                ctx.font = 'bold 9px sans-serif';
+                const dateWidth = ctx.measureText(dateText).width + 12;
+                const dateHeight = 16;
+                let dateBadgeX = x - (dateWidth / 2);
+                if (dateBadgeX < leftX) dateBadgeX = leftX;
+                if (dateBadgeX + dateWidth > rightX) dateBadgeX = rightX - dateWidth;
+                const dateBadgeY = bottomY + 2;
+
+                ctx.fillStyle = colorBadgeBackground;
+                ctx.beginPath();
+                ctx.roundRect(dateBadgeX, dateBadgeY, dateWidth, dateHeight, 3);
+                ctx.fill();
+
+                ctx.fillStyle = colorBadgeText;
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(dateText, dateBadgeX + (dateWidth / 2), dateBadgeY + (dateHeight / 2) + 1);
+
+                // Eixo Y
+                ctx.beginPath();
+                ctx.moveTo(leftX, y);
+                ctx.lineTo(rightX, y);
+                ctx.stroke();
+
+                const cursorPrice = chart.scales.y.getValueForPixel(y);
+                const priceText = cursorPrice.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                const priceWidth = ctx.measureText(priceText).width + 8;
+                const priceHeight = 16;
+                const priceBadgeX = rightX;
+                let priceBadgeY = y - (priceHeight / 2);
+
+                if (priceBadgeY < topY) priceBadgeY = topY;
+                if (priceBadgeY + priceHeight > bottomY) priceBadgeY = bottomY - priceHeight;
+
+                ctx.fillStyle = colorBadgeBackground;
+                ctx.beginPath();
+                ctx.roundRect(priceBadgeX, priceBadgeY, priceWidth, priceHeight, 3);
+                ctx.fill();
+
+                ctx.fillStyle = colorBadgeText;
+                ctx.textAlign = 'left';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(priceText, priceBadgeX + 4, priceBadgeY + (priceHeight / 2) + 1);
+
+                ctx.restore();
             }
-            
-            const event = chart.tooltip._eventPosition;
-            const ctx = chart.ctx;
-            const x = event.x; 
-            const y = event.y; 
+        };
 
-            const topY = chart.scales.y.top;
-            const bottomY = chart.scales.y.bottom;
-            const leftX = chart.scales.x.left;
-            const rightX = chart.scales.x.right;
-
-            if (x < leftX || x > rightX || y < topY || y > bottomY) return;
-
-            // Atualiza o valor F: e V: em tempo real enquanto arrasta o dedo
-            const activePoint = chart.tooltip._active[0];
-            const focusedPrice = dataPoints[activePoint.index].price;
-            if (chart.lastHeaderValue !== focusedPrice) {
-                updateHeaderStats(focusedPrice);
-                chart.lastHeaderValue = focusedPrice;
-                chart.lastHeaderUpdate = 'active';
-            }
-
-            ctx.save();
-            ctx.lineWidth = 1;
-            ctx.strokeStyle = colorCrosshairLine; 
-            ctx.setLineDash([4, 4]);
-
-            // Eixo X
-            ctx.beginPath();
-            ctx.moveTo(x, topY);
-            ctx.lineTo(x, bottomY);
-            ctx.stroke();
-
-            const xIndex = chart.scales.x.getValueForPixel(x);
-            const validIndex = Math.max(0, Math.min(xIndex, dataPoints.length - 1));
-            const rawDate = new Date(dataPoints[validIndex].date);
-
-            let dateText = "";
-            if (isIntraday) {
-                 dateText = rawDate.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }) + ' ' + 
-                            rawDate.toLocaleTimeString('pt-BR', { hour: '2-digit', minute:'2-digit' });
-            } else {
-                 dateText = rawDate.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit' });
-            }
-
-            ctx.font = 'bold 9px sans-serif';
-            const dateWidth = ctx.measureText(dateText).width + 12; 
-            const dateHeight = 16;
-            let dateBadgeX = x - (dateWidth / 2);
-            if (dateBadgeX < leftX) dateBadgeX = leftX;
-            if (dateBadgeX + dateWidth > rightX) dateBadgeX = rightX - dateWidth;
-            const dateBadgeY = bottomY + 2; 
-
-            ctx.fillStyle = colorBadgeBackground; 
-            ctx.beginPath();
-            ctx.roundRect(dateBadgeX, dateBadgeY, dateWidth, dateHeight, 3);
-            ctx.fill();
-
-            ctx.fillStyle = colorBadgeText;
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
-            ctx.fillText(dateText, dateBadgeX + (dateWidth / 2), dateBadgeY + (dateHeight / 2) + 1);
-
-            // Eixo Y
-            ctx.beginPath();
-            ctx.moveTo(leftX, y); 
-            ctx.lineTo(rightX, y);
-            ctx.stroke();
-
-            const cursorPrice = chart.scales.y.getValueForPixel(y);
-            const priceText = cursorPrice.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-            const priceWidth = ctx.measureText(priceText).width + 8;
-            const priceHeight = 16;
-            const priceBadgeX = rightX;
-            let priceBadgeY = y - (priceHeight / 2);
-
-            if (priceBadgeY < topY) priceBadgeY = topY;
-            if (priceBadgeY + priceHeight > bottomY) priceBadgeY = bottomY - priceHeight;
-
-            ctx.fillStyle = colorBadgeBackground; 
-            ctx.beginPath();
-            ctx.roundRect(priceBadgeX, priceBadgeY, priceWidth, priceHeight, 3);
-            ctx.fill();
-
-            ctx.fillStyle = colorBadgeText;
-            ctx.textAlign = 'left';
-            ctx.textBaseline = 'middle';
-            ctx.fillText(priceText, priceBadgeX + 4, priceBadgeY + (priceHeight / 2) + 1);
-
-            ctx.restore();
-        }
-    };
-
-    cotacaoChartInstance = new Chart(ctx, {
-        type: 'line',
-        data: {
-            labels: labels,
-            datasets: [{
-                data: values,
-                borderColor: colorLine,
-                backgroundColor: gradient,
-                borderWidth: 1.5,
-                pointRadius: 0,
-                pointHitRadius: 20, 
-                pointHoverRadius: 4,
-                pointHoverBackgroundColor: colorLine,
-                pointHoverBorderWidth: 0,
-                fill: true,
-                tension: 0.05
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            layout: { padding: { left: 0, right: 36, top: 10, bottom: 20 } },
-            plugins: {
-                legend: { display: false },
-                tooltip: {
-                    enabled: true,
-                    position: 'followFinger', 
-                    yAlign: 'bottom',
-                    caretPadding: 35,
-                    mode: 'index',
-                    intersect: false,
-                    backgroundColor: 'rgba(20, 20, 22, 0.95)',
-                    titleColor: '#ffffff',
-                    bodyColor: '#ffffff',
-                    borderColor: '#333333',
-                    borderWidth: 1,
-                    padding: 10,
-                    cornerRadius: 8,
-                    displayColors: false,
-                    titleFont: { family: "'Inter', sans-serif", size: 11, weight: 'bold', color: '#aaaaaa' },
-                    bodyFont: { family: "'Inter', sans-serif", size: 13, weight: 'bold' },
-                    callbacks: {
-                        title: function(context) {
-                            const date = new Date(context[0].label);
-                            if (isIntraday) {
-                                return date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }) + ' ' + 
-                                       date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+        cotacaoChartInstance = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [{
+                    data: values,
+                    borderColor: colorLine,
+                    backgroundColor: gradient,
+                    borderWidth: 1.5,
+                    pointRadius: 0,
+                    pointHitRadius: 20,
+                    pointHoverRadius: 4,
+                    pointHoverBackgroundColor: colorLine,
+                    pointHoverBorderWidth: 0,
+                    fill: true,
+                    tension: 0.05
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                layout: { padding: { left: 0, right: 36, top: 10, bottom: 20 } },
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        enabled: true,
+                        position: 'followFinger',
+                        yAlign: 'bottom',
+                        caretPadding: 35,
+                        mode: 'index',
+                        intersect: false,
+                        backgroundColor: 'rgba(20, 20, 22, 0.95)',
+                        titleColor: '#ffffff',
+                        bodyColor: '#ffffff',
+                        borderColor: '#333333',
+                        borderWidth: 1,
+                        padding: 10,
+                        cornerRadius: 8,
+                        displayColors: false,
+                        titleFont: { family: "'Inter', sans-serif", size: 11, weight: 'bold', color: '#aaaaaa' },
+                        bodyFont: { family: "'Inter', sans-serif", size: 13, weight: 'bold' },
+                        callbacks: {
+                            title: function (context) {
+                                const date = new Date(context[0].label);
+                                if (isIntraday) {
+                                    return date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }) + ' ' +
+                                        date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+                                }
+                                return date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit' });
+                            },
+                            label: function (context) {
+                                // TOOLTIP LIMPO: APENAS O PREÇO SEM "Fechamento:"
+                                return context.parsed.y.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
                             }
-                            return date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit' });
-                        },
-                        label: function(context) {
-                            // TOOLTIP LIMPO: APENAS O PREÇO SEM "Fechamento:"
-                            return context.parsed.y.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
                         }
                     }
-                }
+                },
+                scales: { x: { display: false }, y: { display: false } },
+                interaction: { mode: 'nearest', axis: 'x', intersect: false },
+                animation: { duration: 0 }
             },
-            scales: { x: { display: false }, y: { display: false } },
-            interaction: { mode: 'nearest', axis: 'x', intersect: false },
-            animation: { duration: 0 }
-        },
-        plugins: [lastPricePlugin, activeCrosshairPlugin]
-    });
-}
-
-function renderCandlestickChart(dataPoints, range) {
-    const wrapper = document.getElementById('chart-area-wrapper');
-    if (!wrapper) return;
-
-    if (cotacaoChartInstance) { cotacaoChartInstance.destroy(); cotacaoChartInstance = null; }
-    if (candlestickEventCleanup) { candlestickEventCleanup(); candlestickEventCleanup = null; }
-
-    wrapper.innerHTML = '<canvas id="canvas-cotacao" style="position:absolute;inset:0;width:100%;height:100%;cursor:crosshair;touch-action:none;"></canvas>';
-    const canvas = document.getElementById('canvas-cotacao');
-    const dpr    = window.devicePixelRatio || 1;
-    const rect   = wrapper.getBoundingClientRect();
-
-    canvas.width  = rect.width  * dpr;
-    canvas.height = rect.height * dpr;
-    canvas.style.width  = rect.width  + 'px';
-    canvas.style.height = rect.height + 'px';
-
-    const ctx = canvas.getContext('2d');
-    ctx.scale(dpr, dpr);
-
-    const W = rect.width;
-    const H = rect.height;
-
-    // Layout
-    const NAV_H   = 28;   // altura do navegador inferior
-    const NAV_GAP = 6;    // espaço entre gráfico e nav
-    const PAD = { top: 10, right: 52, bottom: 22 + NAV_GAP + NAV_H, left: 4 };
-    const chartW  = W - PAD.left - PAD.right;
-    const chartH  = H - PAD.top  - PAD.bottom;
-    const NAV_Y   = H - NAV_H - 2;           // topo do navegador
-    const NAV_X   = PAD.left;
-    const NAV_W   = chartW;
-
-    const isIntraday = range === '1D' || range === '5D';
-
-    const candles = dataPoints.map(p => ({
-        date:  p.date,
-        open:  p.open  ?? p.price,
-        high:  p.high  ?? p.price,
-        low:   p.low   ?? p.price,
-        close: p.price
-    }));
-    const N = candles.length;
-
-    // ─── ESTADO DE VISTA (zoom/pan) ────────────────────────────────────────────
-    // viewStart / viewEnd: índices dos candles visíveis no gráfico principal
-    const MIN_VISIBLE = Math.max(5, Math.round(N * 0.02));
-    const MAX_VISIBLE = N;
-
-    // Zoom inicial: para ranges grandes, começa mostrando os últimos ~80 candles
-    const DEFAULT_VISIBLE = { '1D': N, '5D': N, '1M': N, '6M': N, 'YTD': N, '1A': N, '5A': 80, 'Tudo': 80 };
-    let visibleCount = Math.min(N, DEFAULT_VISIBLE[range] ?? N);
-    let viewStart    = Math.max(0, N - visibleCount);
-    let viewEnd      = N - 1;
-
-    // Preço de referência global (para variação % no header)
-    const refPrice = candles[0].close;
-    const endPrice = candles[N - 1].close;
-
-// ─── HEADER STATS ──────────────────────────────────────────────────────────
-    const updateHeaderStats = (open, close) => {
-        const elOpen  = document.getElementById('stat-open');
-        const elClose = document.getElementById('stat-close');
-        const elVar   = document.getElementById('stat-var');
-        if (!elOpen || !elClose || !elVar) return;
-
-        const varPct = ((close - open) / open) * 100;
-        const isPos = varPct >= 0;
-
-        elOpen.textContent = open.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-        
-        elClose.textContent = close.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-        elClose.style.color = ''; // Limpa a cor que ficava verde/vermelha no fechamento
-
-        elVar.textContent = `${isPos ? '+' : ''}${varPct.toFixed(2).replace('.', ',')}%`;
-        // CORREÇÃO: Usando o mesmo estilo compacto e sem o text-xs gigante
-        elVar.className = isPos ? 'text-[#00C805] font-bold ml-0.5' : 'text-[#FF3B30] font-bold ml-0.5';
-    };
-    
-    // Inicializa com a abertura do primeiro candle visível e o fechamento do último visível
-    updateHeaderStats(candles[viewStart].open, candles[viewEnd].close);
-
-    // ─── ESCALAS DINÂMICAS (apenas para candles visíveis) ──────────────────────
-    function getVisibleScale() {
-        const visible = candles.slice(viewStart, viewEnd + 1);
-        const vHigh = Math.max(...visible.map(c => c.high));
-        const vLow  = Math.min(...visible.map(c => c.low));
-        const vRange = vHigh - vLow || vHigh * 0.02;
-        const pad   = vRange * 0.1;
-        return { minP: vLow - pad, maxP: vHigh + pad };
-    }
-
-    function toX(globalIdx) {
-        const visCount = viewEnd - viewStart + 1;
-        const localIdx = globalIdx - viewStart;
-        return PAD.left + (localIdx + 0.5) * (chartW / visCount);
-    }
-
-    function toY(p, minP, maxP) {
-        return PAD.top + chartH - ((p - minP) / (maxP - minP)) * chartH;
-    }
-
-    // Converte posição X do canvas → índice global do candle
-    function xToGlobalIdx(pixX) {
-        const visCount = viewEnd - viewStart + 1;
-        const localIdx = Math.round((pixX - PAD.left) / (chartW / visCount) - 0.5);
-        return Math.max(viewStart, Math.min(viewEnd, viewStart + localIdx));
-    }
-
-    // Converte índice global → posição X no navegador
-    function globalIdxToNavX(idx) {
-        return NAV_X + (idx / (N - 1)) * NAV_W;
-    }
-
-    // ─── ESTADO HOVER ──────────────────────────────────────────────────────────
-    let hoverIdx = null;
-    let rafId    = null;
-
-    function requestDraw() {
-        if (rafId) cancelAnimationFrame(rafId);
-        rafId = requestAnimationFrame(draw);
-    }
-
-    // ─── DRAW PRINCIPAL ────────────────────────────────────────────────────────
-    function draw() {
-        rafId = null;
-        ctx.clearRect(0, 0, W, H);
-
-        const { minP, maxP } = getVisibleScale();
-        const visCount  = viewEnd - viewStart + 1;
-        const slotW     = chartW / visCount;
-        const candleW   = Math.max(1, Math.min(14, slotW * 0.65));
-        const visCandles = candles.slice(viewStart, viewEnd + 1);
-
-        // ── Linhas de grade Y (preço) ──
-        const priceRange = maxP - minP;
-        const rawStep    = priceRange / 4;
-        const mag        = Math.pow(10, Math.floor(Math.log10(rawStep)));
-        const niceStep   = Math.ceil(rawStep / mag) * mag;
-        const gridStart  = Math.ceil(minP / niceStep) * niceStep;
-
-        ctx.save();
-        ctx.beginPath();
-        ctx.rect(PAD.left, PAD.top, chartW, chartH);
-        ctx.clip();
-
-        for (let p = gridStart; p <= maxP; p += niceStep) {
-            const gy = toY(p, minP, maxP);
-            ctx.beginPath();
-            ctx.strokeStyle = 'rgba(255,255,255,0.04)';
-            ctx.lineWidth   = 1;
-            ctx.moveTo(PAD.left, gy);
-            ctx.lineTo(W - PAD.right, gy);
-            ctx.stroke();
-
-            // Label preço
-            ctx.fillStyle    = 'rgba(150,150,150,0.7)';
-            ctx.font         = '8px sans-serif';
-            ctx.textAlign    = 'left';
-            ctx.textBaseline = 'middle';
-            ctx.fillText(
-                p.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
-                W - PAD.right + 3, gy
-            );
-        }
-        ctx.restore();
-
-        // ── Labels datas no eixo X ──
-        const maxLabels = Math.floor(chartW / 55);
-        const labelStep = Math.max(1, Math.floor(visCount / maxLabels));
-        ctx.save();
-        ctx.font = '8px sans-serif';
-        ctx.fillStyle = 'rgba(150,150,150,0.7)';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'top';
-        visCandles.forEach((c, li) => {
-            if (li % labelStep !== 0) return;
-            const gx  = toX(viewStart + li);
-            const raw = new Date(c.date);
-            let label;
-            if (isIntraday) {
-                label = raw.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-            } else if (visCount <= 60) {
-                label = raw.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
-            } else {
-                label = raw.toLocaleDateString('pt-BR', { month: 'short', year: '2-digit' });
-            }
-            ctx.fillText(label, gx, PAD.top + chartH + 3);
+            plugins: [lastPricePlugin, activeCrosshairPlugin]
         });
-        ctx.restore();
+    }
 
-        // ── Candles ──
-        ctx.save();
-        ctx.beginPath();
-        ctx.rect(PAD.left, PAD.top, chartW, chartH);
-        ctx.clip();
+    function renderCandlestickChart(dataPoints, range) {
+        const wrapper = document.getElementById('chart-area-wrapper');
+        if (!wrapper) return;
 
-        visCandles.forEach((c, li) => {
-            const gi     = viewStart + li;
-            const x      = toX(gi);
-            const openY  = toY(c.open,  minP, maxP);
-            const closeY = toY(c.close, minP, maxP);
-            const highY  = toY(c.high,  minP, maxP);
-            const lowY   = toY(c.low,   minP, maxP);
-            const isGreen  = c.close >= c.open;
-            const baseColor = isGreen ? '#00C805' : '#FF3B30';
-            const fillColor = isGreen ? 'rgba(0,200,5,0.22)' : 'rgba(255,59,48,0.22)';
-            const highlighted = hoverIdx === gi;
+        if (cotacaoChartInstance) { cotacaoChartInstance.destroy(); cotacaoChartInstance = null; }
+        if (candlestickEventCleanup) { candlestickEventCleanup(); candlestickEventCleanup = null; }
 
-            ctx.globalAlpha = (hoverIdx !== null && !highlighted) ? 0.4 : 1;
+        wrapper.innerHTML = '<canvas id="canvas-cotacao" style="position:absolute;inset:0;width:100%;height:100%;cursor:crosshair;touch-action:none;"></canvas>';
+        const canvas = document.getElementById('canvas-cotacao');
+        const dpr = window.devicePixelRatio || 1;
+        const rect = wrapper.getBoundingClientRect();
 
-            // Pavio
-            ctx.beginPath();
-            ctx.moveTo(x, highY);
-            ctx.lineTo(x, lowY);
-            ctx.strokeStyle = baseColor;
-            ctx.lineWidth   = highlighted ? 1.5 : 1;
-            ctx.stroke();
+        canvas.width = rect.width * dpr;
+        canvas.height = rect.height * dpr;
+        canvas.style.width = rect.width + 'px';
+        canvas.style.height = rect.height + 'px';
 
-            // Corpo
-            const bodyTop = Math.min(openY, closeY);
-            const bodyH   = Math.max(1, Math.abs(openY - closeY));
-            const bW      = highlighted ? candleW * 1.25 : candleW;
-            ctx.fillStyle   = fillColor;
-            ctx.strokeStyle = baseColor;
-            ctx.lineWidth   = highlighted ? 1.5 : 1;
-            ctx.fillRect(  x - bW / 2, bodyTop, bW, bodyH);
-            ctx.strokeRect(x - bW / 2, bodyTop, bW, bodyH);
-        });
+        const ctx = canvas.getContext('2d');
+        ctx.scale(dpr, dpr);
 
-        ctx.globalAlpha = 1;
-        ctx.restore();
+        const W = rect.width;
+        const H = rect.height;
 
-        // ── Linha do último preço visível (tracejada) ──
-        const lastVisClose = candles[viewEnd].close;
-        const firstVisClose= candles[viewStart].close;
-        const lastColor = lastVisClose >= firstVisClose ? '#00C805' : '#FF3B30';
-        const lastY     = toY(lastVisClose, minP, maxP);
+        // Layout
+        const NAV_H = 28;   // altura do navegador inferior
+        const NAV_GAP = 6;    // espaço entre gráfico e nav
+        const PAD = { top: 10, right: 52, bottom: 22 + NAV_GAP + NAV_H, left: 4 };
+        const chartW = W - PAD.left - PAD.right;
+        const chartH = H - PAD.top - PAD.bottom;
+        const NAV_Y = H - NAV_H - 2;           // topo do navegador
+        const NAV_X = PAD.left;
+        const NAV_W = chartW;
 
-        if (lastY >= PAD.top && lastY <= PAD.top + chartH) {
-            ctx.beginPath();
-            ctx.setLineDash([2, 3]);
-            ctx.strokeStyle = lastColor;
-            ctx.lineWidth   = 1;
-            ctx.moveTo(PAD.left, lastY);
-            ctx.lineTo(W - PAD.right, lastY);
-            ctx.stroke();
-            ctx.setLineDash([]);
+        const isIntraday = range === '1D' || range === '5D';
 
-            // Badge preço
-            const badgeTxt = lastVisClose.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-            ctx.font = 'bold 9px sans-serif';
-            const tw   = ctx.measureText(badgeTxt).width;
-            const bPX  = 4;
-            const bH   = 16;
-            const bW2  = tw + bPX * 2;
-            const bX   = W - PAD.right;
-            let   bY   = lastY - bH / 2;
-            if (bY < PAD.top) bY = PAD.top;
-            if (bY + bH > PAD.top + chartH) bY = PAD.top + chartH - bH;
-            ctx.fillStyle = lastColor;
-            ctx.beginPath(); ctx.roundRect(bX, bY, bW2, bH, 3); ctx.fill();
-            ctx.fillStyle = '#fff';
-            ctx.textBaseline = 'middle'; ctx.textAlign = 'left';
-            ctx.fillText(badgeTxt, bX + bPX, bY + bH / 2 + 1);
+        const candles = dataPoints.map(p => ({
+            date: p.date,
+            open: p.open ?? p.price,
+            high: p.high ?? p.price,
+            low: p.low ?? p.price,
+            close: p.price
+        }));
+        const N = candles.length;
+
+        // ─── ESTADO DE VISTA (zoom/pan) ────────────────────────────────────────────
+        // viewStart / viewEnd: índices dos candles visíveis no gráfico principal
+        const MIN_VISIBLE = Math.max(5, Math.round(N * 0.02));
+        const MAX_VISIBLE = N;
+
+        // Zoom inicial: para ranges grandes, começa mostrando os últimos ~80 candles
+        const DEFAULT_VISIBLE = { '1D': N, '5D': N, '1M': N, '6M': N, 'YTD': N, '1A': N, '5A': 80, 'Tudo': 80 };
+        let visibleCount = Math.min(N, DEFAULT_VISIBLE[range] ?? N);
+        let viewStart = Math.max(0, N - visibleCount);
+        let viewEnd = N - 1;
+
+        // Preço de referência global (para variação % no header)
+        const refPrice = candles[0].close;
+        const endPrice = candles[N - 1].close;
+
+        // ─── HEADER STATS ──────────────────────────────────────────────────────────
+        const updateHeaderStats = (open, close) => {
+            const elOpen = document.getElementById('stat-open');
+            const elClose = document.getElementById('stat-close');
+            const elVar = document.getElementById('stat-var');
+            if (!elOpen || !elClose || !elVar) return;
+
+            const varPct = ((close - open) / open) * 100;
+            const isPos = varPct >= 0;
+
+            elOpen.textContent = open.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+
+            elClose.textContent = close.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+            elClose.style.color = ''; // Limpa a cor que ficava verde/vermelha no fechamento
+
+            elVar.textContent = `${isPos ? '+' : ''}${varPct.toFixed(2).replace('.', ',')}%`;
+            // CORREÇÃO: Usando o mesmo estilo compacto e sem o text-xs gigante
+            elVar.className = isPos ? 'text-[#00C805] font-bold ml-0.5' : 'text-[#FF3B30] font-bold ml-0.5';
+        };
+
+        // Inicializa com a abertura do primeiro candle visível e o fechamento do último visível
+        updateHeaderStats(candles[viewStart].open, candles[viewEnd].close);
+
+        // ─── ESCALAS DINÂMICAS (apenas para candles visíveis) ──────────────────────
+        function getVisibleScale() {
+            const visible = candles.slice(viewStart, viewEnd + 1);
+            const vHigh = Math.max(...visible.map(c => c.high));
+            const vLow = Math.min(...visible.map(c => c.low));
+            const vRange = vHigh - vLow || vHigh * 0.02;
+            const pad = vRange * 0.1;
+            return { minP: vLow - pad, maxP: vHigh + pad };
         }
 
-        // ── Crosshair + Tooltip hover ──
-        if (hoverIdx !== null && hoverIdx >= viewStart && hoverIdx <= viewEnd) {
-            const x   = toX(hoverIdx);
-            const c   = candles[hoverIdx];
-            const cY  = toY(c.close, minP, maxP);
+        function toX(globalIdx) {
+            const visCount = viewEnd - viewStart + 1;
+            const localIdx = globalIdx - viewStart;
+            return PAD.left + (localIdx + 0.5) * (chartW / visCount);
+        }
 
-            // Linha vertical
+        function toY(p, minP, maxP) {
+            return PAD.top + chartH - ((p - minP) / (maxP - minP)) * chartH;
+        }
+
+        // Converte posição X do canvas → índice global do candle
+        function xToGlobalIdx(pixX) {
+            const visCount = viewEnd - viewStart + 1;
+            const localIdx = Math.round((pixX - PAD.left) / (chartW / visCount) - 0.5);
+            return Math.max(viewStart, Math.min(viewEnd, viewStart + localIdx));
+        }
+
+        // Converte índice global → posição X no navegador
+        function globalIdxToNavX(idx) {
+            return NAV_X + (idx / (N - 1)) * NAV_W;
+        }
+
+        // ─── ESTADO HOVER ──────────────────────────────────────────────────────────
+        let hoverIdx = null;
+        let rafId = null;
+
+        function requestDraw() {
+            if (rafId) cancelAnimationFrame(rafId);
+            rafId = requestAnimationFrame(draw);
+        }
+
+        // ─── DRAW PRINCIPAL ────────────────────────────────────────────────────────
+        function draw() {
+            rafId = null;
+            ctx.clearRect(0, 0, W, H);
+
+            const { minP, maxP } = getVisibleScale();
+            const visCount = viewEnd - viewStart + 1;
+            const slotW = chartW / visCount;
+            const candleW = Math.max(1, Math.min(14, slotW * 0.65));
+            const visCandles = candles.slice(viewStart, viewEnd + 1);
+
+            // ── Linhas de grade Y (preço) ──
+            const priceRange = maxP - minP;
+            const rawStep = priceRange / 4;
+            const mag = Math.pow(10, Math.floor(Math.log10(rawStep)));
+            const niceStep = Math.ceil(rawStep / mag) * mag;
+            const gridStart = Math.ceil(minP / niceStep) * niceStep;
+
             ctx.save();
             ctx.beginPath();
             ctx.rect(PAD.left, PAD.top, chartW, chartH);
             ctx.clip();
-            ctx.beginPath();
-            ctx.setLineDash([4, 4]);
-            ctx.strokeStyle = 'rgba(163,163,163,0.45)';
-            ctx.lineWidth   = 1;
-            ctx.moveTo(x, PAD.top);
-            ctx.lineTo(x, PAD.top + chartH);
-            ctx.stroke();
-            // Linha horizontal
-            ctx.beginPath();
-            ctx.moveTo(PAD.left, cY);
-            ctx.lineTo(W - PAD.right, cY);
-            ctx.stroke();
-            ctx.setLineDash([]);
+
+            for (let p = gridStart; p <= maxP; p += niceStep) {
+                const gy = toY(p, minP, maxP);
+                ctx.beginPath();
+                ctx.strokeStyle = 'rgba(255,255,255,0.04)';
+                ctx.lineWidth = 1;
+                ctx.moveTo(PAD.left, gy);
+                ctx.lineTo(W - PAD.right, gy);
+                ctx.stroke();
+
+                // Label preço
+                ctx.fillStyle = 'rgba(150,150,150,0.7)';
+                ctx.font = '8px sans-serif';
+                ctx.textAlign = 'left';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(
+                    p.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
+                    W - PAD.right + 3, gy
+                );
+            }
             ctx.restore();
 
-            // Badge data (eixo X)
-            const rawDate = new Date(c.date);
-            let dateText;
-            if (isIntraday) {
-                dateText = rawDate.toLocaleDateString('pt-BR', { day:'2-digit', month:'2-digit' })
-                         + ' ' + rawDate.toLocaleTimeString('pt-BR', { hour:'2-digit', minute:'2-digit' });
-            } else {
-                dateText = rawDate.toLocaleDateString('pt-BR', { day:'2-digit', month:'2-digit', year:'2-digit' });
-            }
-            ctx.font = 'bold 9px sans-serif';
-            const dW  = ctx.measureText(dateText).width + 12;
-            const dH  = 16;
-            let dX    = x - dW / 2;
-            if (dX < PAD.left) dX = PAD.left;
-            if (dX + dW > W - PAD.right) dX = W - PAD.right - dW;
-            const dY = PAD.top + chartH + 3;
-            ctx.fillStyle = '#404040';
-            ctx.beginPath(); ctx.roundRect(dX, dY, dW, dH, 3); ctx.fill();
-            ctx.fillStyle = '#fff'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-            ctx.fillText(dateText, dX + dW / 2, dY + dH / 2 + 1);
-
-            // Badge preço (eixo Y)
-            const priceTxt = c.close.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-            ctx.font = 'bold 9px sans-serif';
-            const pW = ctx.measureText(priceTxt).width + 8;
-            const pH = 16;
-            const pX = W - PAD.right;
-            let   pY = cY - pH / 2;
-            if (pY < PAD.top) pY = PAD.top;
-            if (pY + pH > PAD.top + chartH) pY = PAD.top + chartH - pH;
-            ctx.fillStyle = '#404040';
-            ctx.beginPath(); ctx.roundRect(pX, pY, pW, pH, 3); ctx.fill();
-            ctx.fillStyle = '#fff'; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
-            ctx.fillText(priceTxt, pX + 4, pY + pH / 2 + 1);
-
-            // Tooltip OHLC
-            const tipLines = [
-                { label: 'O', val: c.open,  color: '#9CA3AF' },
-                { label: 'H', val: c.high,  color: '#00C805' },
-                { label: 'L', val: c.low,   color: '#FF3B30' },
-                { label: 'C', val: c.close, color: '#fff'    }
-            ];
-            ctx.font = '10px sans-serif';
-            const fmtBRL = v => v.toLocaleString('pt-BR', { style:'currency', currency:'BRL' });
-            const lines  = tipLines.map(t => `${t.label}: ${fmtBRL(t.val)}`);
-            const maxTW  = Math.max(...lines.map(l => ctx.measureText(l).width));
-            const tipW   = maxTW + 16;
-            const tipH   = lines.length * 16 + 8;
-            let tipX     = x + 12;
-            const tipY   = PAD.top + 4;
-            if (tipX + tipW > W - PAD.right) tipX = x - tipW - 12;
-            ctx.fillStyle = 'rgba(20,20,22,0.93)';
-            ctx.beginPath(); ctx.roundRect(tipX, tipY, tipW, tipH, 6); ctx.fill();
-            ctx.strokeStyle = '#333'; ctx.lineWidth = 1;
-            ctx.beginPath(); ctx.roundRect(tipX, tipY, tipW, tipH, 6); ctx.stroke();
-            ctx.textAlign = 'left'; ctx.textBaseline = 'top';
-            lines.forEach((line, li) => {
-                ctx.fillStyle = tipLines[li].color;
-                ctx.fillText(line, tipX + 8, tipY + 4 + li * 16);
+            // ── Labels datas no eixo X ──
+            const maxLabels = Math.floor(chartW / 55);
+            const labelStep = Math.max(1, Math.floor(visCount / maxLabels));
+            ctx.save();
+            ctx.font = '8px sans-serif';
+            ctx.fillStyle = 'rgba(150,150,150,0.7)';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'top';
+            visCandles.forEach((c, li) => {
+                if (li % labelStep !== 0) return;
+                const gx = toX(viewStart + li);
+                const raw = new Date(c.date);
+                let label;
+                if (isIntraday) {
+                    label = raw.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+                } else if (visCount <= 60) {
+                    label = raw.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+                } else {
+                    label = raw.toLocaleDateString('pt-BR', { month: 'short', year: '2-digit' });
+                }
+                ctx.fillText(label, gx, PAD.top + chartH + 3);
             });
-        }
+            ctx.restore();
 
-        // ── NAVEGADOR (barra inferior) ──
-        drawNavigator(minP, maxP);
-    }
-
-    // ─── NAVEGADOR ─────────────────────────────────────────────────────────────
-    function drawNavigator(mainMinP, mainMaxP) {
-        const nY = NAV_Y;
-        const nH = NAV_H;
-
-        // Fundo do nav
-        ctx.fillStyle = 'rgba(255,255,255,0.04)';
-        ctx.beginPath(); ctx.roundRect(NAV_X, nY, NAV_W, nH, 4); ctx.fill();
-
-        // Linha sparkline (close de todos os candles)
-        const navHigh = Math.max(...candles.map(c => c.high));
-        const navLow  = Math.min(...candles.map(c => c.low));
-        const navRange = navHigh - navLow || 1;
-        const toNavX = (i) => NAV_X + (i / (N - 1)) * NAV_W;
-        const toNavY = (p) => nY + nH - 4 - ((p - navLow) / navRange) * (nH - 8);
-
-        ctx.save();
-        ctx.beginPath(); ctx.rect(NAV_X, nY, NAV_W, nH); ctx.clip();
-
-        ctx.beginPath();
-        candles.forEach((c, i) => {
-            const nx = toNavX(i);
-            const ny = toNavY(c.close);
-            i === 0 ? ctx.moveTo(nx, ny) : ctx.lineTo(nx, ny);
-        });
-        ctx.strokeStyle = 'rgba(255,255,255,0.25)';
-        ctx.lineWidth   = 1;
-        ctx.stroke();
-        ctx.restore();
-
-        // Janela de seleção
-        const selX1 = toNavX(viewStart);
-        const selX2 = toNavX(viewEnd);
-        const selW  = selX2 - selX1;
-
-        // Sombra fora da seleção
-        ctx.fillStyle = 'rgba(0,0,0,0.4)';
-        ctx.fillRect(NAV_X,        nY, selX1 - NAV_X,       nH);
-        ctx.fillRect(selX2,        nY, NAV_X + NAV_W - selX2, nH);
-
-        // Borda da seleção
-        ctx.strokeStyle = 'rgba(255,255,255,0.35)';
-        ctx.lineWidth   = 1.5;
-        ctx.beginPath();
-        ctx.roundRect(selX1, nY + 1, selW, nH - 2, 3);
-        ctx.stroke();
-
-        // Alças laterais (handles)
-        for (const hX of [selX1, selX2]) {
-            ctx.fillStyle = 'rgba(255,255,255,0.7)';
+            // ── Candles ──
+            ctx.save();
             ctx.beginPath();
-            ctx.roundRect(hX - 2, nY + nH / 2 - 7, 4, 14, 2);
-            ctx.fill();
+            ctx.rect(PAD.left, PAD.top, chartW, chartH);
+            ctx.clip();
+
+            visCandles.forEach((c, li) => {
+                const gi = viewStart + li;
+                const x = toX(gi);
+                const openY = toY(c.open, minP, maxP);
+                const closeY = toY(c.close, minP, maxP);
+                const highY = toY(c.high, minP, maxP);
+                const lowY = toY(c.low, minP, maxP);
+                const isGreen = c.close >= c.open;
+                const baseColor = isGreen ? '#00C805' : '#FF3B30';
+                const fillColor = isGreen ? 'rgba(0,200,5,0.22)' : 'rgba(255,59,48,0.22)';
+                const highlighted = hoverIdx === gi;
+
+                ctx.globalAlpha = (hoverIdx !== null && !highlighted) ? 0.4 : 1;
+
+                // Pavio
+                ctx.beginPath();
+                ctx.moveTo(x, highY);
+                ctx.lineTo(x, lowY);
+                ctx.strokeStyle = baseColor;
+                ctx.lineWidth = highlighted ? 1.5 : 1;
+                ctx.stroke();
+
+                // Corpo
+                const bodyTop = Math.min(openY, closeY);
+                const bodyH = Math.max(1, Math.abs(openY - closeY));
+                const bW = highlighted ? candleW * 1.25 : candleW;
+                ctx.fillStyle = fillColor;
+                ctx.strokeStyle = baseColor;
+                ctx.lineWidth = highlighted ? 1.5 : 1;
+                ctx.fillRect(x - bW / 2, bodyTop, bW, bodyH);
+                ctx.strokeRect(x - bW / 2, bodyTop, bW, bodyH);
+            });
+
+            ctx.globalAlpha = 1;
+            ctx.restore();
+
+            // ── Linha do último preço visível (tracejada) ──
+            const lastVisClose = candles[viewEnd].close;
+            const firstVisClose = candles[viewStart].close;
+            const lastColor = lastVisClose >= firstVisClose ? '#00C805' : '#FF3B30';
+            const lastY = toY(lastVisClose, minP, maxP);
+
+            if (lastY >= PAD.top && lastY <= PAD.top + chartH) {
+                ctx.beginPath();
+                ctx.setLineDash([2, 3]);
+                ctx.strokeStyle = lastColor;
+                ctx.lineWidth = 1;
+                ctx.moveTo(PAD.left, lastY);
+                ctx.lineTo(W - PAD.right, lastY);
+                ctx.stroke();
+                ctx.setLineDash([]);
+
+                // Badge preço
+                const badgeTxt = lastVisClose.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                ctx.font = 'bold 9px sans-serif';
+                const tw = ctx.measureText(badgeTxt).width;
+                const bPX = 4;
+                const bH = 16;
+                const bW2 = tw + bPX * 2;
+                const bX = W - PAD.right;
+                let bY = lastY - bH / 2;
+                if (bY < PAD.top) bY = PAD.top;
+                if (bY + bH > PAD.top + chartH) bY = PAD.top + chartH - bH;
+                ctx.fillStyle = lastColor;
+                ctx.beginPath(); ctx.roundRect(bX, bY, bW2, bH, 3); ctx.fill();
+                ctx.fillStyle = '#fff';
+                ctx.textBaseline = 'middle'; ctx.textAlign = 'left';
+                ctx.fillText(badgeTxt, bX + bPX, bY + bH / 2 + 1);
+            }
+
+            // ── Crosshair + Tooltip hover ──
+            if (hoverIdx !== null && hoverIdx >= viewStart && hoverIdx <= viewEnd) {
+                const x = toX(hoverIdx);
+                const c = candles[hoverIdx];
+                const cY = toY(c.close, minP, maxP);
+
+                // Linha vertical
+                ctx.save();
+                ctx.beginPath();
+                ctx.rect(PAD.left, PAD.top, chartW, chartH);
+                ctx.clip();
+                ctx.beginPath();
+                ctx.setLineDash([4, 4]);
+                ctx.strokeStyle = 'rgba(163,163,163,0.45)';
+                ctx.lineWidth = 1;
+                ctx.moveTo(x, PAD.top);
+                ctx.lineTo(x, PAD.top + chartH);
+                ctx.stroke();
+                // Linha horizontal
+                ctx.beginPath();
+                ctx.moveTo(PAD.left, cY);
+                ctx.lineTo(W - PAD.right, cY);
+                ctx.stroke();
+                ctx.setLineDash([]);
+                ctx.restore();
+
+                // Badge data (eixo X)
+                const rawDate = new Date(c.date);
+                let dateText;
+                if (isIntraday) {
+                    dateText = rawDate.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })
+                        + ' ' + rawDate.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+                } else {
+                    dateText = rawDate.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit' });
+                }
+                ctx.font = 'bold 9px sans-serif';
+                const dW = ctx.measureText(dateText).width + 12;
+                const dH = 16;
+                let dX = x - dW / 2;
+                if (dX < PAD.left) dX = PAD.left;
+                if (dX + dW > W - PAD.right) dX = W - PAD.right - dW;
+                const dY = PAD.top + chartH + 3;
+                ctx.fillStyle = '#404040';
+                ctx.beginPath(); ctx.roundRect(dX, dY, dW, dH, 3); ctx.fill();
+                ctx.fillStyle = '#fff'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+                ctx.fillText(dateText, dX + dW / 2, dY + dH / 2 + 1);
+
+                // Badge preço (eixo Y)
+                const priceTxt = c.close.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                ctx.font = 'bold 9px sans-serif';
+                const pW = ctx.measureText(priceTxt).width + 8;
+                const pH = 16;
+                const pX = W - PAD.right;
+                let pY = cY - pH / 2;
+                if (pY < PAD.top) pY = PAD.top;
+                if (pY + pH > PAD.top + chartH) pY = PAD.top + chartH - pH;
+                ctx.fillStyle = '#404040';
+                ctx.beginPath(); ctx.roundRect(pX, pY, pW, pH, 3); ctx.fill();
+                ctx.fillStyle = '#fff'; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+                ctx.fillText(priceTxt, pX + 4, pY + pH / 2 + 1);
+
+                // Tooltip OHLC
+                const tipLines = [
+                    { label: 'O', val: c.open, color: '#9CA3AF' },
+                    { label: 'H', val: c.high, color: '#00C805' },
+                    { label: 'L', val: c.low, color: '#FF3B30' },
+                    { label: 'C', val: c.close, color: '#fff' }
+                ];
+                ctx.font = '10px sans-serif';
+                const fmtBRL = v => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+                const lines = tipLines.map(t => `${t.label}: ${fmtBRL(t.val)}`);
+                const maxTW = Math.max(...lines.map(l => ctx.measureText(l).width));
+                const tipW = maxTW + 16;
+                const tipH = lines.length * 16 + 8;
+                let tipX = x + 12;
+                const tipY = PAD.top + 4;
+                if (tipX + tipW > W - PAD.right) tipX = x - tipW - 12;
+                ctx.fillStyle = 'rgba(20,20,22,0.93)';
+                ctx.beginPath(); ctx.roundRect(tipX, tipY, tipW, tipH, 6); ctx.fill();
+                ctx.strokeStyle = '#333'; ctx.lineWidth = 1;
+                ctx.beginPath(); ctx.roundRect(tipX, tipY, tipW, tipH, 6); ctx.stroke();
+                ctx.textAlign = 'left'; ctx.textBaseline = 'top';
+                lines.forEach((line, li) => {
+                    ctx.fillStyle = tipLines[li].color;
+                    ctx.fillText(line, tipX + 8, tipY + 4 + li * 16);
+                });
+            }
+
+            // ── NAVEGADOR (barra inferior) ──
+            drawNavigator(minP, maxP);
         }
 
-        // Dica double-tap/click
-        if (N > (DEFAULT_VISIBLE[range] ?? N)) {
-            ctx.fillStyle = 'rgba(120,120,120,0.5)';
-            ctx.font      = '7px sans-serif';
-            ctx.textAlign = 'right';
-            ctx.textBaseline = 'bottom';
-            ctx.fillText('2× reset', NAV_X + NAV_W - 2, nY + nH - 1);
-        }
-    }
+        // ─── NAVEGADOR ─────────────────────────────────────────────────────────────
+        function drawNavigator(mainMinP, mainMaxP) {
+            const nY = NAV_Y;
+            const nH = NAV_H;
 
-    requestDraw();
+            // Fundo do nav
+            ctx.fillStyle = 'rgba(255,255,255,0.04)';
+            ctx.beginPath(); ctx.roundRect(NAV_X, nY, NAV_W, nH, 4); ctx.fill();
 
-    // ─── ZOOM / PAN ────────────────────────────────────────────────────────────
-    function clampView() {
-        viewStart = Math.max(0, viewStart);
-        viewEnd   = Math.min(N - 1, viewEnd);
-        const count = viewEnd - viewStart + 1;
-        if (count < MIN_VISIBLE) {
-            // Expande simetricamente
-            const diff = MIN_VISIBLE - count;
-            viewStart = Math.max(0, viewStart - Math.ceil(diff / 2));
-            viewEnd   = Math.min(N - 1, viewStart + MIN_VISIBLE - 1);
-        }
-        if (count > MAX_VISIBLE) {
-            viewStart = 0; viewEnd = N - 1;
-        }
-    }
-
-    function zoomAroundFrac(frac, factor) {
-        // frac: 0..1 posição dentro da área visível onde o zoom acontece
-        const count = viewEnd - viewStart + 1;
-        const pivot = viewStart + frac * count;
-        const newCount = Math.max(MIN_VISIBLE, Math.min(MAX_VISIBLE, Math.round(count * factor)));
-        viewStart = Math.round(pivot - frac * newCount);
-        viewEnd   = viewStart + newCount - 1;
-        clampView();
-    }
-
-    // ── Mouse wheel (zoom) ──
-    const onWheel = (e) => {
-        e.preventDefault();
-        const r    = canvas.getBoundingClientRect();
-        const relX = e.clientX - r.left - PAD.left;
-        const frac = Math.max(0, Math.min(1, relX / chartW));
-        const factor = e.deltaY > 0 ? 1.15 : 0.87;   // scroll down = zoom out, up = zoom in
-        zoomAroundFrac(frac, factor);
-        requestDraw();
-    };
-
-    // ── Drag to pan (mouse) ──
-    let isDragging  = false;
-    let dragStartX  = 0;
-    let dragStartVS = 0;
-    let dragStartVE = 0;
-    let isDraggingNav    = false;
-    let dragNavHandle    = null; // 'left' | 'right' | 'body'
-    let dragNavStartX    = 0;
-    let dragNavStartVS   = 0;
-    let dragNavStartVE   = 0;
-
-    const HANDLE_HIT = 10; // px de tolerância para os handles do nav
-
-    function inNavArea(y) { return y >= NAV_Y && y <= NAV_Y + NAV_H; }
-
-    const onMouseDown = (e) => {
-        const r = canvas.getBoundingClientRect();
-        const x = e.clientX - r.left;
-        const y = e.clientY - r.top;
-
-        if (inNavArea(y)) {
-            // Clique no navegador
+            // Linha sparkline (close de todos os candles)
+            const navHigh = Math.max(...candles.map(c => c.high));
+            const navLow = Math.min(...candles.map(c => c.low));
+            const navRange = navHigh - navLow || 1;
             const toNavX = (i) => NAV_X + (i / (N - 1)) * NAV_W;
-            const selX1  = toNavX(viewStart);
-            const selX2  = toNavX(viewEnd);
+            const toNavY = (p) => nY + nH - 4 - ((p - navLow) / navRange) * (nH - 8);
 
-            isDraggingNav = true;
-            dragNavStartX  = x;
-            dragNavStartVS = viewStart;
-            dragNavStartVE = viewEnd;
-            canvas.style.cursor = 'ew-resize';
+            ctx.save();
+            ctx.beginPath(); ctx.rect(NAV_X, nY, NAV_W, nH); ctx.clip();
 
-            if (Math.abs(x - selX1) <= HANDLE_HIT)       dragNavHandle = 'left';
-            else if (Math.abs(x - selX2) <= HANDLE_HIT)  dragNavHandle = 'right';
-            else if (x >= selX1 && x <= selX2)            dragNavHandle = 'body';
-            else {
-                // Clique fora → teleporta janela para aqui
-                const clickIdx = Math.round((x - NAV_X) / NAV_W * (N - 1));
-                const half     = Math.floor((dragNavStartVE - dragNavStartVS) / 2);
-                viewStart = Math.max(0, clickIdx - half);
-                viewEnd   = Math.min(N - 1, viewStart + (dragNavStartVE - dragNavStartVS));
+            ctx.beginPath();
+            candles.forEach((c, i) => {
+                const nx = toNavX(i);
+                const ny = toNavY(c.close);
+                i === 0 ? ctx.moveTo(nx, ny) : ctx.lineTo(nx, ny);
+            });
+            ctx.strokeStyle = 'rgba(255,255,255,0.25)';
+            ctx.lineWidth = 1;
+            ctx.stroke();
+            ctx.restore();
+
+            // Janela de seleção
+            const selX1 = toNavX(viewStart);
+            const selX2 = toNavX(viewEnd);
+            const selW = selX2 - selX1;
+
+            // Sombra fora da seleção
+            ctx.fillStyle = 'rgba(0,0,0,0.4)';
+            ctx.fillRect(NAV_X, nY, selX1 - NAV_X, nH);
+            ctx.fillRect(selX2, nY, NAV_X + NAV_W - selX2, nH);
+
+            // Borda da seleção
+            ctx.strokeStyle = 'rgba(255,255,255,0.35)';
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            ctx.roundRect(selX1, nY + 1, selW, nH - 2, 3);
+            ctx.stroke();
+
+            // Alças laterais (handles)
+            for (const hX of [selX1, selX2]) {
+                ctx.fillStyle = 'rgba(255,255,255,0.7)';
+                ctx.beginPath();
+                ctx.roundRect(hX - 2, nY + nH / 2 - 7, 4, 14, 2);
+                ctx.fill();
+            }
+
+            // Dica double-tap/click
+            if (N > (DEFAULT_VISIBLE[range] ?? N)) {
+                ctx.fillStyle = 'rgba(120,120,120,0.5)';
+                ctx.font = '7px sans-serif';
+                ctx.textAlign = 'right';
+                ctx.textBaseline = 'bottom';
+                ctx.fillText('2× reset', NAV_X + NAV_W - 2, nY + nH - 1);
+            }
+        }
+
+        requestDraw();
+
+        // ─── ZOOM / PAN ────────────────────────────────────────────────────────────
+        function clampView() {
+            viewStart = Math.max(0, viewStart);
+            viewEnd = Math.min(N - 1, viewEnd);
+            const count = viewEnd - viewStart + 1;
+            if (count < MIN_VISIBLE) {
+                // Expande simetricamente
+                const diff = MIN_VISIBLE - count;
+                viewStart = Math.max(0, viewStart - Math.ceil(diff / 2));
+                viewEnd = Math.min(N - 1, viewStart + MIN_VISIBLE - 1);
+            }
+            if (count > MAX_VISIBLE) {
+                viewStart = 0; viewEnd = N - 1;
+            }
+        }
+
+        function zoomAroundFrac(frac, factor) {
+            // frac: 0..1 posição dentro da área visível onde o zoom acontece
+            const count = viewEnd - viewStart + 1;
+            const pivot = viewStart + frac * count;
+            const newCount = Math.max(MIN_VISIBLE, Math.min(MAX_VISIBLE, Math.round(count * factor)));
+            viewStart = Math.round(pivot - frac * newCount);
+            viewEnd = viewStart + newCount - 1;
+            clampView();
+        }
+
+        // ── Mouse wheel (zoom) ──
+        const onWheel = (e) => {
+            e.preventDefault();
+            const r = canvas.getBoundingClientRect();
+            const relX = e.clientX - r.left - PAD.left;
+            const frac = Math.max(0, Math.min(1, relX / chartW));
+            const factor = e.deltaY > 0 ? 1.15 : 0.87;   // scroll down = zoom out, up = zoom in
+            zoomAroundFrac(frac, factor);
+            requestDraw();
+        };
+
+        // ── Drag to pan (mouse) ──
+        let isDragging = false;
+        let dragStartX = 0;
+        let dragStartVS = 0;
+        let dragStartVE = 0;
+        let isDraggingNav = false;
+        let dragNavHandle = null; // 'left' | 'right' | 'body'
+        let dragNavStartX = 0;
+        let dragNavStartVS = 0;
+        let dragNavStartVE = 0;
+
+        const HANDLE_HIT = 10; // px de tolerância para os handles do nav
+
+        function inNavArea(y) { return y >= NAV_Y && y <= NAV_Y + NAV_H; }
+
+        const onMouseDown = (e) => {
+            const r = canvas.getBoundingClientRect();
+            const x = e.clientX - r.left;
+            const y = e.clientY - r.top;
+
+            if (inNavArea(y)) {
+                // Clique no navegador
+                const toNavX = (i) => NAV_X + (i / (N - 1)) * NAV_W;
+                const selX1 = toNavX(viewStart);
+                const selX2 = toNavX(viewEnd);
+
+                isDraggingNav = true;
+                dragNavStartX = x;
+                dragNavStartVS = viewStart;
+                dragNavStartVE = viewEnd;
+                canvas.style.cursor = 'ew-resize';
+
+                if (Math.abs(x - selX1) <= HANDLE_HIT) dragNavHandle = 'left';
+                else if (Math.abs(x - selX2) <= HANDLE_HIT) dragNavHandle = 'right';
+                else if (x >= selX1 && x <= selX2) dragNavHandle = 'body';
+                else {
+                    // Clique fora → teleporta janela para aqui
+                    const clickIdx = Math.round((x - NAV_X) / NAV_W * (N - 1));
+                    const half = Math.floor((dragNavStartVE - dragNavStartVS) / 2);
+                    viewStart = Math.max(0, clickIdx - half);
+                    viewEnd = Math.min(N - 1, viewStart + (dragNavStartVE - dragNavStartVS));
+                    clampView();
+                    requestDraw();
+                    isDraggingNav = false;
+                }
+            } else if (x >= PAD.left && x <= W - PAD.right && y >= PAD.top && y <= PAD.top + chartH) {
+                // Clique no gráfico → drag pan
+                isDragging = true;
+                dragStartX = x;
+                dragStartVS = viewStart;
+                dragStartVE = viewEnd;
+                canvas.style.cursor = 'grabbing';
+            }
+        };
+
+        const onMouseMove = (e) => {
+            const r = canvas.getBoundingClientRect();
+            const x = e.clientX - r.left;
+            const y = e.clientY - r.top;
+
+            if (isDraggingNav) {
+                const dx = x - dragNavStartX;
+                const idxPerPx = (N - 1) / NAV_W;
+                const dIdx = Math.round(dx * idxPerPx);
+
+                if (dragNavHandle === 'body') {
+                    const span = dragNavStartVE - dragNavStartVS;
+                    viewStart = Math.max(0, Math.min(N - 1 - span, dragNavStartVS + dIdx));
+                    viewEnd = viewStart + span;
+                } else if (dragNavHandle === 'left') {
+                    viewStart = Math.max(0, Math.min(dragNavStartVE - MIN_VISIBLE, dragNavStartVS + dIdx));
+                } else if (dragNavHandle === 'right') {
+                    viewEnd = Math.min(N - 1, Math.max(dragNavStartVS + MIN_VISIBLE - 1, dragNavStartVE + dIdx));
+                }
                 clampView();
+                updateHeaderStats(candles[viewStart].open, candles[viewEnd].close);
                 requestDraw();
-                isDraggingNav = false;
+                return;
             }
-        } else if (x >= PAD.left && x <= W - PAD.right && y >= PAD.top && y <= PAD.top + chartH) {
-            // Clique no gráfico → drag pan
-            isDragging   = true;
-            dragStartX   = x;
-            dragStartVS  = viewStart;
-            dragStartVE  = viewEnd;
-            canvas.style.cursor = 'grabbing';
-        }
-    };
 
-    const onMouseMove = (e) => {
-        const r   = canvas.getBoundingClientRect();
-        const x   = e.clientX - r.left;
-        const y   = e.clientY - r.top;
-
-        if (isDraggingNav) {
-            const dx      = x - dragNavStartX;
-            const idxPerPx = (N - 1) / NAV_W;
-            const dIdx    = Math.round(dx * idxPerPx);
-
-            if (dragNavHandle === 'body') {
-                const span = dragNavStartVE - dragNavStartVS;
-                viewStart  = Math.max(0, Math.min(N - 1 - span, dragNavStartVS + dIdx));
-                viewEnd    = viewStart + span;
-            } else if (dragNavHandle === 'left') {
-                viewStart = Math.max(0, Math.min(dragNavStartVE - MIN_VISIBLE, dragNavStartVS + dIdx));
-            } else if (dragNavHandle === 'right') {
-                viewEnd = Math.min(N - 1, Math.max(dragNavStartVS + MIN_VISIBLE - 1, dragNavStartVE + dIdx));
+            if (isDragging) {
+                const slotW = chartW / (dragStartVE - dragStartVS + 1);
+                const dCandles = Math.round((dragStartX - x) / slotW);
+                const count = dragStartVE - dragStartVS;
+                viewStart = Math.max(0, Math.min(N - 1 - count, dragStartVS + dCandles));
+                viewEnd = viewStart + count;
+                clampView();
+                updateHeaderStats(candles[viewStart].open, candles[viewEnd].close);
+                requestDraw();
+                return;
             }
-            clampView();
-            updateHeaderStats(candles[viewStart].open, candles[viewEnd].close);
-            requestDraw();
-            return;
-        }
 
-        if (isDragging) {
-            const slotW    = chartW / (dragStartVE - dragStartVS + 1);
-            const dCandles = Math.round((dragStartX - x) / slotW);
-            const count    = dragStartVE - dragStartVS;
-            viewStart = Math.max(0, Math.min(N - 1 - count, dragStartVS + dCandles));
-            viewEnd   = viewStart + count;
-            clampView();
-            updateHeaderStats(candles[viewStart].open, candles[viewEnd].close);
-            requestDraw();
-            return;
-        }
+            // Hover crosshair
+            if (x >= PAD.left && x <= W - PAD.right && y >= PAD.top && y <= PAD.top + chartH) {
+                canvas.style.cursor = 'crosshair';
+                const newHover = xToGlobalIdx(x);
+                if (newHover !== hoverIdx) {
+                    hoverIdx = newHover;
+                    updateHeaderStats(candles[hoverIdx].open, candles[hoverIdx].close);
+                    requestDraw();
+                }
+            } else {
+                if (hoverIdx !== null) {
+                    hoverIdx = null;
+                    updateHeaderStats(candles[viewStart].open, candles[viewEnd].close);
+                    requestDraw();
+                }
+                if (!isDragging && !isDraggingNav) {
+                    const toNavX = (i) => NAV_X + (i / (N - 1)) * NAV_W;
+                    const s1 = toNavX(viewStart);
+                    const s2 = toNavX(viewEnd);
+                    if (inNavArea(y)) {
+                        if (Math.abs(x - s1) <= HANDLE_HIT || Math.abs(x - s2) <= HANDLE_HIT)
+                            canvas.style.cursor = 'ew-resize';
+                        else if (x >= s1 && x <= s2)
+                            canvas.style.cursor = 'grab';
+                        else
+                            canvas.style.cursor = 'pointer';
+                    } else {
+                        canvas.style.cursor = 'default';
+                    }
+                }
+            }
+        };
 
-        // Hover crosshair
-        if (x >= PAD.left && x <= W - PAD.right && y >= PAD.top && y <= PAD.top + chartH) {
+        const onMouseUp = () => {
+            isDragging = false;
+            isDraggingNav = false;
+            dragNavHandle = null;
             canvas.style.cursor = 'crosshair';
-            const newHover = xToGlobalIdx(x);
-            if (newHover !== hoverIdx) {
-                hoverIdx = newHover;
-                updateHeaderStats(candles[hoverIdx].open, candles[hoverIdx].close);
-                requestDraw();
-            }
-        } else {
+        };
+
+        const onMouseLeave = () => {
             if (hoverIdx !== null) {
                 hoverIdx = null;
                 updateHeaderStats(candles[viewStart].open, candles[viewEnd].close);
                 requestDraw();
             }
-            if (!isDragging && !isDraggingNav) {
-                const toNavX = (i) => NAV_X + (i / (N - 1)) * NAV_W;
-                const s1 = toNavX(viewStart);
-                const s2 = toNavX(viewEnd);
-                if (inNavArea(y)) {
-                    if (Math.abs(x - s1) <= HANDLE_HIT || Math.abs(x - s2) <= HANDLE_HIT)
-                        canvas.style.cursor = 'ew-resize';
-                    else if (x >= s1 && x <= s2)
-                        canvas.style.cursor = 'grab';
-                    else
-                        canvas.style.cursor = 'pointer';
-                } else {
-                    canvas.style.cursor = 'default';
-                }
+            isDragging = false;
+            isDraggingNav = false;
+        };
+
+        // ── Double-click → reset zoom ──
+        let lastClick = 0;
+        const onDblClick = () => {
+            const now = Date.now();
+            if (now - lastClick < 350) {
+                viewStart = Math.max(0, N - (DEFAULT_VISIBLE[range] ?? N));
+                viewEnd = N - 1;
+                updateHeaderStats(candles[viewStart].open, candles[viewEnd].close);
+                requestDraw();
             }
-        }
-    };
+            lastClick = now;
+        };
 
-    const onMouseUp = () => {
-        isDragging    = false;
-        isDraggingNav = false;
-        dragNavHandle = null;
-        canvas.style.cursor = 'crosshair';
-    };
+        // ── Touch: pan + pinch-zoom ──
+        let lastTouchDist = null;
+        let lastTouchCenterX = null;
+        let touchStartVS = 0;
+        let touchStartVE = 0;
 
-    const onMouseLeave = () => {
-        if (hoverIdx !== null) {
+        const getTouchDist = (e) => {
+            if (e.touches.length < 2) return null;
+            const dx = e.touches[0].clientX - e.touches[1].clientX;
+            const dy = e.touches[0].clientY - e.touches[1].clientY;
+            return Math.sqrt(dx * dx + dy * dy);
+        };
+        const getTouchCenterX = (e) => {
+            if (e.touches.length < 2)
+                return e.touches[0].clientX;
+            return (e.touches[0].clientX + e.touches[1].clientX) / 2;
+        };
+
+        const onTouchStart = (e) => {
+            lastTouchDist = getTouchDist(e);
+            lastTouchCenterX = getTouchCenterX(e);
+            touchStartVS = viewStart;
+            touchStartVE = viewEnd;
+            dragStartX = e.touches[0].clientX;
+            dragStartVS = viewStart;
+            dragStartVE = viewEnd;
+            isDragging = true;
+        };
+
+        const onTouchMove = (e) => {
+            e.preventDefault();
+            const r = canvas.getBoundingClientRect();
+            const curDist = getTouchDist(e);
+            const curCX = getTouchCenterX(e);
+
+            if (e.touches.length >= 2 && lastTouchDist && curDist) {
+                // Pinch zoom
+                const factor = lastTouchDist / curDist;
+                const frac = Math.max(0, Math.min(1, (curCX - r.left - PAD.left) / chartW));
+                zoomAroundFrac(frac, factor);
+                lastTouchDist = curDist;
+                lastTouchCenterX = curCX;
+            } else if (e.touches.length === 1 && isDragging) {
+                // Pan
+                const x = e.touches[0].clientX;
+                const slotW = chartW / (dragStartVE - dragStartVS + 1);
+                const dCandles = Math.round((dragStartX - x) / slotW);
+                const count = dragStartVE - dragStartVS;
+                viewStart = Math.max(0, Math.min(N - 1 - count, dragStartVS + dCandles));
+                viewEnd = viewStart + count;
+                clampView();
+            }
+
             hoverIdx = null;
             updateHeaderStats(candles[viewStart].open, candles[viewEnd].close);
             requestDraw();
-        }
-        isDragging    = false;
-        isDraggingNav = false;
-    };
+        };
 
-    // ── Double-click → reset zoom ──
-    let lastClick = 0;
-    const onDblClick = () => {
-        const now = Date.now();
-        if (now - lastClick < 350) {
-            viewStart = Math.max(0, N - (DEFAULT_VISIBLE[range] ?? N));
-            viewEnd   = N - 1;
-            updateHeaderStats(candles[viewStart].open, candles[viewEnd].close);
-            requestDraw();
-        }
-        lastClick = now;
-    };
+        const onTouchEnd = () => {
+            isDragging = false;
+            lastTouchDist = null;
+            dragStartVS = viewStart;
+            dragStartVE = viewEnd;
+            dragStartX = 0;
+        };
 
-    // ── Touch: pan + pinch-zoom ──
-    let lastTouchDist    = null;
-    let lastTouchCenterX = null;
-    let touchStartVS     = 0;
-    let touchStartVE     = 0;
+        // ─── REGISTRO DE EVENTOS ────────────────────────────────────────────────────
+        canvas.addEventListener('wheel', onWheel, { passive: false });
+        canvas.addEventListener('mousedown', onMouseDown);
+        canvas.addEventListener('mousemove', onMouseMove);
+        canvas.addEventListener('mouseup', onMouseUp);
+        canvas.addEventListener('mouseleave', onMouseLeave);
+        canvas.addEventListener('click', onDblClick);
+        canvas.addEventListener('touchstart', onTouchStart, { passive: true });
+        canvas.addEventListener('touchmove', onTouchMove, { passive: false });
+        canvas.addEventListener('touchend', onTouchEnd);
 
-    const getTouchDist = (e) => {
-        if (e.touches.length < 2) return null;
-        const dx = e.touches[0].clientX - e.touches[1].clientX;
-        const dy = e.touches[0].clientY - e.touches[1].clientY;
-        return Math.sqrt(dx * dx + dy * dy);
-    };
-    const getTouchCenterX = (e) => {
-        if (e.touches.length < 2)
-            return e.touches[0].clientX;
-        return (e.touches[0].clientX + e.touches[1].clientX) / 2;
-    };
+        // Também ouve mouseup no document para soltar drag fora do canvas
+        const onDocMouseUp = () => { isDragging = false; isDraggingNav = false; };
+        document.addEventListener('mouseup', onDocMouseUp);
 
-    const onTouchStart = (e) => {
-        lastTouchDist    = getTouchDist(e);
-        lastTouchCenterX = getTouchCenterX(e);
-        touchStartVS     = viewStart;
-        touchStartVE     = viewEnd;
-        dragStartX       = e.touches[0].clientX;
-        dragStartVS      = viewStart;
-        dragStartVE      = viewEnd;
-        isDragging       = true;
-    };
+        candlestickEventCleanup = () => {
+            if (rafId) cancelAnimationFrame(rafId);
+            canvas.removeEventListener('wheel', onWheel);
+            canvas.removeEventListener('mousedown', onMouseDown);
+            canvas.removeEventListener('mousemove', onMouseMove);
+            canvas.removeEventListener('mouseup', onMouseUp);
+            canvas.removeEventListener('mouseleave', onMouseLeave);
+            canvas.removeEventListener('click', onDblClick);
+            canvas.removeEventListener('touchstart', onTouchStart);
+            canvas.removeEventListener('touchmove', onTouchMove);
+            canvas.removeEventListener('touchend', onTouchEnd);
+            document.removeEventListener('mouseup', onDocMouseUp);
+        };
+    }
 
-    const onTouchMove = (e) => {
-        e.preventDefault();
-        const r        = canvas.getBoundingClientRect();
-        const curDist  = getTouchDist(e);
-        const curCX    = getTouchCenterX(e);
+    async function handleMostrarDetalhes(symbol) {
+        detalhesMensagem.classList.add('hidden');
+        detalhesLoading.classList.remove('hidden');
+        detalhesPreco.innerHTML = '';
+        detalhesAiProvento.innerHTML = '';
+        detalhesHistoricoContainer.classList.remove('hidden');
 
-        if (e.touches.length >= 2 && lastTouchDist && curDist) {
-            // Pinch zoom
-            const factor = lastTouchDist / curDist;
-            const frac   = Math.max(0, Math.min(1, (curCX - r.left - PAD.left) / chartW));
-            zoomAroundFrac(frac, factor);
-            lastTouchDist    = curDist;
-            lastTouchCenterX = curCX;
-        } else if (e.touches.length === 1 && isDragging) {
-            // Pan
-            const x        = e.touches[0].clientX;
-            const slotW    = chartW / (dragStartVE - dragStartVS + 1);
-            const dCandles = Math.round((dragStartX - x) / slotW);
-            const count    = dragStartVE - dragStartVS;
-            viewStart = Math.max(0, Math.min(N - 1 - count, dragStartVS + dCandles));
-            viewEnd   = viewStart + count;
-            clampView();
-        }
+        const iconContainer = document.getElementById('detalhes-icone-container');
+        const sigla = symbol.substring(0, 2);
+        let ehFii = isFII(symbol);
+        let ehAcao = !ehFii;
 
-        hoverIdx = null;
-        updateHeaderStats(candles[viewStart].open, candles[viewEnd].close);
-        requestDraw();
-    };
+        const bgIcone = ehFii ? 'bg-black' : 'bg-[#1C1C1E]';
+        const iconUrl = `https://raw.githubusercontent.com/mqteuss/logos_b3/main/${symbol}.png`;
 
-    const onTouchEnd = () => {
-        isDragging    = false;
-        lastTouchDist = null;
-        dragStartVS   = viewStart;
-        dragStartVE   = viewEnd;
-        dragStartX    = 0;
-    };
+        const iconHtml = !ehFii
+            ? `<img src="${iconUrl}" alt="${symbol}" class="w-full h-full object-contain p-0.5 rounded-2xl relative z-10" onerror="this.style.display='none'; this.nextElementSibling.classList.remove('hidden');" />
+           <div class="hidden w-full h-full flex items-center justify-center text-base font-bold text-gray-200 border border-[#222] tracking-wider absolute inset-0 z-0 bg-[#0a0a0a] rounded-2xl">${sigla}</div>`
+            : `<div class="w-full h-full flex items-center justify-center text-base font-bold text-gray-200 border border-[#222] tracking-wider bg-[#0a0a0a] rounded-2xl">${sigla}</div>`;
 
-    // ─── REGISTRO DE EVENTOS ────────────────────────────────────────────────────
-    canvas.addEventListener('wheel',      onWheel,      { passive: false });
-    canvas.addEventListener('mousedown',  onMouseDown);
-    canvas.addEventListener('mousemove',  onMouseMove);
-    canvas.addEventListener('mouseup',    onMouseUp);
-    canvas.addEventListener('mouseleave', onMouseLeave);
-    canvas.addEventListener('click',      onDblClick);
-    canvas.addEventListener('touchstart', onTouchStart, { passive: true });
-    canvas.addEventListener('touchmove',  onTouchMove,  { passive: false });
-    canvas.addEventListener('touchend',   onTouchEnd);
-
-    // Também ouve mouseup no document para soltar drag fora do canvas
-    const onDocMouseUp = () => { isDragging = false; isDraggingNav = false; };
-    document.addEventListener('mouseup', onDocMouseUp);
-
-    candlestickEventCleanup = () => {
-        if (rafId) cancelAnimationFrame(rafId);
-        canvas.removeEventListener('wheel',      onWheel);
-        canvas.removeEventListener('mousedown',  onMouseDown);
-        canvas.removeEventListener('mousemove',  onMouseMove);
-        canvas.removeEventListener('mouseup',    onMouseUp);
-        canvas.removeEventListener('mouseleave', onMouseLeave);
-        canvas.removeEventListener('click',      onDblClick);
-        canvas.removeEventListener('touchstart', onTouchStart);
-        canvas.removeEventListener('touchmove',  onTouchMove);
-        canvas.removeEventListener('touchend',   onTouchEnd);
-        document.removeEventListener('mouseup',  onDocMouseUp);
-    };
-}
-
-async function handleMostrarDetalhes(symbol) {
-    detalhesMensagem.classList.add('hidden');
-    detalhesLoading.classList.remove('hidden');
-    detalhesPreco.innerHTML = '';
-    detalhesAiProvento.innerHTML = ''; 
-    detalhesHistoricoContainer.classList.remove('hidden'); 
-
-    const iconContainer = document.getElementById('detalhes-icone-container');
-    const sigla = symbol.substring(0, 2);
-    const ehFii = isFII(symbol);
-    const ehAcao = !ehFii;
-
-    const bgIcone = ehFii ? 'bg-black' : 'bg-[#1C1C1E]';
-    const iconUrl = `https://raw.githubusercontent.com/thefintz/icones-b3/main/icones/${symbol}.png`;
-
-    const iconHtml = !ehFii 
-        ? `<img src="${iconUrl}" alt="${symbol}" class="w-full h-full object-contain p-0.5 rounded-xl relative z-10" onerror="this.style.display='none'; this.nextElementSibling.classList.remove('hidden');" />
-           <span class="hidden w-full h-full flex items-center justify-center text-base font-bold text-white tracking-wider absolute inset-0 z-0 ${bgIcone}">${sigla}</span>`
-        : `<span class="text-base font-bold text-white tracking-wider">${sigla}</span>`;
-
-    if (iconContainer) {
-        iconContainer.innerHTML = `
-            <div class="w-12 h-12 rounded-2xl ${bgIcone} flex items-center justify-center flex-shrink-0 relative overflow-hidden shadow-sm">
+        if (iconContainer) {
+            iconContainer.innerHTML = `
+            <div class="w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0 relative overflow-hidden shadow-sm">
                 ${iconHtml}
             </div>
         `;
-    }
-
-    detalhesTituloTexto.textContent = symbol;
-    detalhesNomeLongo.textContent = 'Carregando...';
-
-    currentDetalhesSymbol = symbol;
-    currentDetalhesMeses = 3; 
-    currentDetalhesHistoricoJSON = null; 
-
-
-    const tickerParaApi = ehFii ? `${symbol}.SA` : symbol;
-    const cacheKeyPreco = `detalhe_preco_${symbol}`;
-
-    // ─── LANÇAR TODAS AS PROMISES EM PARALELO ────────────────────────────────────
-    // Não usar await aqui — lançar tudo ao mesmo tempo para que rodem concorrentemente
-    const promisePreco       = getCache(cacheKeyPreco).then(async cached => {
-        if (cached) return cached;
-        const data = await fetchBFF(`/api/brapi?path=/quote/${tickerParaApi}?range=1d&interval=1d`);
-        const result = data.results?.[0];
-        if (result && !result.error) {
-            await setCache(cacheKeyPreco, result, isB3Open() ? CACHE_PRECO_MERCADO_ABERTO : CACHE_PRECO_MERCADO_FECHADO);
-            return result;
         }
-        throw new Error(result?.error || 'Ativo não encontrado');
-    });
 
-    const promiseFundamentos = callScraperFundamentosAPI(symbol).catch(() => ({}));
-    const promiseProvento    = callScraperProximoProventoAPI(symbol).catch(() => null);
+        detalhesTituloTexto.textContent = symbol;
+        detalhesNomeLongo.textContent = 'Carregando...';
 
-    // Disparo de gráficos sem bloquear o fluxo principal
-    fetchHistoricoScraper(symbol); 
-    fetchCotacaoHistorica(symbol);
+        currentDetalhesSymbol = symbol;
+        currentDetalhesMeses = 3;
+        currentDetalhesHistoricoJSON = null;
 
-    // ─── FASE 1: Renderiza o modal assim que o PREÇO chegar ─────────────────────
-    // (pode ser instantâneo se vier do cache)
-    let precoData = null;
-    try {
-        precoData = await promisePreco;
-    } catch (e) {
-        showToast("Erro ao buscar preço.");
-    }
 
-    // Guarda para saber se o modal ainda é desse símbolo
-    if (currentDetalhesSymbol !== symbol) return;
+        const tickerParaApi = ehFii ? `${symbol}.SA` : symbol;
+        const cacheKeyPreco = `detalhe_preco_${symbol}`;
 
-    detalhesLoading.classList.add('hidden');
+        // ─── LANÇAR TODAS AS PROMISES EM PARALELO ────────────────────────────────────
+        // Não usar await aqui — lançar tudo ao mesmo tempo para que rodem concorrentemente
+        const promisePreco = getCache(cacheKeyPreco).then(async cached => {
+            if (cached) return cached;
+            const data = await fetchBFF(`/api/brapi?path=/quote/${tickerParaApi}?range=1d&interval=1d`);
+            const result = data.results?.[0];
+            if (result && !result.error) {
+                await setCache(cacheKeyPreco, result, isB3Open() ? CACHE_PRECO_MERCADO_ABERTO : CACHE_PRECO_MERCADO_FECHADO);
+                return result;
+            }
+            throw new Error(result?.error || 'Ativo não encontrado');
+        });
 
-    if (precoData) {
-        detalhesNomeLongo.textContent = precoData.longName || 'Nome não disponível';
-        const varPercent   = precoData.regularMarketChangePercent || 0;
-        const variacaoCor  = varPercent > 0 ? 'text-green-400 bg-green-500/10' : (varPercent < 0 ? 'text-red-400 bg-red-500/10' : 'text-[#888] bg-white/5');
-        const variacaoIcone = varPercent > 0 ? '▲' : (varPercent < 0 ? '▼' : '');
+        const promiseFundamentos = callScraperFundamentosAPI(symbol).catch(() => ({}));
+        const promiseProvento = callScraperProximoProventoAPI(symbol).catch(() => null);
 
-        // ── Preço + Variação no cabeçalho fixo ──
-        detalhesPreco.innerHTML = `
+        // Disparo de gráficos sem bloquear o fluxo principal
+        fetchHistoricoScraper(symbol);
+        fetchCotacaoHistorica(symbol);
+
+        // ─── FASE 1: Renderiza o modal assim que o PREÇO chegar ─────────────────────
+        // (pode ser instantâneo se vier do cache)
+        let precoData = null;
+        try {
+            precoData = await promisePreco;
+        } catch (e) {
+            showToast("Erro ao buscar preço.");
+        }
+
+        // Guarda para saber se o modal ainda é desse símbolo
+        if (currentDetalhesSymbol !== symbol) return;
+
+        detalhesLoading.classList.add('hidden');
+
+        if (precoData) {
+            detalhesNomeLongo.textContent = precoData.longName || 'Nome não disponível';
+
+            /* 
+            if (!ehFii && precoData.logourl) {
+                const imgEl = iconContainer.querySelector('img');
+                if (imgEl && imgEl.src !== precoData.logourl) {
+                    imgEl.src = precoData.logourl;
+                }
+            }
+            */
+
+            const varPercent = precoData.regularMarketChangePercent || 0;
+            const variacaoCor = varPercent > 0 ? 'text-green-400 bg-green-500/10' : (varPercent < 0 ? 'text-red-400 bg-red-500/10' : 'text-[#888] bg-white/5');
+            const variacaoIcone = varPercent > 0 ? '▲' : (varPercent < 0 ? '▼' : '');
+
+            // ── Preço + Variação no cabeçalho fixo ──
+            detalhesPreco.innerHTML = `
             <div class="flex items-baseline gap-3 flex-wrap">
                 <h2 class="text-3xl font-bold text-white tracking-tighter leading-none">${formatBRL(precoData.regularMarketPrice)}</h2>
                 <span class="px-2 py-0.5 rounded-md text-[11px] font-bold ${variacaoCor} flex items-center gap-1 tracking-wide">
@@ -6045,96 +6697,116 @@ async function handleMostrarDetalhes(symbol) {
                 </span>
             </div>`;
 
-        detalhesMensagem.classList.add('hidden');
+            detalhesMensagem.classList.add('hidden');
 
-        // ── Skeleton KPIs no tab Resumo ──
-        const skeletonGrid = Array(6).fill(0).map(() => `
-            <div class="bg-[#151515] rounded-xl p-3 flex flex-col items-center justify-center shadow-sm animate-pulse">
-                <div class="h-2 bg-[#2C2C2E] rounded w-16 mb-2"></div>
-                <div class="h-4 bg-[#2C2C2E] rounded w-10"></div>
+            // ── Skeleton KPIs no tab Resumo ──
+            const skeletonGrid = Array(6).fill(0).map(() => `
+            <div class="bg-[#151515] rounded-xl p-3 flex flex-col items-center justify-center shadow-sm">
+                <div class="h-2 skeleton rounded w-16 mb-2"></div>
+                <div class="h-4 skeleton rounded w-10"></div>
             </div>`).join('');
 
-        const elGridNow = document.getElementById('detalhes-grid-topo');
-        if (elGridNow) elGridNow.innerHTML = skeletonGrid;
+            const elGridNow = document.getElementById('detalhes-grid-topo');
+            if (elGridNow) elGridNow.innerHTML = skeletonGrid;
 
-        // ── Skeleton Fundamentos no tab Indicadores ──
-        const elListasNow = document.getElementById('detalhes-listas-fundamentos');
-        if (elListasNow) elListasNow.innerHTML = `
-            <div class="space-y-2 animate-pulse mb-6">
-                <div class="h-3 bg-[#1C1C1E] rounded w-24 mb-3"></div>
-                <div class="bg-[#151515] rounded-xl h-28"></div>
-                <div class="h-3 bg-[#1C1C1E] rounded w-24 mt-4 mb-3"></div>
-                <div class="bg-[#151515] rounded-xl h-20"></div>
+            // ── Skeleton Fundamentos no tab Indicadores ──
+            const elListasNow = document.getElementById('detalhes-listas-fundamentos');
+            if (elListasNow) elListasNow.innerHTML = `
+            <div class="space-y-2 mb-6">
+                <div class="h-3 skeleton rounded w-24 mb-3"></div>
+                <div class="skeleton rounded-xl h-28"></div>
+                <div class="h-3 skeleton rounded w-24 mt-4 mb-3"></div>
+                <div class="skeleton rounded-xl h-20"></div>
             </div>`;
 
-        // ── Skeleton Análise ──
-        const elSobreNow = document.getElementById('detalhes-sobre-comparacao');
-        if (elSobreNow) elSobreNow.innerHTML = `
-            <div class="space-y-2 animate-pulse mb-6">
-                <div class="h-3 bg-[#1C1C1E] rounded w-32 mb-3"></div>
-                <div class="bg-[#151515] rounded-xl h-24"></div>
+            // ── Skeleton Análise ──
+            const elSobreNow = document.getElementById('detalhes-sobre-comparacao');
+            if (elSobreNow) elSobreNow.innerHTML = `
+            <div class="space-y-2 mb-6">
+                <div class="h-3 skeleton rounded w-32 mb-3"></div>
+                <div class="skeleton rounded-xl h-24"></div>
             </div>`;
 
-    } else {
-        detalhesPreco.innerHTML = '<p class="text-sm text-red-500 font-bold">Erro ao buscar preço.</p>';
-    }
-
-// ─── FASE 2: Preenche fundamentos assim que chegarem ─────────────────────────
-    // Roda em background, sem bloquear mais nada
-    Promise.all([promiseFundamentos, promiseProvento]).then(([fundData, provData]) => {
-        // Garante que o modal ainda é desse símbolo
-        if (currentDetalhesSymbol !== symbol || !precoData) return;
-
-        const fundamentos    = fundData || {};
-        const nextProventoData = provData;
-
-        const varPercent   = precoData.regularMarketChangePercent || 0;
-        const variacaoCor  = varPercent > 0 ? 'text-green-400 bg-green-500/10' : (varPercent < 0 ? 'text-red-400 bg-red-500/10' : 'text-[#888] bg-white/5');
-        const variacaoIcone = varPercent > 0 ? '▲' : (varPercent < 0 ? '▼' : '');
-
-        const dados = { 
-            pvp: fundamentos.pvp || '-', dy: fundamentos.dy || '-', val_mercado: fundamentos.val_mercado || '-', 
-            liquidez: fundamentos.liquidez || '-', variacao_12m: fundamentos.variacao_12m || '-', vp_cota: fundamentos.vp_cota || '-',
-            pl: fundamentos.pl || '-', roe: fundamentos.roe || '-', lpa: fundamentos.lpa || '-', 
-            margem_liquida: fundamentos.margem_liquida || '-', margem_bruta: fundamentos.margem_bruta || '-', margem_ebit: fundamentos.margem_ebit || '-',
-            divida_liquida_ebitda: fundamentos.divida_liquida_ebitda || '-', divida_liquida_pl: fundamentos.divida_liquida_pl || '-',
-            ev_ebitda: fundamentos.ev_ebitda || '-', payout: fundamentos.payout || '-', 
-            cagr_receita: fundamentos.cagr_receita_5a || '-', cagr_lucros: fundamentos.cagr_lucros_5a || '-',
-            segmento: fundamentos.segmento || '-', tipo_fundo: fundamentos.tipo_fundo || '-', vacancia: fundamentos.vacancia || '-', 
-            ultimo_rendimento: fundamentos.ultimo_rendimento || '-', patrimonio_liquido: fundamentos.patrimonio_liquido || '-', 
-            cnpj: fundamentos.cnpj || '-', num_cotistas: fundamentos.num_cotistas || '-', tipo_gestao: fundamentos.tipo_gestao || '-',
-            taxa_adm: fundamentos.taxa_adm || '-', mandato: fundamentos.mandato || '-', publico_alvo: fundamentos.publico_alvo || '-',
-            cotas_emitidas: fundamentos.cotas_emitidas || '-',
-            // NOVOS CAMPOS:
-            sobre: fundamentos.sobre || '',
-            comparacao: fundamentos.comparacao || []
-        };
-
-        // Atualiza badge 12M
-        const badge12m = document.getElementById('badge-variacao-12m');
-        if (badge12m) {
-            const corVariacaoTextAno = dados.variacao_12m?.includes('-') ? 'text-red-400' : 'text-green-400';
-            badge12m.innerHTML = `12M: <span class="${corVariacaoTextAno}">${dados.variacao_12m}</span>`;
+        } else {
+            detalhesPreco.innerHTML = '<p class="text-sm text-red-500 font-bold">Erro ao buscar preço.</p>';
         }
 
-        let valuationHtml = '';
+        // ─── FASE 2: Preenche fundamentos assim que chegarem ─────────────────────────
+        // Roda em background, sem bloquear mais nada
+        Promise.all([promiseFundamentos, promiseProvento]).then(([fundData, provData]) => {
+            // Garante que o modal ainda é desse símbolo
+            if (currentDetalhesSymbol !== symbol || !precoData) return;
 
-        if (ehAcao) {
-            const parseVal = (s) => parseFloat(s?.replace(/[^0-9,-]+/g, '').replace(',', '.')) || 0;
-            const lpa = parseVal(dados.lpa);
-            const vpa = parseVal(dados.vp_cota);
-            const dyVal = parseVal(dados.dy);
-            const preco = precoData.regularMarketPrice;
+            const fundamentos = fundData || {};
+            const nextProventoData = provData;
 
-            if ((lpa > 0 && vpa > 0) || dyVal > 0) {
-                valuationHtml += `<h4 class="text-[10px] font-bold text-gray-300 uppercase tracking-widest mt-4 mb-2 pl-1">Valuation</h4><div class="grid grid-cols-1 gap-2 mb-4">`;
+            // Override tipo_ativo do scraper — corrige Units (KLBN11, TAEE11) que terminam em 11 mas são Ações
+            if (fundamentos.tipo_ativo) {
+                ehFii = fundamentos.tipo_ativo === 'fii';
+                ehAcao = fundamentos.tipo_ativo === 'acao';
+            }
 
-                if (lpa > 0 && vpa > 0) {
-                    const vi = Math.sqrt(22.5 * lpa * vpa);
-                    const margemSeguranca = ((vi - preco) / preco) * 100;
-                    const corGraham = margemSeguranca > 0 ? 'text-green-400 bg-green-500/10' : 'text-red-400 bg-red-500/10';
+            const varPercent = precoData.regularMarketChangePercent || 0;
+            const variacaoCor = varPercent > 0 ? 'text-green-400 bg-green-500/10' : (varPercent < 0 ? 'text-red-400 bg-red-500/10' : 'text-[#888] bg-white/5');
+            const variacaoIcone = varPercent > 0 ? '▲' : (varPercent < 0 ? '▼' : '');
 
-                    valuationHtml += `
+            const dados = {
+                pvp: fundamentos.pvp || '-', dy: fundamentos.dy || '-', val_mercado: fundamentos.val_mercado || '-',
+                liquidez: fundamentos.liquidez || '-', variacao_12m: fundamentos.variacao_12m || '-', vp_cota: fundamentos.vp_cota || '-',
+                pl: fundamentos.pl || '-', roe: fundamentos.roe || '-', lpa: fundamentos.lpa || '-',
+                margem_liquida: fundamentos.margem_liquida || '-', margem_bruta: fundamentos.margem_bruta || '-', margem_ebit: fundamentos.margem_ebit || '-',
+                divida_liquida_ebitda: fundamentos.divida_liquida_ebitda || '-', divida_liquida_pl: fundamentos.divida_liquida_pl || '-',
+                ev_ebitda: fundamentos.ev_ebitda || '-', payout: fundamentos.payout || '-',
+                cagr_receita: fundamentos.cagr_receita_5a || '-', cagr_lucros: fundamentos.cagr_lucros_5a || '-',
+                segmento: fundamentos.segmento || '-', tipo_fundo: fundamentos.tipo_fundo || '-', vacancia: fundamentos.vacancia || '-',
+                ultimo_rendimento: fundamentos.ultimo_rendimento || '-', patrimonio_liquido: fundamentos.patrimonio_liquido || '-',
+                cnpj: fundamentos.cnpj || '-', num_cotistas: fundamentos.num_cotistas || '-', tipo_gestao: fundamentos.tipo_gestao || '-',
+                taxa_adm: fundamentos.taxa_adm || '-', mandato: fundamentos.mandato || '-', publico_alvo: fundamentos.publico_alvo || '-',
+                cotas_emitidas: fundamentos.cotas_emitidas || '-',
+                // NOVOS CAMPOS:
+                sobre: fundamentos.sobre || '',
+                comparacao: fundamentos.comparacao || [],
+                logo_url: fundamentos.logo_url || ''
+            };
+
+            // Atualiza badge 12M
+            const badge12m = document.getElementById('badge-variacao-12m');
+            if (badge12m) {
+                const corVariacaoTextAno = dados.variacao_12m?.includes('-') ? 'text-red-400' : 'text-green-400';
+                badge12m.innerHTML = `12M: <span class="${corVariacaoTextAno}">${dados.variacao_12m}</span>`;
+            }
+
+            // Desativado: Forçando uso da API mqteuss/logos_b3 definida na inicialização
+            /* 
+            if (!ehFii && dados.logo_url) {
+                const iconContainer = document.getElementById('detalhes-icone-container');
+                if (iconContainer) {
+                    const imgEl = iconContainer.querySelector('img');
+                    if (imgEl && imgEl.src !== dados.logo_url) {
+                        imgEl.src = dados.logo_url;
+                    }
+                }
+            }
+            */
+
+            let valuationHtml = '';
+
+            if (ehAcao) {
+                const parseVal = (s) => parseFloat(s?.replace(/[^0-9,-]+/g, '').replace(',', '.')) || 0;
+                const lpa = parseVal(dados.lpa);
+                const vpa = parseVal(dados.vp_cota);
+                const dyVal = parseVal(dados.dy);
+                const preco = precoData.regularMarketPrice;
+
+                if ((lpa > 0 && vpa > 0) || dyVal > 0) {
+                    valuationHtml += `<h4 class="text-[10px] font-bold text-gray-300 uppercase tracking-widest mt-4 mb-2 pl-1">Valuation</h4><div class="grid grid-cols-1 gap-2 mb-4">`;
+
+                    if (lpa > 0 && vpa > 0) {
+                        const vi = Math.sqrt(22.5 * lpa * vpa);
+                        const margemSeguranca = ((vi - preco) / preco) * 100;
+                        const corGraham = margemSeguranca > 0 ? 'text-green-400 bg-green-500/10' : 'text-red-400 bg-red-500/10';
+
+                        valuationHtml += `
                         <div class="bg-[#151515] rounded-xl p-3 flex justify-between items-center shadow-sm">
                             <div>
                                 <span class="text-[10px] text-blue-400 font-bold uppercase tracking-widest block mb-0.5">Fórmula de Graham</span>
@@ -6148,15 +6820,15 @@ async function handleMostrarDetalhes(symbol) {
                             </div>
                         </div>
                     `;
-                }
+                    }
 
-                if (dyVal > 0) {
-                    const dividendosAnuais = precoData.regularMarketPrice * (dyVal / 100);
-                    const bazinPrice = dividendosAnuais / 0.06;
-                    const upsideBazin = ((bazinPrice - precoData.regularMarketPrice) / precoData.regularMarketPrice) * 100;
-                    const corBazin = upsideBazin > 0 ? 'text-green-400 bg-green-500/10' : 'text-red-400 bg-red-500/10';
+                    if (dyVal > 0) {
+                        const dividendosAnuais = precoData.regularMarketPrice * (dyVal / 100);
+                        const bazinPrice = dividendosAnuais / 0.06;
+                        const upsideBazin = ((bazinPrice - precoData.regularMarketPrice) / precoData.regularMarketPrice) * 100;
+                        const corBazin = upsideBazin > 0 ? 'text-green-400 bg-green-500/10' : 'text-red-400 bg-red-500/10';
 
-                    valuationHtml += `
+                        valuationHtml += `
                         <div class="bg-[#151515] rounded-xl p-3 flex justify-between items-center shadow-sm">
                             <div>
                                 <span class="text-[10px] text-yellow-500 font-bold uppercase tracking-widest block mb-0.5">Método de Bazin</span>
@@ -6170,30 +6842,30 @@ async function handleMostrarDetalhes(symbol) {
                             </div>
                         </div>
                     `;
+                    }
+                    valuationHtml += `</div>`;
                 }
-                valuationHtml += `</div>`;
             }
-        }
 
-        const pData = nextProventoData || {};
+            const pData = nextProventoData || {};
 
-        const formatarCardProvento = (titulo, provento, isFuturo) => {
-            if (!provento) {
-                return `
+            const formatarCardProvento = (titulo, provento, isFuturo) => {
+                if (!provento) {
+                    return `
                 <div class="flex-1 p-3 rounded-xl bg-[#151515] flex flex-col justify-center items-center opacity-50 shadow-sm">
                     <span class="text-[9px] uppercase tracking-widest font-bold text-gray-500 mb-1">${titulo}</span>
                     <span class="text-sm font-bold text-[#444]">-</span>
                 </div>`;
-            }
+                }
 
-            const dataPagFmt = provento.paymentDate ? formatDate(provento.paymentDate) : '-';
-            const dataComFmt = provento.dataCom ? formatDate(provento.dataCom) : '-';
+                const dataPagFmt = provento.paymentDate ? formatDate(provento.paymentDate) : '-';
+                const dataComFmt = provento.dataCom ? formatDate(provento.dataCom) : '-';
 
-            const bgClass   = isFuturo ? "bg-[#151515] shadow-[0_0_12px_rgba(34,197,94,0.04)]" : "bg-[#151515]";
-            const textClass = isFuturo ? "text-green-400" : "text-gray-300";
-            const valueClass= isFuturo ? "text-green-400" : "text-white";
+                const bgClass = isFuturo ? "bg-[#151515] shadow-[0_0_12px_rgba(34,197,94,0.04)]" : "bg-[#151515]";
+                const textClass = isFuturo ? "text-green-400" : "text-gray-300";
+                const valueClass = isFuturo ? "text-green-400" : "text-white";
 
-            return `
+                return `
             <div class="flex-1 p-3 rounded-xl ${bgClass} flex flex-col justify-between shadow-sm relative overflow-hidden">
                 ${isFuturo ? '<div class="absolute top-0 right-0 w-8 h-8 bg-green-500/10 blur-xl rounded-full"></div>' : ''}
                 <span class="text-[9px] uppercase tracking-widest font-bold ${textClass} mb-1.5 relative z-10">${titulo}</span>
@@ -6209,9 +6881,9 @@ async function handleMostrarDetalhes(symbol) {
                     </div>
                 </div>
             </div>`;
-        };
+            };
 
-        const proximoProventoHtml = (pData.ultimoPago || pData.proximo) ? `
+            const proximoProventoHtml = (pData.ultimoPago || pData.proximo) ? `
             <div class="mt-2 mb-6">
                 <h4 class="text-[10px] font-bold text-gray-300 uppercase tracking-widest mb-3 pl-1">Dividendos</h4>
                 <div class="flex gap-2 w-full">
@@ -6220,33 +6892,33 @@ async function handleMostrarDetalhes(symbol) {
                 </div>
             </div>` : '';
 
-        // Grid topo e listas
-        const renderKpi = (label, value, cor = 'text-white') => `
+            // Grid topo e listas
+            const renderKpi = (label, value, cor = 'text-white') => `
             <div class="bg-[#151515] rounded-xl p-3 flex flex-col items-center justify-center shadow-sm">
                 <span class="text-[9px] text-gray-500 uppercase font-bold tracking-widest mb-1.5 text-center leading-tight">${label}</span>
                 <span class="text-sm font-bold ${cor} leading-none">${value}</span>
             </div>`;
 
-        let gridTopo = '';
-        const renderRow = (label, value) => `
+            let gridTopo = '';
+            const renderRow = (label, value) => `
             <div class="flex justify-between items-center py-2.5 border-b border-[#1F1F1F] last:border-0">
                 <span class="text-xs text-gray-500 font-medium">${label}</span>
                 <span class="text-xs text-white font-bold text-right">${value}</span>
             </div>`;
 
-        let listasHtml = '';
+            let listasHtml = '';
 
-        if (ehAcao) {
-            gridTopo = [
-                renderKpi('P/L', dados.pl),
-                renderKpi('P/VP', dados.pvp),
-                renderKpi('DY', dados.dy),
-                renderKpi('ROE', dados.roe),
-                renderKpi('Marg. Liq.', dados.margem_liquida),
-                renderKpi('Dív./EBITDA', dados.divida_liquida_ebitda),
-            ].join('');
+            if (ehAcao) {
+                gridTopo = [
+                    renderKpi('P/L', dados.pl),
+                    renderKpi('P/VP', dados.pvp),
+                    renderKpi('DY', dados.dy),
+                    renderKpi('ROE', dados.roe),
+                    renderKpi('Marg. Liq.', dados.margem_liquida),
+                    renderKpi('Dív./EBITDA', dados.divida_liquida_ebitda),
+                ].join('');
 
-            listasHtml = `
+                listasHtml = `
                 <h4 class="text-[10px] font-bold text-gray-300 uppercase tracking-widest mt-2 mb-2 pl-1">Rentabilidade</h4>
                 <div class="bg-[#151515] rounded-xl px-3 shadow-sm mb-4">
                     ${renderRow('Marg. Líquida', dados.margem_liquida)}
@@ -6274,18 +6946,18 @@ async function handleMostrarDetalhes(symbol) {
                     ${renderRow('VP por Ação', dados.vp_cota)}
                 </div>
                 ${valuationHtml}`;
-} else {
-            // É FII
-            gridTopo = [
-                renderKpi('DY', dados.dy),
-                renderKpi('P/VP', dados.pvp),
-                renderKpi('Liquidez', dados.liquidez),
-                renderKpi('Vacância', dados.vacancia),
-                renderKpi('VP/Cota', dados.vp_cota),
-                renderKpi('12M', dados.variacao_12m),
-            ].join('');
+            } else {
+                // É FII
+                gridTopo = [
+                    renderKpi('DY', dados.dy),
+                    renderKpi('P/VP', dados.pvp),
+                    renderKpi('Liquidez', dados.liquidez),
+                    renderKpi('Vacância', dados.vacancia),
+                    renderKpi('VP/Cota', dados.vp_cota),
+                    renderKpi('12M', dados.variacao_12m),
+                ].join('');
 
-            listasHtml = `
+                listasHtml = `
                 <h4 class="text-[10px] font-bold text-gray-300 uppercase tracking-widest mt-2 mb-2 pl-1">Indicadores</h4>
                 <div class="bg-[#151515] rounded-xl px-3 shadow-sm mb-4">
                     ${renderRow('DY', dados.dy)}
@@ -6313,14 +6985,14 @@ async function handleMostrarDetalhes(symbol) {
                     ${renderRow('Taxa Adm.', dados.taxa_adm)}
                     ${renderRow('CNPJ', `<span class="font-mono text-xs opacity-80">${dados.cnpj}</span>`)}
                 </div>`;
-        }
+            }
 
-        // =========================================================
-        // LÓGICA: SOBRE O ATIVO (Texto)
-        // =========================================================
-        let sobreHtml = '';
-        if (dados.sobre && dados.sobre.length > 10) {
-            sobreHtml = `
+            // =========================================================
+            // LÓGICA: SOBRE O ATIVO (Texto)
+            // =========================================================
+            let sobreHtml = '';
+            if (dados.sobre && dados.sobre.length > 10) {
+                sobreHtml = `
                 <h4 class="text-[10px] font-bold text-gray-300 uppercase tracking-widest mt-6 mb-2 pl-1">Sobre o Ativo</h4>
                 <div class="bg-[#151515] rounded-xl p-4 shadow-sm mb-4">
                     <p class="text-xs text-gray-400 leading-relaxed text-justify">
@@ -6328,189 +7000,542 @@ async function handleMostrarDetalhes(symbol) {
                     </p>
                 </div>
             `;
-        }
+            }
 
-// =========================================================
-        // NOVA LÓGICA: COMPARAÇÃO (Tabela Horizontal Vesto com 5 Colunas)
-        // =========================================================
-        let comparacaoHtml = '';
-        if (dados.comparacao && dados.comparacao.length > 0) {
-            
-            // Função para converter strings formatadas em números para descobrir os "campeões"
-            const parseNumberStr = (str) => {
-                if (!str || str === '-' || str === 'N/A') return null;
-                let s = str.toUpperCase().replace(/\s/g, '');
-                let mult = 1;
-                if (s.includes('B')) mult = 1000000000;
-                else if (s.includes('M')) mult = 1000000;
-                else if (s.includes('K')) mult = 1000;
-                
-                let numStr = s.replace(/[^0-9,-]/g, '').replace(',', '.');
-                let val = parseFloat(numStr);
-                return isNaN(val) ? null : val * mult;
-            };
+            // =========================================================
+            // NOVA LÓGICA: COMPARAÇÃO (Tabela Horizontal Vesto)
+            // Detecta se é Ação (pl/roe/val_mercado) ou FII (patrimonio/tipo/segmento)
+            // =========================================================
+            let comparacaoHtml = '';
+            if (dados.comparacao && dados.comparacao.length > 0) {
 
-            // Mapeia os dados válidos
-            let validDy = dados.comparacao.map(i => parseNumberStr(i.dy)).filter(v => v !== null);
-            let validPvp = dados.comparacao.map(i => parseNumberStr(i.pvp)).filter(v => v !== null && v > 0); 
-            let validPat = dados.comparacao.map(i => parseNumberStr(i.patrimonio)).filter(v => v !== null);
+                const isStock = dados.comparacao.some(i => i.pl && i.pl !== '-');
+                const parseNumberStr = (str) => {
+                    if (!str || str === '-' || str === 'N/A') return null;
+                    let s = str.toUpperCase().replace(/\s/g, '');
+                    let mult = 1;
+                    if (s.includes('B')) mult = 1000000000;
+                    else if (s.includes('M')) mult = 1000000;
+                    else if (s.includes('K')) mult = 1000;
+                    let numStr = s.replace(/[^0-9,.\-]/g, '').replace(',', '.');
+                    let val = parseFloat(numStr);
+                    return isNaN(val) ? null : val * mult;
+                };
 
-            // Encontra os extremos (Maior DY, Menor P/VP, Maior Patrimônio)
-            let maxDy = validDy.length ? Math.max(...validDy) : null;
-            let minPvp = validPvp.length ? Math.min(...validPvp) : null;
-            let maxPat = validPat.length ? Math.max(...validPat) : null;
+                const glowingDot = `<span class="w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.8)] mb-[2px]"></span>`;
+                const badge = (val, isBest, title) => isBest
+                    ? `<div class="inline-flex flex-col items-center justify-center cursor-default" title="${title}">${glowingDot}<span class="text-[12px] text-emerald-400 font-bold tracking-wide leading-none mt-1">${val}</span></div>`
+                    : `<span class="text-[12px] text-gray-400 font-medium">${val}</span>`;
 
-let tbody = dados.comparacao.map(item => {
-                let vDy = parseNumberStr(item.dy);
-                let vPvp = parseNumberStr(item.pvp);
-                let vPat = parseNumberStr(item.patrimonio);
+                let thead, tbody;
 
-                let isBestDy = vDy !== null && vDy === maxDy;
-                let isBestPvp = vPvp !== null && vPvp === minPvp;
-                let isBestPat = vPat !== null && vPat === maxPat;
+                if (isStock) {
+                    // ── AÇÕES: P/L, P/VP, ROE, DY, Val. Mercado, Marg. Líquida ──
+                    let validPl = dados.comparacao.map(i => parseNumberStr(i.pl)).filter(v => v !== null && v > 0);
+                    let validPvp = dados.comparacao.map(i => parseNumberStr(i.pvp)).filter(v => v !== null && v > 0);
+                    let validRoe = dados.comparacao.map(i => parseNumberStr(i.roe)).filter(v => v !== null);
+                    let validDy = dados.comparacao.map(i => parseNumberStr(i.dy)).filter(v => v !== null);
+                    let validVm = dados.comparacao.map(i => parseNumberStr(i.val_mercado)).filter(v => v !== null);
+                    let validMl = dados.comparacao.map(i => parseNumberStr(i.margem_liquida)).filter(v => v !== null);
 
-                // Coroinha SVG Dourada com brilho sutil (Feita para encaixar perfeitamente em cima do número)
-               // Coroa Sólida (RemixIcon): Renderiza perfeitamente em tamanhos pequenos, sem parecer "quebrada"
-                const crownIcon = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-3.5 h-3.5 text-yellow-500 drop-shadow-[0_0_4px_rgba(234,179,8,0.5)] mb-[2px]"><path d="M2 19h20v2H2v-2zm2-16 3 5 5-6 5 6 3-5 1 12H3L4 3z"/></svg>`;
+                    let minPl = validPl.length ? Math.min(...validPl) : null;
+                    let minPvp = validPvp.length ? Math.min(...validPvp) : null;
+                    let maxRoe = validRoe.length ? Math.max(...validRoe) : null;
+                    let maxDy = validDy.length ? Math.max(...validDy) : null;
+                    let maxVm = validVm.length ? Math.max(...validVm) : null;
+                    let maxMl = validMl.length ? Math.max(...validMl) : null;
 
-                // Montagem: Campeão = Coroa em cima + Branco Bold | Normal = Cinza Claro
-                let dyBadge = isBestDy 
-                    ? `<div class="inline-flex flex-col items-center justify-center cursor-default" title="Maior Dividend Yield">${crownIcon}<span class="text-[11px] text-white font-bold tracking-wide leading-none">${item.dy}</span></div>` 
-                    : `<span class="text-[11px] text-gray-400 font-medium">${item.dy}</span>`;
+                    thead = `
+                        <th class="sticky left-0 bg-[#151515] text-[9px] uppercase tracking-widest text-gray-500/80 font-bold px-4 py-4 whitespace-nowrap z-20" style="transform: translateZ(0); box-shadow: inset -10px 0 10px -10px rgba(0,0,0,0.5);">Ativo</th>
+                        <th class="text-[9px] uppercase tracking-widest text-gray-500/80 font-bold px-4 py-4 whitespace-nowrap text-right">P/L</th>
+                        <th class="text-[9px] uppercase tracking-widest text-gray-500/80 font-bold px-4 py-4 whitespace-nowrap text-right">P/VP</th>
+                        <th class="text-[9px] uppercase tracking-widest text-gray-500/80 font-bold px-4 py-4 whitespace-nowrap text-right">ROE</th>
+                        <th class="text-[9px] uppercase tracking-widest text-gray-500/80 font-bold px-4 py-4 whitespace-nowrap text-right">DY</th>
+                        <th class="text-[9px] uppercase tracking-widest text-gray-500/80 font-bold px-4 py-4 whitespace-nowrap text-right">Val. Mercado</th>
+                        <th class="text-[9px] uppercase tracking-widest text-gray-500/80 font-bold px-4 py-4 whitespace-nowrap text-right">Marg. Líq.</th>`;
 
-                let pvpBadge = isBestPvp 
-                    ? `<div class="inline-flex flex-col items-center justify-center cursor-default" title="Menor P/VP">${crownIcon}<span class="text-[11px] text-white font-bold tracking-wide leading-none">${item.pvp}</span></div>` 
-                    : `<span class="text-[11px] text-gray-400 font-medium">${item.pvp}</span>`;
+                    tbody = dados.comparacao.map(item => {
+                        const vPl = parseNumberStr(item.pl), vPvp = parseNumberStr(item.pvp);
+                        const vRoe = parseNumberStr(item.roe), vDy = parseNumberStr(item.dy);
+                        const vVm = parseNumberStr(item.val_mercado), vMl = parseNumberStr(item.margem_liquida);
 
-                let valPat = item.patrimonio && item.patrimonio !== '-' && item.patrimonio !== 'N/A' ? item.patrimonio : '-';
-                let patBadge = isBestPat 
-                    ? `<div class="inline-flex flex-col items-center justify-center cursor-default" title="Maior Valor Patrimonial">${crownIcon}<span class="text-[11px] text-white font-bold tracking-wide leading-none">${valPat}</span></div>` 
-                    : `<span class="text-[11px] text-gray-400 font-medium">${valPat}</span>`;
-
-                let valTipo = item.tipo && item.tipo !== '-' ? item.tipo : '-';
-                let valSeg = item.segmento && item.segmento !== '-' ? item.segmento : '-';
-
-                return `
-                    <tr class="border-b border-[#1F1F1F] last:border-0 hover:bg-[#1C1C1E] transition-colors cursor-pointer group" onclick="window.abrirDetalhesAtivo('${item.ticker}')">
-                        <td class="p-3 whitespace-nowrap sticky left-0 bg-[#151515] group-hover:bg-[#1C1C1E] transition-colors z-10 border-r border-[#1F1F1F] shadow-[2px_0_5px_rgba(0,0,0,0.1)]">
-                            <div class="flex items-center gap-3">
-                                <div class="w-7 h-7 rounded-lg bg-[#1C1C1E] flex items-center justify-center border border-white/5 flex-shrink-0 group-hover:bg-[#252525] transition-colors">
-                                    <span class="text-[8px] font-bold text-white tracking-wider">${item.ticker.substring(0,2)}</span>
+                        return `
+                        <tr class="hover:bg-white/[0.03] active:bg-white/[0.05] transition-colors cursor-pointer group" onclick="window.abrirDetalhesAtivo('${item.ticker}')">
+                            <td class="p-4 whitespace-nowrap sticky left-0 bg-[#151515] group-hover:bg-[#1C1C1E] transition-colors z-10" style="transform: translateZ(0); box-shadow: inset -10px 0 10px -10px rgba(0,0,0,0.5);">
+                                <div class="flex items-center gap-4">
+                                    <div class="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 relative overflow-hidden bg-[#0D0D0D] border border-white/5 shadow-inner">
+                                        <img src="https://raw.githubusercontent.com/mqteuss/logos_b3/main/${item.ticker}.png" alt="${item.ticker}" width="32" height="32" loading="lazy" decoding="async" class="w-full h-full object-contain relative z-10"
+                                             onerror="this.style.display='none'; this.nextElementSibling.classList.remove('hidden')">
+                                        <div class="hidden w-full h-full flex items-center justify-center bg-[#0a0a0a] rounded-xl text-[10px] font-bold text-gray-200 tracking-wider absolute inset-0 z-0">${item.ticker.substring(0, 2)}</div>
+                                    </div>
+                                    <span class="text-[13px] font-medium text-gray-200 tracking-tight">${item.ticker}</span>
                                 </div>
-                                <span class="text-xs font-bold text-white tracking-tight">${item.ticker}</span>
-                            </div>
-                        </td>
-                        <td class="p-3 whitespace-nowrap text-right min-w-[70px] align-middle">${dyBadge}</td>
-                        <td class="p-3 whitespace-nowrap text-right min-w-[70px] align-middle">${pvpBadge}</td>
-                        <td class="p-3 whitespace-nowrap text-right min-w-[100px] align-middle">${patBadge}</td>
-                        <td class="p-3 whitespace-nowrap text-center min-w-[100px] align-middle">
-                            <span class="text-[9px] uppercase tracking-widest bg-white/5 text-gray-400 px-2 py-1 rounded font-bold">${valTipo}</span>
-                        </td>
-                        <td class="p-3 whitespace-nowrap text-center min-w-[120px] align-middle">
-                            <span class="text-[9px] uppercase tracking-widest bg-white/5 text-gray-400 px-2 py-1 rounded font-bold">${valSeg}</span>
-                        </td>
-                    </tr>
-                `;
-            }).join('');
+                            </td>
+                            <td class="p-4 whitespace-nowrap text-right min-w-[70px] align-middle">${badge(item.pl || '-', vPl !== null && vPl > 0 && vPl === minPl, 'Menor P/L')}</td>
+                            <td class="p-4 whitespace-nowrap text-right min-w-[70px] align-middle">${badge(item.pvp || '-', vPvp !== null && vPvp > 0 && vPvp === minPvp, 'Menor P/VP')}</td>
+                            <td class="p-4 whitespace-nowrap text-right min-w-[70px] align-middle">${badge(item.roe || '-', vRoe !== null && vRoe === maxRoe, 'Maior ROE')}</td>
+                            <td class="p-4 whitespace-nowrap text-right min-w-[70px] align-middle">${badge(item.dy || '-', vDy !== null && vDy === maxDy, 'Maior DY')}</td>
+                            <td class="p-4 whitespace-nowrap text-right min-w-[120px] align-middle">${badge(item.val_mercado || '-', vVm !== null && vVm === maxVm, 'Maior Val. Mercado')}</td>
+                            <td class="p-4 whitespace-nowrap text-right min-w-[90px] align-middle">${badge(item.margem_liquida || '-', vMl !== null && vMl === maxMl, 'Maior Margem')}</td>
+                        </tr>`;
+                    }).join('');
+                } else {
+                    // ── FIIs: DY, P/VP, Patrimônio, Tipo, Segmento ──
+                    let validDy = dados.comparacao.map(i => parseNumberStr(i.dy)).filter(v => v !== null);
+                    let validPvp = dados.comparacao.map(i => parseNumberStr(i.pvp)).filter(v => v !== null && v > 0);
+                    let validPat = dados.comparacao.map(i => parseNumberStr(i.patrimonio)).filter(v => v !== null);
+                    let maxDy = validDy.length ? Math.max(...validDy) : null;
+                    let minPvp = validPvp.length ? Math.min(...validPvp) : null;
+                    let maxPat = validPat.length ? Math.max(...validPat) : null;
 
-            comparacaoHtml = `
-                <h4 class="text-[10px] font-bold text-gray-300 uppercase tracking-widest mt-6 mb-2 pl-1 flex items-center gap-1.5">
-                    Comparando Ativos
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" /></svg>
+                    thead = `
+                        <th class="sticky left-0 bg-[#151515] text-[9px] uppercase tracking-widest text-gray-500/80 font-bold px-4 py-4 whitespace-nowrap z-20" style="transform: translateZ(0); box-shadow: inset -10px 0 10px -10px rgba(0,0,0,0.5);">Ativo</th>
+                        <th class="text-[9px] uppercase tracking-widest text-gray-500/80 font-bold px-4 py-4 whitespace-nowrap text-right">DY</th>
+                        <th class="text-[9px] uppercase tracking-widest text-gray-500/80 font-bold px-4 py-4 whitespace-nowrap text-right">P/VP</th>
+                        <th class="text-[9px] uppercase tracking-widest text-gray-500/80 font-bold px-4 py-4 whitespace-nowrap text-right">Patrimônio</th>
+                        <th class="text-[9px] uppercase tracking-widest text-gray-500/80 font-bold px-4 py-4 whitespace-nowrap text-center">Tipo</th>
+                        <th class="text-[9px] uppercase tracking-widest text-gray-500/80 font-bold px-4 py-4 whitespace-nowrap text-center">Segmento</th>`;
+
+                    tbody = dados.comparacao.map(item => {
+                        let vDy = parseNumberStr(item.dy), vPvp = parseNumberStr(item.pvp), vPat = parseNumberStr(item.patrimonio);
+                        let valPat = item.patrimonio && item.patrimonio !== '-' && item.patrimonio !== 'N/A' ? item.patrimonio : '-';
+                        let valTipo = item.tipo && item.tipo !== '-' ? item.tipo : '-';
+                        let valSeg = item.segmento && item.segmento !== '-' ? item.segmento : '-';
+
+                        return `
+                        <tr class="hover:bg-white/[0.03] active:bg-white/[0.05] transition-colors cursor-pointer group" onclick="window.abrirDetalhesAtivo('${item.ticker}')">
+                            <td class="p-4 whitespace-nowrap sticky left-0 bg-[#151515] group-hover:bg-[#1C1C1E] transition-colors z-10" style="transform: translateZ(0); box-shadow: inset -10px 0 10px -10px rgba(0,0,0,0.5);">
+                                <div class="flex items-center gap-4">
+                                    <div class="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 relative overflow-hidden bg-[#0D0D0D] border border-white/5 shadow-inner">
+                                        <span class="text-[10px] font-bold text-gray-200 tracking-wider">${item.ticker.substring(0, 2)}</span>
+                                    </div>
+                                    <span class="text-[13px] font-medium text-gray-200 tracking-tight">${item.ticker}</span>
+                                </div>
+                            </td>
+                            <td class="p-4 whitespace-nowrap text-right min-w-[80px] align-middle">${badge(item.dy, vDy !== null && vDy === maxDy, 'Maior DY')}</td>
+                            <td class="p-4 whitespace-nowrap text-right min-w-[80px] align-middle">${badge(item.pvp, vPvp !== null && vPvp === minPvp, 'Menor P/VP')}</td>
+                            <td class="p-4 whitespace-nowrap text-right min-w-[120px] align-middle">${badge(valPat, vPat !== null && vPat === maxPat, 'Maior Patrimônio')}</td>
+                            <td class="p-4 whitespace-nowrap text-center min-w-[120px] align-middle">
+                                <span class="text-[10px] uppercase tracking-widest text-gray-400 font-medium">${valTipo}</span>
+                            </td>
+                            <td class="p-4 whitespace-nowrap text-center min-w-[140px] align-middle">
+                                <span class="text-[10px] uppercase tracking-widest text-gray-400 font-medium">${valSeg}</span>
+                            </td>
+                        </tr>`;
+                    }).join('');
+                }
+
+                comparacaoHtml = `
+                <h4 class="text-[11px] font-bold text-gray-300 uppercase tracking-[0.2em] mt-8 mb-4 flex items-center gap-2">
+                    Comparando ${isStock ? 'Ações' : 'Ativos'}
+                    <span class="w-1 h-1 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.8)]"></span>
                 </h4>
-                <div class="bg-[#151515] rounded-xl shadow-sm mb-4 border border-white/5 relative overflow-hidden">
+                <div class="bg-[#151515] rounded-3xl shadow-xl mb-4 border border-white/[0.04] relative overflow-hidden">
                     <style>
                         .table-scrollbar::-webkit-scrollbar { height: 6px; }
                         .table-scrollbar::-webkit-scrollbar-track { background: transparent; }
                         .table-scrollbar::-webkit-scrollbar-thumb { background: #2A2A2C; border-radius: 10px; }
                         .table-scrollbar::-webkit-scrollbar-thumb:hover { background: #3F3F42; }
                     </style>
-                    <div class="overflow-x-auto table-scrollbar">
-                        <table class="w-full text-left border-collapse min-w-[550px]">
-                            <thead>
-                                <tr class="bg-[#18181A]">
-                                    <th class="sticky left-0 bg-[#18181A] text-[8px] uppercase tracking-widest text-gray-500 font-bold px-3 py-2.5 border-b border-[#1F1F1F] border-r border-[#1F1F1F] whitespace-nowrap z-20 shadow-[2px_0_5px_rgba(0,0,0,0.1)]">Ativo</th>
-                                    <th class="text-[8px] uppercase tracking-widest text-gray-500 font-bold px-3 py-2.5 border-b border-[#1F1F1F] whitespace-nowrap text-right">DY</th>
-                                    <th class="text-[8px] uppercase tracking-widest text-gray-500 font-bold px-3 py-2.5 border-b border-[#1F1F1F] whitespace-nowrap text-right">P/VP</th>
-                                    <th class="text-[8px] uppercase tracking-widest text-gray-500 font-bold px-3 py-2.5 border-b border-[#1F1F1F] whitespace-nowrap text-right">Patrimônio</th>
-                                    <th class="text-[8px] uppercase tracking-widest text-gray-500 font-bold px-3 py-2.5 border-b border-[#1F1F1F] whitespace-nowrap text-center">Tipo</th>
-                                    <th class="text-[8px] uppercase tracking-widest text-gray-500 font-bold px-3 py-2.5 border-b border-[#1F1F1F] whitespace-nowrap text-center">Segmento</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                ${tbody}
-                            </tbody>
+                    <div class="overflow-x-auto table-scrollbar pb-2">
+                        <table class="w-full text-left border-collapse min-w-[600px]">
+                            <thead><tr>${thead}</tr></thead>
+                            <tbody class="divide-y divide-white/[0.02]">${tbody}</tbody>
                         </table>
                     </div>
                 </div>
             `;
-        }
+            }
 
-        // ── Tab RESUMO: KPIs grid ──
-        const elGrid = document.getElementById('detalhes-grid-topo');
-        if (elGrid) {
-            elGrid.style.opacity = '0';
-            elGrid.innerHTML = gridTopo;
-            requestAnimationFrame(() => {
-                elGrid.style.transition = 'opacity 0.3s ease';
-                elGrid.style.opacity = '1';
-            });
-        }
+            // ── Tab RESUMO: KPIs grid ──
+            const elGrid = document.getElementById('detalhes-grid-topo');
+            if (elGrid) {
+                elGrid.style.opacity = '0';
+                elGrid.innerHTML = gridTopo;
+                requestAnimationFrame(() => {
+                    elGrid.style.transition = 'opacity 0.3s ease';
+                    elGrid.style.opacity = '1';
+                });
+            }
 
-        // ── Tab RESUMO: Cards de proventos ──
-        const elProvento = document.getElementById('detalhes-provento-placeholder');
-        if (elProvento && proximoProventoHtml) {
-            elProvento.style.opacity = '0';
-            elProvento.innerHTML = proximoProventoHtml;
-            requestAnimationFrame(() => {
-                elProvento.style.transition = 'opacity 0.3s ease';
-                elProvento.style.opacity = '1';
-            });
-        }
+            // ── Tab RESUMO: Cards de proventos ──
+            const elProvento = document.getElementById('detalhes-provento-placeholder');
+            if (elProvento && proximoProventoHtml) {
+                elProvento.style.opacity = '0';
+                elProvento.innerHTML = proximoProventoHtml;
+                requestAnimationFrame(() => {
+                    elProvento.style.transition = 'opacity 0.3s ease';
+                    elProvento.style.opacity = '1';
+                });
+            }
 
-        // ── Tab INDICADORES: Listas de fundamentos + Valuation ──
-        const elListas = document.getElementById('detalhes-listas-fundamentos');
-        if (elListas) {
-            elListas.style.opacity = '0';
-            elListas.innerHTML = listasHtml;
-            requestAnimationFrame(() => {
-                elListas.style.transition = 'opacity 0.3s ease';
-                elListas.style.opacity = '1';
-            });
-        }
+            // ── Tab INDICADORES: Listas de fundamentos + Valuation ──
+            const elListas = document.getElementById('detalhes-listas-fundamentos');
+            if (elListas) {
+                elListas.style.opacity = '0';
+                elListas.innerHTML = listasHtml;
+                requestAnimationFrame(() => {
+                    elListas.style.transition = 'opacity 0.3s ease';
+                    elListas.style.opacity = '1';
+                });
+            }
 
-        // ── Tab ANÁLISE: Sobre o Ativo + Tabela de Comparação ──
-        const elSobre = document.getElementById('detalhes-sobre-comparacao');
-        if (elSobre) {
-            const analiseConteudo = sobreHtml + comparacaoHtml;
-            elSobre.style.opacity = '0';
-            elSobre.innerHTML = analiseConteudo || `
+            // ── Tab ANÁLISE: Sobre o Ativo + Tabela de Comparação ──
+            const elSobre = document.getElementById('detalhes-sobre-comparacao');
+            if (elSobre) {
+                const analiseConteudo = sobreHtml + comparacaoHtml;
+                elSobre.style.opacity = '0';
+                elSobre.innerHTML = analiseConteudo || `
                 <div class="flex flex-col items-center justify-center py-16 text-center">
                     <div class="w-12 h-12 bg-[#151515] rounded-full flex items-center justify-center mb-3 border border-[#2C2C2E]">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" /></svg>
                     </div>
                     <p class="text-xs text-gray-600 font-medium">Sem dados de análise disponíveis.</p>
                 </div>`;
-            requestAnimationFrame(() => {
-                elSobre.style.transition = 'opacity 0.3s ease';
-                elSobre.style.opacity = '1';
-            });
-        }
+                requestAnimationFrame(() => {
+                    elSobre.style.transition = 'opacity 0.3s ease';
+                    elSobre.style.opacity = '1';
+                });
+            }
 
-        // ── Tab PORTFÓLIO: Imóveis (apenas FIIs) ──
-        if (ehFii && fundamentos.imoveis && fundamentos.imoveis.length > 0) {
-            window.renderizarListaImoveis(fundamentos.imoveis);
-            if (detalhesTabPortfolioBtn) detalhesTabPortfolioBtn.classList.remove('hidden');
-        } else {
-            const containerImoveis = document.getElementById('detalhes-imoveis-container');
-            if (containerImoveis) containerImoveis.innerHTML = '';
-            if (detalhesTabPortfolioBtn) detalhesTabPortfolioBtn.classList.add('hidden');
-        }
+            // ── Renderiza Gráfico de Rentabilidade (Investidor10) ──
+            const rentabilidadeContainer = document.getElementById('detalhes-rentabilidade-container');
+            if (rentabilidadeContainer) {
+                if (fundamentos.rentabilidade_chart && fundamentos.rentabilidade_chart.profitabilities && fundamentos.rentabilidade_chart.profitabilities.length > 0) {
+                    rentabilidadeContainer.classList.remove('hidden');
+                    window.currentRentabilidadeDados = fundamentos.rentabilidade_chart;
 
-    }).catch(e => console.error("Erro ao preencher fundamentos:", e));
+                    // Reset do botão para 2A — com delay para o container estar visível
+                    requestAnimationFrame(() => {
+                        const rentSlider = document.getElementById('rentabilidade-range-slider');
+                        if (rentSlider) rentSlider.style.transition = 'none';
+                        window.mudarRentabilidadeRange(24);
+                        requestAnimationFrame(() => {
+                            if (rentSlider) rentSlider.style.transition = '';
+                        });
+                    });
+                } else {
+                    rentabilidadeContainer.classList.add('hidden');
+                    window.currentRentabilidadeDados = null;
+                }
+            }
 
-    atualizarIconeFavorito(symbol);
-}
+            // ── NOVO: Renderiza Grid de Indicadores Avançados (Apenas Ações) ──
+            const advMetricsEl = document.getElementById('detalhes-advanced-metrics');
+            const advGridEl = document.getElementById('detalhes-advanced-grid');
+            if (advMetricsEl && advGridEl) {
+                if (!ehFii) {
+                    const isLight = document.body.classList.contains('light-mode');
+                    const f = fundamentos;
+                    const m = fundamentos.advanced_metrics || {};
+
+                    // Monta pares: indicador do ativo + média do setor
+                    const metricsToShow = [
+                        { label: 'ROE', ativo: f.roe, setor: m.roe },
+                        { label: 'P/L', ativo: f.pl, setor: m.p_l },
+                        { label: 'P/VP', ativo: f.pvp, setor: m.p_vp },
+                        { label: 'Marg. Bruta', ativo: f.margem_bruta, setor: m.gross_margin },
+                        { label: 'Marg. Líquida', ativo: f.margem_liquida, setor: m.net_margin },
+                        { label: 'Marg. EBIT', ativo: f.margem_ebit, setor: m.ebit_margin },
+                        { label: 'EV/EBITDA', ativo: f.ev_ebitda, setor: m.ev_ebitda },
+                        { label: 'Dív. Líq/EBITDA', ativo: f.divida_liquida_ebitda, setor: m.net_debt_ebitda },
+                        { label: 'Dív. Líq/PL', ativo: f.divida_liquida_pl, setor: m.net_debt_net_worth },
+                        { label: 'Payout', ativo: f.payout, setor: m.payout },
+                        { label: 'CAGR Rec. 5A', ativo: f.cagr_receita_5a, setor: m.growth_net_revenue_last_5_years },
+                        { label: 'CAGR Lucros 5A', ativo: f.cagr_lucros_5a, setor: m.growth_net_profit_last_5_years },
+                        { label: 'LPA', ativo: f.lpa, setor: m.lpa },
+                        { label: 'VPA', ativo: f.vp_cota, setor: m.vpa },
+                        { label: 'ROA', ativo: null, setor: m.roa },
+                        { label: 'ROIC', ativo: null, setor: m.roic },
+                        { label: 'Liq. Corrente', ativo: null, setor: m.current_liquidity },
+                    ];
+
+                    const ok = v => v && v !== 'N/A' && v !== '-';
+                    const fmt = v => {
+                        if (!ok(v)) return '-';
+                        if (typeof v === 'number') return v.toFixed(2).replace('.', ',');
+                        return String(v);
+                    };
+
+                    const filtered = metricsToShow.filter(item => ok(item.ativo) || ok(item.setor));
+
+                    if (filtered.length > 0) {
+                        advGridEl.innerHTML = filtered.map(item => {
+                            const bgCard = isLight ? 'bg-[#f3f4f6] border-[#e5e7eb]' : 'bg-[#141414] border-[#1F1F1F]';
+                            const txtLabel = isLight ? 'text-gray-500' : 'text-gray-500';
+                            const txtValue = isLight ? 'text-gray-900' : 'text-white';
+                            const txtSetor = isLight ? 'text-gray-400' : 'text-gray-600';
+                            const setorStr = ok(item.setor) ? `<span class="text-[9px] font-normal ${txtSetor}">Setor: ${fmt(item.setor)}</span>` : '';
+                            return `<div class="rounded-xl ${bgCard} border p-3 flex flex-col gap-0.5">
+                                <span class="text-[10px] font-semibold ${txtLabel} uppercase tracking-wide">${item.label}</span>
+                                <span class="text-sm font-bold ${txtValue}">${fmt(item.ativo)}</span>
+                                ${setorStr}
+                            </div>`;
+                        }).join('');
+                        advMetricsEl.classList.remove('hidden');
+                    } else {
+                        advMetricsEl.classList.add('hidden');
+                    }
+                } else {
+                    advMetricsEl.classList.add('hidden');
+                    advGridEl.innerHTML = '';
+                }
+            }
+
+            // ── NOVO: Renderiza Gráficos de Diversificação de Receita (Apenas Ações) ──
+            const revenueChartsEl = document.getElementById('detalhes-revenue-charts');
+            if (revenueChartsEl) {
+                const hasGeo = fundamentos.revenue_geography && !ehFii;
+                const hasSeg = fundamentos.revenue_segment && !ehFii;
+
+                if (hasGeo || hasSeg) {
+                    revenueChartsEl.classList.remove('hidden');
+
+                    const DONUT_COLORS = [
+                        '#a855f7', '#3b82f6', '#f59e0b', '#10b981', '#ec4899',
+                        '#06b6d4', '#ef4444', '#84cc16', '#8b5cf6', '#f97316'
+                    ];
+                    const isLight = document.body.classList.contains('light-mode');
+
+                    function renderDoughnut(canvasId, legendId, wrapId, chartData) {
+                        const wrap = document.getElementById(wrapId);
+                        if (!wrap) return;
+                        // Pega o ano mais recente
+                        const years = Object.keys(chartData).sort((a, b) => b - a);
+                        if (years.length === 0) { wrap.classList.add('hidden'); return; }
+                        const yearData = chartData[years[0]];
+                        const entries = Object.entries(yearData);
+                        if (entries.length === 0) { wrap.classList.add('hidden'); return; }
+
+                        const labels = entries.map(([k]) => k);
+                        const values = entries.map(([, v]) => v.value || 0);
+                        const colors = labels.map((_, i) => DONUT_COLORS[i % DONUT_COLORS.length]);
+
+                        wrap.classList.remove('hidden');
+
+                        const canvas = document.getElementById(canvasId);
+                        const ctx = canvas.getContext('2d');
+
+                        // Destroy previous instance if exists
+                        const existingChart = Chart.getChart(canvas);
+                        if (existingChart) existingChart.destroy();
+
+                        new Chart(ctx, {
+                            type: 'doughnut',
+                            data: {
+                                labels,
+                                datasets: [{
+                                    data: values,
+                                    backgroundColor: colors,
+                                    borderColor: isLight ? '#fff' : '#141414',
+                                    borderWidth: 2,
+                                    hoverOffset: 6
+                                }]
+                            },
+                            options: {
+                                responsive: true,
+                                maintainAspectRatio: true,
+                                cutout: '60%',
+                                plugins: {
+                                    legend: { display: false },
+                                    tooltip: {
+                                        backgroundColor: isLight ? 'rgba(255,255,255,0.95)' : 'rgba(0,0,0,0.85)',
+                                        titleColor: isLight ? '#111' : '#fff',
+                                        bodyColor: isLight ? '#333' : '#ccc',
+                                        borderColor: isLight ? '#e5e7eb' : '#333',
+                                        borderWidth: 1,
+                                        padding: 10,
+                                        callbacks: {
+                                            label: function (ctx) {
+                                                return ` ${ctx.label}: ${ctx.parsed}%`;
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        });
+
+                        // Legenda customizada
+                        const legendEl = document.getElementById(legendId);
+                        if (legendEl) {
+                            const txtColor = isLight ? 'text-gray-700' : 'text-gray-400';
+                            legendEl.innerHTML = labels.map((lbl, i) =>
+                                `<span class="flex items-center gap-1 text-[10px] ${txtColor}">
+                                    <span class="inline-block w-2 h-2 rounded-full flex-shrink-0" style="background:${colors[i]}"></span>
+                                    ${lbl} (${values[i]}%)
+                                </span>`
+                            ).join('');
+                        }
+                    }
+
+                    if (hasGeo) renderDoughnut('chart-rev-geo', 'legend-rev-geo', 'detalhes-rev-geo-wrap', fundamentos.revenue_geography);
+                    if (hasSeg) renderDoughnut('chart-rev-seg', 'legend-rev-seg', 'detalhes-rev-seg-wrap', fundamentos.revenue_segment);
+                } else {
+                    revenueChartsEl.classList.add('hidden');
+                }
+            }
+
+            // ── NOVO: Gráficos Financeiros (Receitas, Lucro x Cotação, Patrimônio, Payout — Apenas Ações) ──
+            const chartsFinContainer = document.getElementById('detalhes-charts-financeiros');
+            if (chartsFinContainer) {
+                if (!ehFii && fundamentos.charts_financeiros) {
+                    chartsFinContainer.classList.remove('hidden');
+                    const cf = fundamentos.charts_financeiros;
+                    const isLight = document.body.classList.contains('light-mode');
+                    const gridColor = isLight ? 'rgba(0,0,0,0.05)' : 'rgba(255,255,255,0.05)';
+                    const textColor = isLight ? '#6b7280' : '#9ca3af';
+
+                    // Helper: abbrevia números grandes
+                    const abbrevNum = (v) => {
+                        if (v === null || v === undefined) return '-';
+                        const abs = Math.abs(v);
+                        if (abs >= 1e9) return (v / 1e9).toFixed(1) + 'B';
+                        if (abs >= 1e6) return (v / 1e6).toFixed(1) + 'M';
+                        if (abs >= 1e3) return (v / 1e3).toFixed(0) + 'K';
+                        return v.toFixed(0);
+                    };
+
+                    const baseOpts = (yCallback) => ({
+                        responsive: true, maintainAspectRatio: false,
+                        interaction: { mode: 'index', intersect: false },
+                        plugins: {
+                            legend: { display: true, position: 'bottom', labels: { color: textColor, boxWidth: 10, boxHeight: 3, usePointStyle: true } },
+                            tooltip: {
+                                backgroundColor: isLight ? 'rgba(255,255,255,0.95)' : 'rgba(0,0,0,0.85)',
+                                titleColor: isLight ? '#000' : '#fff', bodyColor: isLight ? '#333' : '#ccc',
+                                borderColor: isLight ? '#e5e7eb' : '#333', borderWidth: 1, padding: 10,
+                                callbacks: { label: ctx => ` ${ctx.dataset.label}: R$ ${abbrevNum(ctx.parsed.y)}` }
+                            }
+                        },
+                        scales: {
+                            x: { display: false },
+                            y: { display: false }
+                        }
+                    });
+
+                    // Destroy helpers
+                    if (!window._finCharts) window._finCharts = {};
+                    const destroyChart = (key) => { if (window._finCharts[key]) { window._finCharts[key].destroy(); window._finCharts[key] = null; } };
+
+                    // 1. Receitas e Lucros
+                    if (cf.receitas_lucros && Array.isArray(cf.receitas_lucros) && cf.receitas_lucros.length > 0) {
+                        const wrap = document.getElementById('chart-receitas-lucros-wrap');
+                        if (wrap) {
+                            wrap.classList.remove('hidden');
+                            destroyChart('receitas_lucros');
+                            const labels = cf.receitas_lucros.map(d => d.quarter > 0 ? `${d.year}T${d.quarter}` : String(d.year));
+                            window._finCharts.receitas_lucros = new Chart(document.getElementById('chart-receitas-lucros').getContext('2d'), {
+                                type: 'bar',
+                                data: {
+                                    labels,
+                                    datasets: [
+                                        { label: 'Receita Líquida', data: cf.receitas_lucros.map(d => d.net_revenue), backgroundColor: 'rgba(59,130,246,0.6)', borderRadius: 3 },
+                                        { label: 'Lucro Líquido', data: cf.receitas_lucros.map(d => d.net_profit), backgroundColor: 'rgba(16,185,129,0.6)', borderRadius: 3 }
+                                    ]
+                                },
+                                options: baseOpts()
+                            });
+                        }
+                    }
+
+                    // 2. Lucro x Cotação (dual axis)
+                    if (cf.lucro_cotacao && typeof cf.lucro_cotacao === 'object' && Object.keys(cf.lucro_cotacao).length > 0) {
+                        const wrap = document.getElementById('chart-lucro-cotacao-wrap');
+                        if (wrap) {
+                            wrap.classList.remove('hidden');
+                            const titleEl = document.getElementById('chart-lucro-cotacao-title');
+                            if (titleEl) titleEl.textContent = `Lucro x Cotação - ${symbol}`;
+                            destroyChart('lucro_cotacao');
+                            const years = Object.keys(cf.lucro_cotacao).sort();
+                            const opts = baseOpts();
+                            opts.scales.y = { display: false };
+                            opts.scales.y1 = { display: false };
+                            opts.plugins.tooltip.callbacks.label = ctx => {
+                                const prefix = ctx.dataset.yAxisID === 'y1' ? 'R$ ' : 'R$ ';
+                                return ` ${ctx.dataset.label}: ${prefix}${abbrevNum(ctx.parsed.y)}`;
+                            };
+                            window._finCharts.lucro_cotacao = new Chart(document.getElementById('chart-lucro-cotacao').getContext('2d'), {
+                                type: 'bar',
+                                data: {
+                                    labels: years,
+                                    datasets: [
+                                        { label: 'Lucro Líquido', data: years.map(y => cf.lucro_cotacao[y].net_profit), backgroundColor: 'rgba(16,185,129,0.6)', borderRadius: 3, yAxisID: 'y' },
+                                        { label: 'Cotação', data: years.map(y => cf.lucro_cotacao[y].quotation), type: 'line', borderColor: '#a855f7', borderWidth: 2, pointRadius: 2, pointHoverRadius: 4, tension: 0.4, yAxisID: 'y1', fill: false }
+                                    ]
+                                },
+                                options: opts
+                            });
+                        }
+                    }
+
+                    // 3. Evolução do Patrimônio
+                    if (cf.evolucao_patrimonio && Array.isArray(cf.evolucao_patrimonio) && cf.evolucao_patrimonio.length > 0) {
+                        const wrap = document.getElementById('chart-evolucao-patrimonio-wrap');
+                        if (wrap) {
+                            wrap.classList.remove('hidden');
+                            const titleEl = document.getElementById('chart-evolucao-patrimonio-title');
+                            if (titleEl) titleEl.textContent = `Evolução do Patrimônio - ${fundamentos.nome_longo || symbol}`;
+                            destroyChart('evolucao_patrimonio');
+                            const labels = cf.evolucao_patrimonio.map(d => String(d.year));
+                            window._finCharts.evolucao_patrimonio = new Chart(document.getElementById('chart-evolucao-patrimonio').getContext('2d'), {
+                                type: 'bar',
+                                data: {
+                                    labels,
+                                    datasets: [
+                                        { label: 'Patrimônio', data: cf.evolucao_patrimonio.map(d => d.net_worth), backgroundColor: 'rgba(168,85,247,0.6)', borderRadius: 3 },
+                                        { label: 'Receita Líquida', data: cf.evolucao_patrimonio.map(d => d.net_revenue), backgroundColor: 'rgba(59,130,246,0.5)', borderRadius: 3 },
+                                        { label: 'Lucro Líquido', data: cf.evolucao_patrimonio.map(d => d.net_profit), backgroundColor: 'rgba(16,185,129,0.5)', borderRadius: 3 }
+                                    ]
+                                },
+                                options: baseOpts()
+                            });
+                        }
+                    }
+
+                    // 4. Payout
+                    if (cf.payout && Array.isArray(cf.payout) && cf.payout.length > 0) {
+                        const wrap = document.getElementById('chart-payout-wrap');
+                        if (wrap) {
+                            wrap.classList.remove('hidden');
+                            const titleEl = document.getElementById('chart-payout-title');
+                            if (titleEl) titleEl.textContent = `Payout - ${fundamentos.nome_longo || symbol}`;
+                            destroyChart('payout');
+                            const labels = cf.payout.map(d => String(d.year));
+                            const opts = baseOpts();
+                            opts.scales.y.ticks.callback = v => v + '%';
+                            opts.plugins.tooltip.callbacks.label = ctx => ` ${ctx.dataset.label}: ${ctx.parsed.y?.toFixed(1)}%`;
+                            window._finCharts.payout = new Chart(document.getElementById('chart-payout').getContext('2d'), {
+                                type: 'bar',
+                                data: {
+                                    labels,
+                                    datasets: [
+                                        { label: 'Payout', data: cf.payout.map(d => d.payout_company || d.payout), backgroundColor: 'rgba(234,179,8,0.6)', borderRadius: 3 },
+                                        { label: 'DY', data: cf.payout.map(d => d.dy_ticker || d.dy), type: 'line', borderColor: '#3b82f6', borderWidth: 2, pointRadius: 2, tension: 0.4, fill: false }
+                                    ]
+                                },
+                                options: opts
+                            });
+                        }
+                    }
+                } else {
+                    chartsFinContainer.classList.add('hidden');
+                }
+            }
+
+            // ── Tab PORTFÓLIO: Imóveis (apenas FIIs) ──
+            if (ehFii && fundamentos.imoveis && fundamentos.imoveis.length > 0) {
+                window.renderizarListaImoveis(fundamentos.imoveis);
+                if (detalhesTabPortfolioBtn) detalhesTabPortfolioBtn.classList.remove('hidden');
+            } else {
+                const containerImoveis = document.getElementById('detalhes-imoveis-container');
+                if (containerImoveis) containerImoveis.innerHTML = '';
+                if (detalhesTabPortfolioBtn) detalhesTabPortfolioBtn.classList.add('hidden');
+            }
+
+        }).catch(e => console.error("Erro ao preencher fundamentos:", e));
+
+        atualizarIconeFavorito(symbol);
+    }
 
 
     async function fetchHistoricoScraper(symbol) {
@@ -6532,7 +7557,7 @@ let tbody = dados.comparacao.map(item => {
             if (currentDetalhesSymbol !== symbolAlvo) return;
 
             if (!scraperResultJSON) {
-                scraperResultJSON = await callScraperHistoricoAPI(symbol); 
+                scraperResultJSON = await callScraperHistoricoAPI(symbol);
 
                 // CANCELAMENTO: verifica de novo apos a chamada de rede (pode demorar segundos)
                 if (currentDetalhesSymbol !== symbolAlvo) return;
@@ -6553,187 +7578,193 @@ let tbody = dados.comparacao.map(item => {
 
         } catch (e) {
             if (currentDetalhesSymbol !== symbolAlvo) return; // nao mostra erro se modal fechou
-            showToast("Erro na consulta de dados."); 
+            showToast("Erro na consulta de dados.");
             detalhesAiProvento.innerHTML = `
                 <div class="p-4 text-center text-red-400 text-sm">Erro ao carregar gráfico</div>
             `;
         }
     }
 
-	// Plugin para desenhar a Linha Vertical (Crosshair)
-const crosshairPlugin = {
-    id: 'crosshair',
-    afterDatasetsDraw: (chart) => {
-        if (chart.tooltip?._active?.length) {
-            const x = chart.tooltip._active[0].element.x;
-            const yAxis = chart.scales.y;
-            const ctx = chart.ctx;
-            ctx.save();
-            ctx.beginPath();
-            ctx.moveTo(x, yAxis.top);
-            ctx.lineTo(x, yAxis.bottom);
-            ctx.lineWidth = 1;
-            ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)'; // Linha branca suave
-            ctx.setLineDash([5, 5]); // Tracejado
-            ctx.stroke();
-            ctx.restore();
+    // Plugin para desenhar a Linha Vertical (Crosshair)
+    const crosshairPlugin = {
+        id: 'crosshair',
+        afterDatasetsDraw: (chart) => {
+            if (chart.tooltip?._active?.length) {
+                const x = chart.tooltip._active[0].element.x;
+                const yAxis = chart.scales.y;
+                const ctx = chart.ctx;
+                ctx.save();
+                ctx.beginPath();
+                ctx.moveTo(x, yAxis.top);
+                ctx.lineTo(x, yAxis.bottom);
+                ctx.lineWidth = 1;
+                ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)'; // Linha branca suave
+                ctx.setLineDash([5, 5]); // Tracejado
+                ctx.stroke();
+                ctx.restore();
+            }
         }
+    };
+
+    function renderHistoricoIADetalhes(mesesIgnore) {
+        if (!currentDetalhesHistoricoJSON) return;
+
+        if (currentDetalhesHistoricoJSON.length === 0) {
+            detalhesAiProvento.innerHTML = `<p class="text-sm text-[#666] text-center py-8 font-medium">Sem histórico disponível.</p>`;
+            if (detalhesChartInstance) {
+                detalhesChartInstance.destroy();
+                detalhesChartInstance = null;
+            }
+            return;
+        }
+
+        // Chama a função principal que constrói tudo (Gráfico + Título + Botões)
+        renderizarGraficoProventosDetalhes(currentDetalhesHistoricoJSON);
     }
-};
 
-function renderHistoricoIADetalhes(mesesIgnore) {
-    if (!currentDetalhesHistoricoJSON) return;
+    // Funções globais para capturar eventos de filtro no novo layout
+    window.atualizarFiltroCustom = function () {
+        const startEl = document.getElementById('custom-start');
+        const endEl = document.getElementById('custom-end');
+        if (startEl && endEl) {
+            customRangeStart = startEl.value;
+            customRangeEnd = endEl.value;
+            renderHistoricoIADetalhes(); // Re-renderiza o gráfico
+        }
+    };
 
-    if (currentDetalhesHistoricoJSON.length === 0) {
-        detalhesAiProvento.innerHTML = `<p class="text-sm text-[#666] text-center py-8 font-medium">Sem histórico disponível.</p>`;
+    window.mudarFiltroProventos = function (modo) {
+        currentProventosFilter = modo;
+        renderHistoricoIADetalhes(); // Re-renderiza para atualizar classes dos botões e o gráfico
+    };
+
+    function renderizarGraficoProventosDetalhes(rawData) {
+        const isLight = document.body.classList.contains('light-mode');
+        // Guarda os dados brutos na memória
+        window.currentRawDataProventos = rawData;
+
         if (detalhesChartInstance) {
             detalhesChartInstance.destroy();
             detalhesChartInstance = null;
         }
-        return;
-    }
 
-    // Chama a função principal que constrói tudo (Gráfico + Título + Botões)
-    renderizarGraficoProventosDetalhes(currentDetalhesHistoricoJSON);
-}
+        let filteredData = rawData.filter(d => d.paymentDate);
+        const hoje = new Date();
 
-// Funções globais para capturar eventos de filtro no novo layout
-window.atualizarFiltroCustom = function() {
-    const startEl = document.getElementById('custom-start');
-    const endEl = document.getElementById('custom-end');
-    if (startEl && endEl) {
-        customRangeStart = startEl.value;
-        customRangeEnd = endEl.value;
-        renderHistoricoIADetalhes(); // Re-renderiza o gráfico
-    }
-};
-
-window.mudarFiltroProventos = function(modo) {
-    currentProventosFilter = modo;
-    renderHistoricoIADetalhes(); // Re-renderiza para atualizar classes dos botões e o gráfico
-};
-
-function renderizarGraficoProventosDetalhes(rawData) {
-    // Guarda os dados brutos na memória
-    window.currentRawDataProventos = rawData; 
-
-    if (detalhesChartInstance) {
-        detalhesChartInstance.destroy();
-        detalhesChartInstance = null;
-    }
-
-    let filteredData = rawData.filter(d => d.paymentDate);
-    const hoje = new Date();
-
-    if (currentProventosFilter === '12m') {
-        const dataLimite = new Date();
-        dataLimite.setMonth(hoje.getMonth() - 11);
-        dataLimite.setDate(1);
-        filteredData = filteredData.filter(d => new Date(d.paymentDate) >= dataLimite);
-    }
-    else if (currentProventosFilter === 'custom') {
-        if (customRangeStart) {
-            const [anoStart, mesStart] = customRangeStart.split('-');
-            const dateStart = new Date(parseInt(anoStart), parseInt(mesStart) - 1, 1);
-            filteredData = filteredData.filter(d => new Date(d.paymentDate) >= dateStart);
-        }
-        if (customRangeEnd) {
-            const [anoEnd, mesEnd] = customRangeEnd.split('-');
-            const dateEnd = new Date(parseInt(anoEnd), parseInt(mesEnd), 0);
-            filteredData = filteredData.filter(d => new Date(d.paymentDate) <= dateEnd);
-        }
-    }
-    else if (currentProventosFilter === '5y') {
-        const dataLimite = new Date();
-        dataLimite.setFullYear(hoje.getFullYear() - 5);
-        dataLimite.setDate(1);
-        filteredData = filteredData.filter(d => new Date(d.paymentDate) >= dataLimite);
-    }
-    else if (currentProventosFilter === 'ytd') {
-        const inicioAno = new Date(hoje.getFullYear(), 0, 1);
-        filteredData = filteredData.filter(d => new Date(d.paymentDate) >= inicioAno);
-    }
-    else if (currentProventosFilter === 'desde_aporte') {
-        const ativoCarteira = carteiraCalculada.find(a => a.symbol === currentDetalhesSymbol);
-        if (ativoCarteira && ativoCarteira.dataCompra) {
-            const dataCompra = new Date(ativoCarteira.dataCompra);
-            dataCompra.setDate(1);
-            filteredData = filteredData.filter(d => new Date(d.paymentDate) >= dataCompra);
-        } else {
+        if (currentProventosFilter === '12m') {
             const dataLimite = new Date();
-            dataLimite.setFullYear(hoje.getFullYear() - 5);
+            dataLimite.setMonth(hoje.getMonth() - 11);
+            dataLimite.setDate(1);
             filteredData = filteredData.filter(d => new Date(d.paymentDate) >= dataLimite);
         }
-    }
-
-    filteredData.sort((a, b) => new Date(a.paymentDate) - new Date(b.paymentDate));
-
-    const grouped = {};
-    const allMonths = [];
-
-    filteredData.forEach(item => {
-        const d = new Date(item.paymentDate);
-        const sortKey = d.toISOString().slice(0, 7);
-        const labelKey = d.toLocaleDateString('pt-BR', { month: 'short', year: '2-digit' }).replace('.', '').toUpperCase();
-
-        if (!grouped[sortKey]) {
-            grouped[sortKey] = { label: labelKey, JCP: 0, TRIB: 0, DIV: 0, rawTotal: 0 };
-            allMonths.push(sortKey);
+        else if (currentProventosFilter === 'custom') {
+            if (customRangeStart) {
+                const [anoStart, mesStart] = customRangeStart.split('-');
+                const dateStart = new Date(parseInt(anoStart), parseInt(mesStart) - 1, 1);
+                filteredData = filteredData.filter(d => new Date(d.paymentDate) >= dateStart);
+            }
+            if (customRangeEnd) {
+                const [anoEnd, mesEnd] = customRangeEnd.split('-');
+                const dateEnd = new Date(parseInt(anoEnd), parseInt(mesEnd), 0);
+                filteredData = filteredData.filter(d => new Date(d.paymentDate) <= dateEnd);
+            }
+        }
+        else if (currentProventosFilter === '5y') {
+            const dataLimite = new Date();
+            dataLimite.setFullYear(hoje.getFullYear() - 5);
+            dataLimite.setDate(1);
+            filteredData = filteredData.filter(d => new Date(d.paymentDate) >= dataLimite);
+        }
+        else if (currentProventosFilter === 'ytd') {
+            const inicioAno = new Date(hoje.getFullYear(), 0, 1);
+            filteredData = filteredData.filter(d => new Date(d.paymentDate) >= inicioAno);
+        }
+        else if (currentProventosFilter === 'desde_aporte') {
+            const ativoCarteira = carteiraCalculada.find(a => a.symbol === currentDetalhesSymbol);
+            if (ativoCarteira && ativoCarteira.dataCompra) {
+                const dataCompra = new Date(ativoCarteira.dataCompra);
+                dataCompra.setDate(1);
+                filteredData = filteredData.filter(d => new Date(d.paymentDate) >= dataCompra);
+            } else {
+                const dataLimite = new Date();
+                dataLimite.setFullYear(hoje.getFullYear() - 5);
+                filteredData = filteredData.filter(d => new Date(d.paymentDate) >= dataLimite);
+            }
         }
 
-        let type = 'DIV';
-        const rawType = (item.rawType || item.type || '').toUpperCase();
-        if (rawType.includes('TRIB')) type = 'TRIB';
-        else if (rawType.includes('JCP') || rawType.includes('JURO')) type = 'JCP';
+        filteredData.sort((a, b) => new Date(a.paymentDate) - new Date(b.paymentDate));
 
-        const val = parseFloat(item.value || 0);
-        grouped[sortKey][type] += val;
-        grouped[sortKey].rawTotal += val;
-    });
+        const grouped = {};
+        const allMonths = [];
 
-    const uniqueMonths = [...new Set(allMonths)].sort();
-    const totals = uniqueMonths.map(k => grouped[k].rawTotal);
+        filteredData.forEach(item => {
+            const d = new Date(item.paymentDate);
+            const sortKey = d.toISOString().slice(0, 7);
+            const labelKey = d.toLocaleDateString('pt-BR', { month: 'short', year: '2-digit' }).replace('.', '').toUpperCase();
 
-    const totalGeral = totals.reduce((s, v) => s + v, 0);
-    const mediaGeral = totals.length > 0 ? totalGeral / totals.length : 0;
-    const melhorMes = totals.length > 0 ? Math.max(...totals) : 0;
+            if (!grouped[sortKey]) {
+                grouped[sortKey] = { label: labelKey, JCP: 0, TRIB: 0, DIV: 0, rawTotal: 0 };
+                allMonths.push(sortKey);
+            }
 
-    const labels = uniqueMonths.map(k => grouped[k].label);
-    const dataJCP = uniqueMonths.map(k => grouped[k].JCP);
-    const dataTRIB = uniqueMonths.map(k => grouped[k].TRIB);
-    const dataDIV = uniqueMonths.map(k => grouped[k].DIV);
-    const customInfo = uniqueMonths.map(k => grouped[k]);
-    const dataMedia = uniqueMonths.map(() => mediaGeral);
+            let type = 'DIV';
+            const rawType = (item.rawType || item.type || '').toUpperCase();
+            if (rawType.includes('TRIB')) type = 'TRIB';
+            else if (rawType.includes('JCP') || rawType.includes('JURO')) type = 'JCP';
 
-    // ==============================================================
-    // HTML DO GRÁFICO DE PROVENTOS (ALINHADO COM COTAÇÃO)
-    // ==============================================================
-    if (!document.getElementById('chart-wrapper-proventos')) {
-        const getBtnClass = (filterKey) => {
-            const isActive = currentProventosFilter === filterKey;
-            const textClass = isActive ? 'text-white' : 'text-gray-500 hover:text-gray-300';
-            return `relative z-10 flex-shrink-0 px-3 py-1.5 rounded-lg text-[10px] font-bold tracking-widest uppercase transition-colors duration-300 select-none proventos-filter-btn ${textClass}`;
-        };
+            const val = parseFloat(item.value || 0);
+            grouped[sortKey][type] += val;
+            grouped[sortKey].rawTotal += val;
+        });
 
-        detalhesAiProvento.innerHTML = `
+        const uniqueMonths = [...new Set(allMonths)].sort();
+        const totals = uniqueMonths.map(k => grouped[k].rawTotal);
+
+        const totalGeral = totals.reduce((s, v) => s + v, 0);
+        const mediaGeral = totals.length > 0 ? totalGeral / totals.length : 0;
+        const melhorMes = totals.length > 0 ? Math.max(...totals) : 0;
+
+        const labels = uniqueMonths.map(k => grouped[k].label);
+        const dataJCP = uniqueMonths.map(k => grouped[k].JCP);
+        const dataTRIB = uniqueMonths.map(k => grouped[k].TRIB);
+        const dataDIV = uniqueMonths.map(k => grouped[k].DIV);
+        const customInfo = uniqueMonths.map(k => grouped[k]);
+        const dataMedia = uniqueMonths.map(() => mediaGeral);
+
+        // ==============================================================
+        // HTML DO GRÁFICO DE PROVENTOS (ALINHADO COM COTAÇÃO)
+        // ==============================================================
+        if (!document.getElementById('chart-wrapper-proventos')) {
+            const isLight = document.body.classList.contains('light-mode');
+            const getBtnClass = (filterKey) => {
+                const isActive = currentProventosFilter === filterKey;
+                const txtActive = isLight ? 'text-gray-800' : 'text-white';
+                const textClass = isActive ? txtActive : `text-gray-500 hover:${isLight ? 'text-gray-800' : 'text-gray-300'}`;
+                return `relative z-10 flex-shrink-0 px-3 py-1.5 rounded-lg text-[10px] font-bold tracking-widest uppercase transition-colors duration-300 select-none proventos-filter-btn ${textClass}`;
+            };
+
+            const bgKpiColors = isLight ? 'bg-[#e5e7eb] border-gray-300' : 'bg-[#151515] border-white/5';
+            const txtKpiValues = isLight ? 'text-gray-800 font-bold' : 'text-gray-200 font-bold';
+
+            detalhesAiProvento.innerHTML = `
             <div class="flex flex-col mb-2 px-1">
                 
                 <div class="flex items-center justify-between gap-1 mb-3 pl-1 w-full mt-2">
-                    <h4 class="text-[10px] font-bold text-gray-300 uppercase tracking-widest truncate">Proventos - ${currentDetalhesSymbol || ''}</h4>
+                    <h4 class="text-[10px] font-bold ${isLight ? 'text-gray-600' : 'text-gray-300'} uppercase tracking-widest truncate">Proventos - ${currentDetalhesSymbol || ''}</h4>
                     
-                    <div class="flex items-center gap-1.5 text-[9px] bg-[#151515] border border-white/5 px-2 py-0.5 rounded-md shadow-sm whitespace-nowrap flex-shrink-0">
-                        <span class="text-gray-500 font-medium">MÉD:<span id="prov-stat-med" class="text-gray-200 font-bold ml-0.5">--</span></span>
-                        <span class="text-white/10">|</span>
+                    <div class="flex items-center gap-1.5 text-[9px] ${bgKpiColors} border px-2 py-0.5 rounded-md shadow-sm whitespace-nowrap flex-shrink-0">
+                        <span class="text-gray-500 font-medium">MÉD:<span id="prov-stat-med" class="${txtKpiValues} ml-0.5">--</span></span>
+                        <span class="${isLight ? 'text-gray-300' : 'text-white/10'}">|</span>
                         <span class="text-gray-500 font-medium">MAX:<span id="prov-stat-max" class="text-[#00C805] font-bold ml-0.5">--</span></span>
-                        <span class="text-white/10">|</span>
-                        <span class="text-gray-500 font-medium">TOT:<span id="prov-stat-tot" class="text-gray-200 font-bold ml-0.5">--</span></span>
+                        <span class="${isLight ? 'text-gray-300' : 'text-white/10'}">|</span>
+                        <span class="text-gray-500 font-medium">TOT:<span id="prov-stat-tot" class="${txtKpiValues} ml-0.5">--</span></span>
                     </div>
                 </div>
 
-                <div id="chart-wrapper-proventos" class="relative w-full bg-[#0f0f0f] rounded-2xl border border-[#1a1a1a] shadow-inner overflow-hidden" style="height:320px;">
+                <div id="chart-wrapper-proventos" class="relative w-full ${isLight ? 'bg-white border-gray-200' : 'bg-[#0f0f0f] border-[#1a1a1a]'} rounded-2xl shadow-inner overflow-hidden" style="height:320px;">
                     
                     <div class="absolute top-2 left-2 right-2 z-20 flex justify-center pointer-events-auto">
-                        <div class="relative flex items-center gap-1 p-1 bg-[#151515]/90 backdrop-blur-md rounded-xl overflow-x-auto no-scrollbar w-full snap-x border border-white/5 shadow-lg" id="proventos-filters-container">
+                        <div class="relative flex items-center gap-1 p-1 ${isLight ? 'bg-white/90 border-gray-200' : 'bg-[#151515]/90 border-white/5'} backdrop-blur-md rounded-xl overflow-x-auto no-scrollbar w-full snap-x" id="proventos-filters-container">
                             <div id="proventos-slider" class="absolute top-1 bottom-1 left-0 bg-[#2C2C2E] rounded-lg shadow-sm transition-all duration-300 ease-out z-0" style="width: 0px;"></div>
                             <button id="btn-prov-12m" onclick="window.mudarFiltroProventos('12m')" class="${getBtnClass('12m')} snap-start">1A</button>
                             <button id="btn-prov-5y" onclick="window.mudarFiltroProventos('5y')" class="${getBtnClass('5y')} snap-start">5A</button>
@@ -6754,196 +7785,206 @@ function renderizarGraficoProventosDetalhes(rawData) {
                 </div>
                 <div id="custom-date-container"></div>
             </div>`;
-    }
+        }
 
-    // ==========================================
-    // ATUALIZA OS VALORES DOS BADGES NO TOPO
-    // ==========================================
-    const fmtBRL = (v) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-    const elMed = document.getElementById('prov-stat-med');
-    const elMax = document.getElementById('prov-stat-max');
-    const elTot = document.getElementById('prov-stat-tot');
-    
-    if (elMed) elMed.innerText = fmtBRL(mediaGeral);
-    if (elMax) elMax.innerText = fmtBRL(melhorMes);
-    if (elTot) elTot.innerText = fmtBRL(totalGeral);
+        // ==========================================
+        // ATUALIZA OS VALORES DOS BADGES NO TOPO
+        // ==========================================
+        const fmtBRL = (v) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+        const elMed = document.getElementById('prov-stat-med');
+        const elMax = document.getElementById('prov-stat-max');
+        const elTot = document.getElementById('prov-stat-tot');
 
-    // ==========================================
-    // ATUALIZA O CONTAINER CUSTOM DATE E O SLIDER
-    // ==========================================
-    const customContainer = document.getElementById('custom-date-container');
-    if (customContainer) {
-        if (currentProventosFilter === 'custom') {
-            customContainer.innerHTML = `
-                <div class="animate-fade-in grid grid-cols-2 gap-3 bg-[#111] p-3 mt-3 rounded-xl border border-[#222]">
+        if (elMed) elMed.innerText = fmtBRL(mediaGeral);
+        if (elMax) elMax.innerText = fmtBRL(melhorMes);
+        if (elTot) elTot.innerText = fmtBRL(totalGeral);
+
+        // ==========================================
+        // ATUALIZA O CONTAINER CUSTOM DATE E O SLIDER
+        // ==========================================
+        const customContainer = document.getElementById('custom-date-container');
+        if (customContainer) {
+            if (currentProventosFilter === 'custom') {
+                const isLight = document.body.classList.contains('light-mode');
+                const bgInputContainer = isLight ? 'bg-white border-gray-200' : 'bg-[#111] border-[#222]';
+                const bgInput = isLight ? 'bg-white border-gray-300 text-gray-800' : 'bg-[#111] border-[#333] text-[#ccc]';
+                const bgLabel = isLight ? 'bg-white text-gray-500' : 'bg-[#111] text-[#555]';
+
+                customContainer.innerHTML = `
+                <div class="animate-fade-in grid grid-cols-2 gap-3 ${bgInputContainer} p-3 mt-3 rounded-xl border">
                     <div class="relative group">
-                        <label class="absolute -top-1.5 left-2 bg-[#111] px-1 text-[9px] font-bold text-[#555]">DE</label>
-                        <input type="month" id="custom-start" value="${customRangeStart}" class="w-full bg-[#111] text-[#ccc] text-xs h-9 border border-[#333] rounded-lg px-3 outline-none focus:border-[#555] transition-colors appearance-none" style="color-scheme: dark;" onchange="window.atualizarFiltroCustom()">
+                        <label class="absolute -top-1.5 left-2 ${bgLabel} px-1 text-[9px] font-bold">DE</label>
+                        <input type="month" id="custom-start" value="${customRangeStart}" class="w-full ${bgInput} text-xs h-9 border rounded-lg px-3 outline-none focus:border-[#555] transition-colors appearance-none" style="color-scheme: ${isLight ? 'light' : 'dark'};" onchange="window.atualizarFiltroCustom()">
                     </div>
                     <div class="relative group">
-                        <label class="absolute -top-1.5 left-2 bg-[#111] px-1 text-[9px] font-bold text-[#555]">ATÉ</label>
-                        <input type="month" id="custom-end" value="${customRangeEnd}" class="w-full bg-[#111] text-[#ccc] text-xs h-9 border border-[#333] rounded-lg px-3 outline-none focus:border-[#555] transition-colors appearance-none" style="color-scheme: dark;" onchange="window.atualizarFiltroCustom()">
+                        <label class="absolute -top-1.5 left-2 ${bgLabel} px-1 text-[9px] font-bold">ATÉ</label>
+                        <input type="month" id="custom-end" value="${customRangeEnd}" class="w-full ${bgInput} text-xs h-9 border rounded-lg px-3 outline-none focus:border-[#555] transition-colors appearance-none" style="color-scheme: ${isLight ? 'light' : 'dark'};" onchange="window.atualizarFiltroCustom()">
                     </div>
                 </div>
             `;
+            } else {
+                customContainer.innerHTML = '';
+            }
+        }
+
+        setTimeout(() => {
+            const activeBtn = document.getElementById(`btn-prov-${currentProventosFilter}`);
+            const slider = document.getElementById('proventos-slider');
+            if (activeBtn && slider) {
+                slider.style.width = `${activeBtn.offsetWidth}px`;
+                slider.style.transform = `translateX(${activeBtn.offsetLeft}px)`;
+
+                const isLight = document.body.classList.contains('light-mode');
+                const txtActive = isLight ? 'text-gray-800' : 'text-white';
+                const txtInactive = 'text-gray-500';
+                const hoverInactive = isLight ? 'hover:text-gray-800' : 'hover:text-gray-300';
+
+                document.querySelectorAll('.proventos-filter-btn').forEach(btn => {
+                    btn.classList.remove('text-white', 'text-gray-800');
+                    btn.classList.add(txtInactive, hoverInactive);
+                });
+                activeBtn.classList.remove(txtInactive, hoverInactive);
+                activeBtn.classList.add(txtActive);
+            }
+        }, 10);
+
+        const emptyState = document.getElementById('chart-empty-state');
+        const canvasContainer = document.getElementById('chart-canvas-container');
+
+        if (uniqueMonths.length === 0) {
+            emptyState.classList.remove('hidden');
+            canvasContainer.classList.add('hidden');
+            return;
         } else {
-            customContainer.innerHTML = '';
+            emptyState.classList.add('hidden');
+            canvasContainer.classList.remove('hidden');
         }
-    }
 
-    setTimeout(() => {
-        const activeBtn = document.getElementById(`btn-prov-${currentProventosFilter}`);
-        const slider = document.getElementById('proventos-slider');
-        if (activeBtn && slider) {
-            slider.style.width = `${activeBtn.offsetWidth}px`;
-            slider.style.transform = `translateX(${activeBtn.offsetLeft}px)`;
+        const canvas = document.getElementById('detalhes-proventos-chart');
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
 
-            document.querySelectorAll('.proventos-filter-btn').forEach(btn => {
-                btn.classList.remove('text-white');
-                btn.classList.add('text-gray-500', 'hover:text-gray-300');
-            });
-            activeBtn.classList.remove('text-gray-500', 'hover:text-gray-300');
-            activeBtn.classList.add('text-white');
-        }
-    }, 10);
-
-    const emptyState = document.getElementById('chart-empty-state');
-    const canvasContainer = document.getElementById('chart-canvas-container');
-
-    if (uniqueMonths.length === 0) {
-        emptyState.classList.remove('hidden');
-        canvasContainer.classList.add('hidden');
-        return; 
-    } else {
-        emptyState.classList.add('hidden');
-        canvasContainer.classList.remove('hidden');
-    }
-
-    const canvas = document.getElementById('detalhes-proventos-chart');
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-
-    detalhesChartInstance = new Chart(ctx, {
-        type: 'bar',
-        plugins: [crosshairPlugin],
-        data: {
-            labels,
-            datasets: [
-                {
-                    label: 'JCP',
-                    data: dataJCP,
-                    backgroundColor: 'rgba(251,191,36,0.85)',
-                    borderColor: 'rgba(251,191,36,0)',
-                    borderWidth: 0,
-                    stack: 'prov',
-                    barPercentage: 0.6,
-                    categoryPercentage: 0.85,
-                    borderRadius: { topLeft: 3, topRight: 3, bottomLeft: 0, bottomRight: 0 },
-                    borderSkipped: false,
-                },
-                {
-                    label: 'Trib',
-                    data: dataTRIB,
-                    backgroundColor: 'rgba(251,113,133,0.8)',
-                    borderWidth: 0,
-                    stack: 'prov',
-                    barPercentage: 0.6,
-                    categoryPercentage: 0.85,
-                    borderRadius: { topLeft: 3, topRight: 3, bottomLeft: 0, bottomRight: 0 },
-                    borderSkipped: false,
-                },
-                {
-                    label: 'Div',
-                    data: dataDIV,
-                    backgroundColor: 'rgba(167,139,250,0.85)',
-                    borderWidth: 0,
-                    stack: 'prov',
-                    barPercentage: 0.6,
-                    categoryPercentage: 0.85,
-                    borderRadius: { topLeft: 4, topRight: 4, bottomLeft: 2, bottomRight: 2 },
-                    borderSkipped: false,
-                },
-                {
-                    label: 'Média',
-                    data: dataMedia,
-                    type: 'line',
-                    borderColor: 'rgba(255,255,255,0.2)',
-                    borderWidth: 1.5,
-                    borderDash: [4, 4],
-                    pointRadius: 0,
-                    pointHoverRadius: 0,
-                    fill: false,
-                    tension: 0,
-                    stack: undefined,
-                    order: -1,
-                },
-            ]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            layout: { 
-                padding: { left: 0, right: 0, top: 10, bottom: 0 } 
+        detalhesChartInstance = new Chart(ctx, {
+            type: 'bar',
+            plugins: [crosshairPlugin],
+            data: {
+                labels,
+                datasets: [
+                    {
+                        label: 'JCP',
+                        data: dataJCP,
+                        backgroundColor: 'rgba(251,191,36,0.85)',
+                        borderColor: 'rgba(251,191,36,0)',
+                        borderWidth: 0,
+                        stack: 'prov',
+                        barPercentage: 0.6,
+                        categoryPercentage: 0.85,
+                        borderRadius: { topLeft: 3, topRight: 3, bottomLeft: 0, bottomRight: 0 },
+                        borderSkipped: false,
+                    },
+                    {
+                        label: 'Trib',
+                        data: dataTRIB,
+                        backgroundColor: 'rgba(251,113,133,0.8)',
+                        borderWidth: 0,
+                        stack: 'prov',
+                        barPercentage: 0.6,
+                        categoryPercentage: 0.85,
+                        borderRadius: { topLeft: 3, topRight: 3, bottomLeft: 0, bottomRight: 0 },
+                        borderSkipped: false,
+                    },
+                    {
+                        label: 'Div',
+                        data: dataDIV,
+                        backgroundColor: 'rgba(167,139,250,0.85)',
+                        borderWidth: 0,
+                        stack: 'prov',
+                        barPercentage: 0.6,
+                        categoryPercentage: 0.85,
+                        borderRadius: { topLeft: 4, topRight: 4, bottomLeft: 2, bottomRight: 2 },
+                        borderSkipped: false,
+                    },
+                    {
+                        label: 'Média',
+                        data: dataMedia,
+                        type: 'line',
+                        borderColor: 'rgba(255,255,255,0.2)',
+                        borderWidth: 1.5,
+                        borderDash: [4, 4],
+                        pointRadius: 0,
+                        pointHoverRadius: 0,
+                        fill: false,
+                        tension: 0.4,
+                        stack: undefined,
+                        order: -1,
+                    },
+                ]
             },
-            interaction: { mode: 'index', intersect: false },
-            animation: { duration: 250, easing: 'easeOutQuart' },
-            scales: {
-                x: {
-                    stacked: true,
-                    grid: { display: false, drawBorder: false },
-                    ticks: { display: false },
-                    border: { display: false },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                layout: {
+                    padding: { left: 0, right: 0, top: 10, bottom: 0 }
                 },
-                y: {
-                    stacked: true,
-                    grid: { color: 'rgba(255,255,255,0.04)', drawBorder: false },
-                    ticks: { display: false },
-                    border: { display: false },
-                }
-            },
-            plugins: {
-                legend: { display: false },
-                tooltip: {
-                    enabled: true,
-                    backgroundColor: 'rgba(20, 20, 22, 0.95)',
-                    titleColor: '#aaaaaa',
-                    bodyColor: '#ffffff',
-                    titleFont: { family: "'Inter', sans-serif", size: 11, weight: 'bold' },
-                    bodyFont: { family: "'Inter', sans-serif", size: 12, weight: 'bold' },
-                    borderColor: '#333333',
-                    borderWidth: 1,
-                    padding: 10,
-                    cornerRadius: 8,
-                    displayColors: true,
-                    boxWidth: 8,
-                    boxHeight: 8,
-                    usePointStyle: true,
-                    callbacks: {
-                        title(context) {
-                            const idx = context[0].dataIndex;
-                            const info = customInfo[idx];
-                            if (!info) return context[0].label || '';
-                            const totalFmt = info.rawTotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-                            return `${info.label}  ·  ${totalFmt}`;
-                        },
-                        label(context) {
-                            if (context.dataset.label === 'Média') return null;
-                            const val = context.parsed.y;
-                            if (!val || val < 0.001) return null;
-                            return `${context.dataset.label}: ${val.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}`;
+                interaction: { mode: 'index', intersect: false },
+                animation: { duration: 250, easing: 'easeOutQuart' },
+                scales: {
+                    x: {
+                        stacked: true,
+                        grid: { display: false, drawBorder: false },
+                        ticks: { display: false, color: isLight ? '#9ca3af' : '#666' },
+                        border: { display: false },
+                    },
+                    y: {
+                        stacked: true,
+                        grid: { color: isLight ? 'rgba(0,0,0,0.04)' : 'rgba(255,255,255,0.04)', drawBorder: false },
+                        ticks: { display: false },
+                        border: { display: false },
+                    }
+                },
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        enabled: true,
+                        backgroundColor: isLight ? 'rgba(255, 255, 255, 0.95)' : 'rgba(20, 20, 22, 0.95)',
+                        titleColor: isLight ? '#1f2937' : '#aaaaaa',
+                        bodyColor: isLight ? '#4b5563' : '#ffffff',
+                        titleFont: { family: "'Inter', sans-serif", size: 11, weight: 'bold' },
+                        bodyFont: { family: "'Inter', sans-serif", size: 12, weight: 'bold' },
+                        borderColor: isLight ? '#e5e7eb' : '#333333',
+                        borderWidth: 1,
+                        padding: 10,
+                        cornerRadius: 8,
+                        displayColors: true,
+                        boxWidth: 8,
+                        boxHeight: 8,
+                        usePointStyle: true,
+                        callbacks: {
+                            title(context) {
+                                const idx = context[0].dataIndex;
+                                const info = customInfo[idx];
+                                if (!info) return context[0].label || '';
+                                const totalFmt = info.rawTotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+                                return `${info.label}  ·  ${totalFmt}`;
+                            },
+                            label(context) {
+                                if (context.dataset.label === 'Média') return null;
+                                const val = context.parsed.y;
+                                if (!val || val < 0.001) return null;
+                                return `${context.dataset.label}: ${val.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}`;
+                            }
+                            // O 'afterBody' foi removido daqui para deixar o Tooltip mais limpo!
                         }
-                        // O 'afterBody' foi removido daqui para deixar o Tooltip mais limpo!
                     }
                 }
             }
-        }
-    });
-}
+        });
+    }
 
-// Ordem exata das telas (deve bater com a ordem das divs no HTML)
+    // Ordem exata das telas (deve bater com a ordem das divs no HTML)
     const tabOrder = ['tab-dashboard', 'tab-carteira', 'tab-noticias', 'tab-historico', 'tab-config'];
 
-function mudarAba(tabId) {
+    function mudarAba(tabId) {
         const index = tabOrder.indexOf(tabId);
         if (index === -1) return;
 
@@ -6956,16 +7997,8 @@ function mudarAba(tabId) {
             if (content.id === tabId) {
                 content.classList.add('active');
                 content.scrollTop = content.scrollTop;
-                // ✅ CORREÇÃO: Remove isolamento da aba ativa.
-                content.style.contentVisibility = 'visible';
-                content.style.willChange = 'auto';
             } else {
                 content.classList.remove('active');
-                // ✅ CORREÇÃO: Isola layout das abas inativas para evitar que
-                //    a aba Mercado (pesada) contamine o recálculo de layout
-                //    das demais durante a transição.
-                content.style.contentVisibility = 'auto';
-                content.style.containIntrinsicSize = '0 600px';
             }
         });
 
@@ -6987,7 +8020,7 @@ function mudarAba(tabId) {
 
                     // 3. Adiciona a classe novamente para tocar a animação
                     showAddModalBtn.classList.add('fab-animate');
-                }, 150); 
+                }, 150);
             } else {
                 showAddModalBtn.classList.add('hidden');
                 showAddModalBtn.classList.remove('fab-animate');
@@ -6996,18 +8029,18 @@ function mudarAba(tabId) {
     }
 
     refreshButton.addEventListener('click', async () => {
-        await atualizarTodosDados(true); 
+        await atualizarTodosDados(true);
     });
 
     refreshNoticiasButton.addEventListener('click', async () => {
-        await handleAtualizarNoticias(true); 
+        await handleAtualizarNoticias(true);
     });
 
     showAddModalBtn.addEventListener('click', showAddModal);
     emptyStateAddBtn.addEventListener('click', showAddModal);
     addAtivoCancelBtn.addEventListener('click', hideAddModal);
     addAtivoModal.addEventListener('click', (e) => {
-        if (e.target === addAtivoModal) { hideAddModal(); } 
+        if (e.target === addAtivoModal) { hideAddModal(); }
     });
 
     addAtivoForm.addEventListener('submit', (e) => {
@@ -7015,7 +8048,7 @@ function mudarAba(tabId) {
         handleSalvarTransacao();
     });
 
-listaHistorico.addEventListener('click', (e) => {
+    listaHistorico.addEventListener('click', (e) => {
         // 1. Verifica se clicou no botão de EXCLUIR
         const deleteBtn = e.target.closest('[data-action="delete"]');
         if (deleteBtn) {
@@ -7034,7 +8067,7 @@ listaHistorico.addEventListener('click', (e) => {
         }
     });
 
-const tabDashboard = document.getElementById('tab-dashboard');
+    const tabDashboard = document.getElementById('tab-dashboard');
 
     if (tabDashboard) {
         tabDashboard.addEventListener('click', (e) => {
@@ -7077,37 +8110,37 @@ const tabDashboard = document.getElementById('tab-dashboard');
     customModalCancel.addEventListener('click', hideModal);
     customModalOk.addEventListener('click', () => {
         if (typeof onConfirmCallback === 'function') {
-            onConfirmCallback(); 
+            onConfirmCallback();
         }
-        hideModal(); 
+        hideModal();
     });
     customModal.addEventListener('click', (e) => {
-        if (e.target === customModal) { hideModal(); } 
+        if (e.target === customModal) { hideModal(); }
     });
 
     detalhesVoltarBtn.addEventListener('click', hideDetalhesModal);
     detalhesPageModal.addEventListener('click', (e) => {
-        if (e.target === detalhesPageModal) { hideDetalhesModal(); } 
+        if (e.target === detalhesPageModal) { hideDetalhesModal(); }
     });
 
     detalhesPageContent.addEventListener('touchstart', (e) => {
         if (detalhesConteudoScroll.scrollTop === 0) {
             touchStartY = e.touches[0].clientY;
-            touchMoveY = touchStartY; 
+            touchMoveY = touchStartY;
             isDraggingDetalhes = true;
-            detalhesPageContent.style.transition = 'none'; 
+            detalhesPageContent.style.transition = 'none';
         }
-    }, { passive: true }); 
+    }, { passive: true });
 
     detalhesPageContent.addEventListener('touchmove', (e) => {
         if (!isDraggingDetalhes) return;
         touchMoveY = e.touches[0].clientY;
         const diff = touchMoveY - touchStartY;
-        if (diff > 0) { 
-            e.preventDefault(); 
+        if (diff > 0) {
+            e.preventDefault();
             detalhesPageContent.style.transform = `translateY(${diff}px)`;
         }
-    }, { passive: false }); 
+    }, { passive: false });
 
     detalhesPageContent.addEventListener('touchend', (e) => {
         if (!isDraggingDetalhes) return;
@@ -7115,10 +8148,10 @@ const tabDashboard = document.getElementById('tab-dashboard');
         const diff = touchMoveY - touchStartY;
         detalhesPageContent.style.transition = 'transform 0.4s ease-in-out';
 
-        if (diff > 100) { 
-            hideDetalhesModal(); 
+        if (diff > 100) {
+            hideDetalhesModal();
         } else {
-            detalhesPageContent.style.transform = ''; 
+            detalhesPageContent.style.transform = '';
         }
         touchStartY = 0;
         touchMoveY = 0;
@@ -7128,7 +8161,7 @@ const tabDashboard = document.getElementById('tab-dashboard');
         // 1. Verifica se clicou numa TAG de ticker
         const tickerTag = e.target.closest('.news-ticker-tag');
         if (tickerTag) {
-            e.stopPropagation(); 
+            e.stopPropagation();
             const symbol = tickerTag.dataset.symbol;
             if (symbol) {
                 showDetalhesModal(symbol);
@@ -7138,8 +8171,8 @@ const tabDashboard = document.getElementById('tab-dashboard');
 
         // 2. Verifica se clicou no LINK externo
         if (e.target.closest('a')) {
-            e.stopPropagation(); 
-            return; 
+            e.stopPropagation();
+            return;
         }
 
         // 3. Verifica se clicou no CARD da notícia (para abrir o drawer)
@@ -7164,7 +8197,7 @@ const tabDashboard = document.getElementById('tab-dashboard');
 
     detalhesFavoritoBtn.addEventListener('click', handleToggleFavorito);
 
-	if (detalhesShareBtn) {
+    if (detalhesShareBtn) {
         detalhesShareBtn.addEventListener('click', handleCompartilharAtivo);
     }
 
@@ -7192,7 +8225,7 @@ const tabDashboard = document.getElementById('tab-dashboard');
                 saveSearchHistory(term);
                 suggestionsContainer.classList.add('hidden');
 
-                carteiraSearchInput.blur(); 
+                carteiraSearchInput.blur();
                 showDetalhesModal(term);
 
                 carteiraSearchInput.value = '';
@@ -7205,7 +8238,8 @@ const tabDashboard = document.getElementById('tab-dashboard');
         toggleBioBtn.addEventListener('click', () => {
             const isEnabled = localStorage.getItem('vesto_bio_enabled') === 'true';
             if (isEnabled) {
-                showModal("Desativar Biometria?", "Deseja remover o bloqueio por impressão digital?", () => {                    desativarBiometria();
+                showModal("Desativar Biometria?", "Deseja remover o bloqueio por impressão digital?", () => {
+                    desativarBiometria();
                 });
             } else {
                 showModal("Ativar Biometria?", "Isso usará o sensor do seu dispositivo para proteger o app.", () => {
@@ -7243,7 +8277,7 @@ const tabDashboard = document.getElementById('tab-dashboard');
     }
 
 
-if (exportCsvBtn) {
+    if (exportCsvBtn) {
         exportCsvBtn.addEventListener('click', async () => { // Note o 'async' aqui
             if (!transacoes || transacoes.length === 0) {
                 showToast("Sem dados para exportar.");
@@ -7309,7 +8343,7 @@ if (exportCsvBtn) {
         });
     }
 
-const importExcelBtn = document.getElementById('import-excel-btn');
+    const importExcelBtn = document.getElementById('import-excel-btn');
     const importExcelInput = document.getElementById('import-excel-input');
 
     if (importExcelBtn && importExcelInput) {
@@ -7359,7 +8393,7 @@ const importExcelBtn = document.getElementById('import-excel-btn');
                     if (tickerRaw && qtdRaw && priceRaw) {
                         try {
                             let ticker = tickerRaw.toString().trim().toUpperCase();
-                            if (ticker.endsWith('F')) ticker = ticker.slice(0, -1); 
+                            if (ticker.endsWith('F')) ticker = ticker.slice(0, -1);
 
                             let type = 'buy';
                             const typeStr = typeRaw ? typeRaw.toString().toLowerCase() : 'compra';
@@ -7368,12 +8402,12 @@ const importExcelBtn = document.getElementById('import-excel-btn');
                             // Tratamento de Data
                             let dataISO;
                             if (dateRaw && typeof dateRaw === 'string' && dateRaw.includes('/')) {
-                                const parts = dateRaw.split('/'); 
+                                const parts = dateRaw.split('/');
                                 dataISO = new Date(`${parts[2]}-${parts[1]}-${parts[0]}T12:00:00`).toISOString();
                             } else if (dateRaw instanceof Date) {
                                 dataISO = dateRaw.toISOString();
                             } else {
-                                dataISO = new Date().toISOString(); 
+                                dataISO = new Date().toISOString();
                             }
 
                             // Tratamento de Números
@@ -7416,7 +8450,7 @@ const importExcelBtn = document.getElementById('import-excel-btn');
                 if (importadosCount > 0) {
                     showToast(`${importadosCount} negociações importadas!`, 'success');
                     // Atualiza tudo
-                    saldoCaixa = 0; 
+                    saldoCaixa = 0;
                     await salvarCaixa();
                     mesesProcessados = [];
                     await salvarHistoricoProcessado();
@@ -7432,16 +8466,16 @@ const importExcelBtn = document.getElementById('import-excel-btn');
                 // Restaura o botão
                 labelEl.textContent = textoOriginal;
                 importExcelBtn.disabled = false;
-                importExcelInput.value = ''; 
+                importExcelInput.value = '';
             }
         });
     }
 
-if (clearCacheBtn) {
+    if (clearCacheBtn) {
         clearCacheBtn.addEventListener('click', () => {
             showModal(
-                "Limpar Cache e Reparar?", 
-                "Isso apagará dados temporários (preços, notícias) e baixará a versão mais recente do app. Suas configurações (Tema, Biometria) serão mantidas.", 
+                "Limpar Cache e Reparar?",
+                "Isso apagará dados temporários (preços, notícias) e baixará a versão mais recente do app. Suas configurações (Tema, Biometria) serão mantidas.",
                 async () => {
 
                     try {
@@ -7461,7 +8495,7 @@ if (clearCacheBtn) {
 
                         if ('serviceWorker' in navigator) {
                             const registrations = await navigator.serviceWorker.getRegistrations();
-                            for(let registration of registrations) {
+                            for (let registration of registrations) {
                                 await registration.unregister();
                             }
                         }
@@ -7505,8 +8539,8 @@ if (clearCacheBtn) {
         logoutBtn.addEventListener('click', () => {
             showModal("Sair?", "Tem certeza que deseja sair da sua conta?", async () => {
                 try {
-                    await vestoDB.clear('apiCache'); 
-                    sessionStorage.clear(); 
+                    await vestoDB.clear('apiCache');
+                    sessionStorage.clear();
                 } catch (e) {
                     console.error("Erro ao limpar dados locais:", e);
                 }
@@ -7517,17 +8551,17 @@ if (clearCacheBtn) {
         });
     }
 
-    async function callScraperHistoricoAPI(ticker) { 
-        const body = { 
-            mode: 'historico_12m', 
-            payload: { ticker } 
+    async function callScraperHistoricoAPI(ticker) {
+        const body = {
+            mode: 'historico_12m',
+            payload: { ticker }
         };
         const response = await fetchBFF('/api/scraper', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(body)
         });
-        return response.json; 
+        return response.json;
     }
 
     async function callScraperProventosCarteiraAPI(fiiList) {
@@ -7537,17 +8571,17 @@ if (clearCacheBtn) {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(body)
         });
-        return response.json; 
+        return response.json;
     }
 
     async function callScraperHistoricoPortfolioAPI(fiiList) {
-         const body = { mode: 'historico_portfolio', payload: { fiiList } };
-         const response = await fetchBFF('/api/scraper', {
+        const body = { mode: 'historico_portfolio', payload: { fiiList } };
+        const response = await fetchBFF('/api/scraper', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(body)
         });
-        return response.json; 
+        return response.json;
     }
 
     function showAuthLoading(isLoading) {
@@ -7555,7 +8589,7 @@ if (clearCacheBtn) {
             authLoading.classList.remove('hidden');
             loginForm.classList.add('hidden');
             signupForm.classList.add('hidden');
-            recoverForm.classList.add('hidden'); 
+            recoverForm.classList.add('hidden');
         } else {
             authLoading.classList.add('hidden');
         }
@@ -7581,52 +8615,56 @@ if (clearCacheBtn) {
         signupSubmitBtn.classList.remove('hidden');
     }
 
-async function carregarDadosIniciais() {
-    try {
-        // Exibe skeletons imediatamente para evitar flash de valores zerados
-        renderizarDashboardSkeletons(true);
-        renderizarCarteiraSkeletons(true);
-
-        // Dispara todas as requisições ao mesmo tempo
-        await Promise.all([
-            carregarTransacoes(),
-            carregarPatrimonio(),
-            carregarCaixa(),
-            carregarProventosConhecidos(),
-            carregarHistoricoProcessado(),
-            carregarWatchlist()
-        ]);
-
-        // Leitura única do localStorage — a partir daqui todo acesso usa o Set em RAM
+    async function carregarDadosIniciais() {
         try {
-            const raw = localStorage.getItem('vesto_dismissed_notifs');
-            dismissedNotifsSet = new Set(raw ? JSON.parse(raw) : []);
-        } catch (_) {
-            dismissedNotifsSet = new Set();
+            // Exibe skeletons imediatamente para evitar flash de valores zerados
+            renderizarDashboardSkeletons(true);
+            renderizarCarteiraSkeletons(true);
+
+            // Dispara todas as requisições ao mesmo tempo
+            await Promise.all([
+                carregarTransacoes(),
+                carregarPatrimonio(),
+                carregarCaixa(),
+                carregarProventosConhecidos(),
+                carregarHistoricoProcessado(),
+                carregarWatchlist()
+            ]);
+
+            // Leitura única do localStorage — a partir daqui todo acesso usa o Set em RAM
+            try {
+                const raw = localStorage.getItem('vesto_dismissed_notifs');
+                dismissedNotifsSet = new Set(raw ? JSON.parse(raw) : []);
+            } catch (_) {
+                dismissedNotifsSet = new Set();
+            }
+
+            // Renderiza a watchlist (leve)
+            renderizarWatchlist();
+
+            // Carrega rankings Maiores Altas (não bloqueia)
+            carregarRankings();
+            carregarMarketIndices();
+
+            // Inicia cálculos pesados e chamadas externas
+            atualizarTodosDados(false);
+            handleAtualizarNoticias(false);
+
+            setInterval(() => atualizarTodosDados(false), REFRESH_INTERVAL);
+
+        } catch (e) {
+            // Garante que os skeletons sejam removidos mesmo em caso de erro,
+            // evitando que o app fique travado no estado de carregamento
+            renderizarDashboardSkeletons(false);
+            renderizarCarteiraSkeletons(false);
+            console.error("Erro ao carregar dados iniciais:", e);
+            showToast("Falha ao carregar dados da nuvem.");
         }
-
-        // Renderiza a watchlist (leve)
-        renderizarWatchlist(); 
-
-        // Inicia cálculos pesados e chamadas externas
-        atualizarTodosDados(false); 
-        handleAtualizarNoticias(false); 
-
-        setInterval(() => atualizarTodosDados(false), REFRESH_INTERVAL); 
-
-    } catch (e) {
-        // Garante que os skeletons sejam removidos mesmo em caso de erro,
-        // evitando que o app fique travado no estado de carregamento
-        renderizarDashboardSkeletons(false);
-        renderizarCarteiraSkeletons(false);
-        console.error("Erro ao carregar dados iniciais:", e);
-        showToast("Falha ao carregar dados da nuvem.");
     }
-}
 
 
     // SUA CHAVE PÚBLICA (Preenchida com a que você enviou)
-    const VAPID_PUBLIC_KEY = 'BHsn3oIOqeyV80WVlU7yw7528e9EPrJ3KI7mgaX_aMcAtrE0qrfRFuYbT1RL46X34tkxXB_MLCStRrmIYVh6tVY'; 
+    const VAPID_PUBLIC_KEY = 'BHsn3oIOqeyV80WVlU7yw7528e9EPrJ3KI7mgaX_aMcAtrE0qrfRFuYbT1RL46X34tkxXB_MLCStRrmIYVh6tVY';
 
     function urlBase64ToUint8Array(base64String) {
         const padding = '='.repeat((4 - base64String.length % 4) % 4);
@@ -7650,19 +8688,19 @@ async function carregarDadosIniciais() {
             toggleNotifBtn.classList.add('bg-purple-600');
             notifToggleKnob.classList.remove('translate-x-1');
             notifToggleKnob.classList.add('translate-x-6');
-            if(notifStatusIcon) notifStatusIcon.classList.replace('text-gray-500', 'text-purple-400');
+            if (notifStatusIcon) notifStatusIcon.classList.replace('text-gray-500', 'text-purple-400');
         } else {
             toggleNotifBtn.classList.remove('bg-purple-600');
             toggleNotifBtn.classList.add('bg-gray-700');
             notifToggleKnob.classList.remove('translate-x-6');
             notifToggleKnob.classList.add('translate-x-1');
-            if(notifStatusIcon) notifStatusIcon.classList.replace('text-purple-400', 'text-gray-500');
+            if (notifStatusIcon) notifStatusIcon.classList.replace('text-purple-400', 'text-gray-500');
         }
     }
 
     async function verificarStatusPush() {
         if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
-            if(toggleNotifBtn) toggleNotifBtn.disabled = true; // Navegador não suporta
+            if (toggleNotifBtn) toggleNotifBtn.disabled = true; // Navegador não suporta
             return;
         }
 
@@ -7680,7 +8718,7 @@ async function carregarDadosIniciais() {
     }
 
     async function assinarNotificacoesPush() {
-        if (!currentUserId) return; 
+        if (!currentUserId) return;
 
         try {
             const registration = await navigator.serviceWorker.ready;
@@ -7711,7 +8749,7 @@ async function carregarDadosIniciais() {
         }
     }
 
-	async function desativarNotificacoesPush() {
+    async function desativarNotificacoesPush() {
         try {
             const reg = await navigator.serviceWorker.ready;
             const sub = await reg.pushManager.getSubscription();
@@ -7733,7 +8771,7 @@ async function carregarDadosIniciais() {
         }
     }
 
-function setupTransactionModalLogic() {
+    function setupTransactionModalLogic() {
         const btnCompra = document.getElementById('btn-opt-compra');
         const btnVenda = document.getElementById('btn-opt-venda');
         const toggleBg = document.getElementById('transacao-toggle-bg');
@@ -7769,7 +8807,7 @@ function setupTransactionModalLogic() {
             const qtd = parseFloat(inputQtd.value) || 0;
             const preco = parseFloat(inputPreco.value) || 0;
             const total = qtd * preco;
-            if(totalPreview) totalPreview.textContent = formatBRL(total);
+            if (totalPreview) totalPreview.textContent = formatBRL(total);
         }
 
         if (inputQtd && inputPreco) {
@@ -7778,13 +8816,13 @@ function setupTransactionModalLogic() {
         }
     }
 
-async function init() {
+    async function init() {
         try {
             await vestoDB.init();
         } catch (e) {
             console.error("[IDB Cache] Falha fatal ao inicializar o DB.", e);
-            showToast("Erro crítico: Banco de dados local não pôde ser carregado."); 
-            return; 
+            showToast("Erro crítico: Banco de dados local não pôde ser carregado.");
+            return;
         }
 
         // Listeners de Formulários (Recuperação e Login)
@@ -7830,8 +8868,8 @@ async function init() {
 
         // Verificação de Nova Senha via URL
         if (window.location.hash && window.location.hash.includes('type=recovery')) {
-             newPasswordModal.classList.add('visible');
-             document.querySelector('#new-password-modal .modal-content').classList.remove('modal-out');
+            newPasswordModal.classList.add('visible');
+            document.querySelector('#new-password-modal .modal-content').classList.remove('modal-out');
         }
 
         if (newPasswordForm) {
@@ -7849,7 +8887,7 @@ async function init() {
                     showToast("Senha atualizada com sucesso!", "success");
                     setTimeout(() => {
                         newPasswordModal.classList.remove('visible');
-                        window.location.href = "/"; 
+                        window.location.href = "/";
                     }, 1500);
                 } catch (error) {
                     showToast("Erro ao atualizar senha: " + error.message);
@@ -7869,7 +8907,7 @@ async function init() {
             console.error("Erro na inicialização:", e);
             showAuthLoading(false);
             showLoginError("Erro ao conectar com o servidor. Tente novamente.");
-            return; 
+            return;
         }
 
         // Listeners de Login/Cadastro
@@ -7897,7 +8935,7 @@ async function init() {
             const confirmPassword = signupConfirmPasswordInput.value;
 
             signupError.classList.add('hidden');
-            signupSuccess.classList.add('hidden'); 
+            signupSuccess.classList.add('hidden');
 
             if (password !== confirmPassword) {
                 showSignupError("As senhas não coincidem.");
@@ -7930,10 +8968,10 @@ async function init() {
         showSignupBtn.addEventListener('click', () => {
             loginForm.classList.add('hidden');
             signupForm.classList.remove('hidden');
-            recoverForm.classList.add('hidden'); 
+            recoverForm.classList.add('hidden');
             loginError.classList.add('hidden');
-            signupError.classList.add('hidden'); 
-            signupSuccess.classList.add('hidden'); 
+            signupError.classList.add('hidden');
+            signupSuccess.classList.add('hidden');
 
             signupEmailInput.classList.remove('hidden');
             signupPasswordInput.parentElement.classList.remove('hidden');
@@ -7969,10 +9007,10 @@ async function init() {
 
         // LÓGICA DE SESSÃO E ROTEAMENTO
         if (session) {
-            await verificarStatusPush();
+            verificarStatusPush(); // Fire-and-forget — não bloqueia biometria
             currentUserId = session.user.id;
-            authContainer.classList.add('hidden');    
-            appWrapper.classList.remove('hidden'); 
+            authContainer.classList.add('hidden');
+            appWrapper.classList.remove('hidden');
 
             const userEmailDisplay = document.getElementById('user-email-display');
             if (userEmailDisplay && session.user.email) {
@@ -7991,7 +9029,7 @@ async function init() {
                 mudarAba(tabParam);
                 window.history.replaceState({}, document.title, window.location.pathname);
             } else {
-                mudarAba('tab-dashboard'); 
+                mudarAba('tab-dashboard');
             }
 
             const carouselWrapper = document.getElementById('carousel-wrapper');
@@ -8007,7 +9045,7 @@ async function init() {
             // 3. Lógica de Ativo Compartilhado (Deep Link)
             if (ativoShared) {
                 const newUrl = window.location.protocol + "//" + window.location.host + window.location.pathname;
-                window.history.replaceState({path: newUrl}, '', newUrl);
+                window.history.replaceState({ path: newUrl }, '', newUrl);
 
                 setTimeout(() => {
                     let symbolClean = ativoShared.toUpperCase().replace('.SA', '').trim();
@@ -8042,7 +9080,7 @@ async function init() {
         console.error("Erro Vesto: Input de pesquisa não encontrado para anexar sugestões.");
     }
 
-function getSearchHistory() {
+    function getSearchHistory() {
         try {
             const history = localStorage.getItem(STORAGE_KEY_SEARCH);
 
@@ -8050,14 +9088,14 @@ function getSearchHistory() {
         } catch (e) { return []; }
     }
 
-function saveSearchHistory(term) {
+    function saveSearchHistory(term) {
         if (!term || term.length < 3) return;
         term = term.toUpperCase().trim();
 
         let history = getSearchHistory();
         history = history.filter(item => item !== term);
-        history.unshift(term); 
-        if (history.length > MAX_HISTORY_ITEMS) history.pop(); 
+        history.unshift(term);
+        if (history.length > MAX_HISTORY_ITEMS) history.pop();
 
         localStorage.setItem(STORAGE_KEY_SEARCH, JSON.stringify(history));
 
@@ -8111,7 +9149,7 @@ function saveSearchHistory(term) {
             `;
 
             contentDiv.addEventListener('mousedown', (e) => {
-                e.preventDefault(); 
+                e.preventDefault();
                 carteiraSearchInput.value = term;
                 suggestionsContainer.classList.add('hidden');
                 carteiraSearchInput.dispatchEvent(new Event('input'));
@@ -8167,82 +9205,82 @@ function saveSearchHistory(term) {
         });
     }
 
-// SWIPE GLOBAL DE NAVEGAÇÃO ENTRE ABAS (CORRIGIDO)
+    // SWIPE GLOBAL DE NAVEGAÇÃO ENTRE ABAS (CORRIGIDO)
 
-let swipeStartX = 0;
-let swipeStartY = 0;
+    let swipeStartX = 0;
+    let swipeStartY = 0;
 
-document.addEventListener('touchstart', (e) => {
-    // 1. Bloqueia se houver qualquer modal aberto
-    if (document.querySelector('.custom-modal.visible') || 
-        document.querySelector('.page-modal.visible') || 
-        document.querySelector('#ai-modal.visible')) {
-        return;
-    }
+    document.addEventListener('touchstart', (e) => {
+        // 1. Bloqueia se houver qualquer modal aberto
+        if (document.querySelector('.custom-modal.visible') ||
+            document.querySelector('.page-modal.visible') ||
+            document.querySelector('#ai-modal.visible')) {
+            return;
+        }
 
-    // 2. TRAVA DE SEGURANÇA: Bloqueia o início do swipe em áreas de scroll horizontal ou gráficos
-    // Usamos apenas classes genéricas que já existem no seu HTML
-    if (e.target.closest('.overflow-x-auto') || 
-        e.target.closest('#dashboard-favorites-list') || 
-        e.target.closest('canvas')) { 
-        return; 
-    }
+        // 2. TRAVA DE SEGURANÇA: Bloqueia o início do swipe em áreas de scroll horizontal ou gráficos
+        // Usamos apenas classes genéricas que já existem no seu HTML
+        if (e.target.closest('.overflow-x-auto') ||
+            e.target.closest('#dashboard-favorites-list') ||
+            e.target.closest('canvas')) {
+            return;
+        }
 
-    swipeStartX = e.changedTouches[0].screenX;
-    swipeStartY = e.changedTouches[0].screenY;
-}, { passive: true });
+        swipeStartX = e.changedTouches[0].screenX;
+        swipeStartY = e.changedTouches[0].screenY;
+    }, { passive: true });
 
-document.addEventListener('touchend', (e) => {
-    // Se swipeStartX for 0, o toque já foi ignorado no início
-    if (swipeStartX === 0 && swipeStartY === 0) return;
+    document.addEventListener('touchend', (e) => {
+        // Se swipeStartX for 0, o toque já foi ignorado no início
+        if (swipeStartX === 0 && swipeStartY === 0) return;
 
-    // Verificação dupla de modais
-    if (document.querySelector('.custom-modal.visible') || 
-        document.querySelector('.page-modal.visible') || 
-        document.querySelector('#ai-modal.visible')) {
-        swipeStartX = 0; swipeStartY = 0;
-        return;
-    }
+        // Verificação dupla de modais
+        if (document.querySelector('.custom-modal.visible') ||
+            document.querySelector('.page-modal.visible') ||
+            document.querySelector('#ai-modal.visible')) {
+            swipeStartX = 0; swipeStartY = 0;
+            return;
+        }
 
-    if (e.target.closest('.payment-carousel') || 
-        e.target.closest('.overflow-x-auto')) {
-        swipeStartX = 0; swipeStartY = 0; 
-        return; 
-    }
+        if (e.target.closest('.payment-carousel') ||
+            e.target.closest('.overflow-x-auto')) {
+            swipeStartX = 0; swipeStartY = 0;
+            return;
+        }
 
-    const swipeEndX = e.changedTouches[0].screenX;
-    const swipeEndY = e.changedTouches[0].screenY;
+        const swipeEndX = e.changedTouches[0].screenX;
+        const swipeEndY = e.changedTouches[0].screenY;
 
-    const diffX = swipeEndX - swipeStartX;
-    const diffY = swipeEndY - swipeStartY;
+        const diffX = swipeEndX - swipeStartX;
+        const diffY = swipeEndY - swipeStartY;
 
-    // Reseta as variáveis
-    swipeStartX = 0;
-    swipeStartY = 0;
+        // Reseta as variáveis
+        swipeStartX = 0;
+        swipeStartY = 0;
 
-    // Lógica do Gesto:
-    // 1. Mais horizontal que vertical
-    // 2. Movimento mínimo de 50px
-    if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > 50) {
-        const currentTab = document.querySelector('.tab-content.active');
-        if (!currentTab) return;
+        // Lógica do Gesto:
+        // 1. Mais horizontal que vertical
+        // 2. Movimento mínimo de 50px
+        if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > 50) {
+            const currentTab = document.querySelector('.tab-content.active');
+            if (!currentTab) return;
 
-        const currentIndex = tabOrder.indexOf(currentTab.id);
-        if (currentIndex === -1) return;
+            const currentIndex = tabOrder.indexOf(currentTab.id);
+            if (currentIndex === -1) return;
 
-        if (diffX < 0) {
-            // Deslizou para ESQUERDA (<<) -> Próxima Aba
-            if (currentIndex < tabOrder.length - 1) {
-                mudarAba(tabOrder[currentIndex + 1]);
-            }
-        } else {
-            // Deslizou para DIREITA (>>) -> Aba Anterior
-            if (currentIndex > 0) {
-                mudarAba(tabOrder[currentIndex - 1]);
+            if (diffX < 0) {
+                // Deslizou para ESQUERDA (<<) -> Próxima Aba
+                if (currentIndex < tabOrder.length - 1) {
+                    mudarAba(tabOrder[currentIndex + 1]);
+                }
+            } else {
+                // Deslizou para DIREITA (>>) -> Aba Anterior
+                if (currentIndex > 0) {
+                    mudarAba(tabOrder[currentIndex - 1]);
+                }
             }
         }
-    }
-}, { passive: true });
+    }, { passive: true });
 
 
     // 1. Abrir/Fechar ao clicar no Sininho
@@ -8268,14 +9306,14 @@ document.addEventListener('touchend', (e) => {
 
     // 3. Fechar a gaveta de notificações se clicar fora dela
     document.addEventListener('click', (e) => {
-        if (notificationsDrawer && notificationsDrawer.classList.contains('open') && 
-            !notificationsDrawer.contains(e.target) && 
+        if (notificationsDrawer && notificationsDrawer.classList.contains('open') &&
+            !notificationsDrawer.contains(e.target) &&
             !btnNotifications.contains(e.target)) {
             notificationsDrawer.classList.remove('open');
         }
     });
 
-if (toggleNotifBtn) {
+    if (toggleNotifBtn) {
         toggleNotifBtn.addEventListener('click', () => {
             // Verifica se visualmente está ligado (bg-purple-600)
             const estaAtivado = toggleNotifBtn.classList.contains('bg-purple-600');
@@ -8283,8 +9321,8 @@ if (toggleNotifBtn) {
             if (estaAtivado) {
                 // Lógica de DESATIVAR
                 showModal(
-                    "Desativar Notificações?", 
-                    "Você deixará de receber alertas sobre proventos e datas de corte.", 
+                    "Desativar Notificações?",
+                    "Você deixará de receber alertas sobre proventos e datas de corte.",
                     () => {
                         desativarNotificacoesPush();
                     }
@@ -8295,535 +9333,643 @@ if (toggleNotifBtn) {
             }
         });
     }
-	window.mudarAba = mudarAba;
+    window.mudarAba = mudarAba;
 
-	window.confirmarExclusao = handleRemoverAtivo;
+    window.confirmarExclusao = handleRemoverAtivo;
     window.abrirDetalhesAtivo = showDetalhesModal;
-	setupTransactionModalLogic();
+    setupTransactionModalLogic();
 
-//  LÓGICA DE CÁLCULO DE DY DA CARTEIRA (NOVO RECURSO)
+    //  LÓGICA DE CÁLCULO DE DY DA CARTEIRA (NOVO RECURSO)
 
-/**
- * Calcula o Dividend Yield (DY) Teórico da carteira atual.
- * Lógica: Pega a quantidade de cotas que você tem HOJE e aplica
- * aos proventos pagos por esses ativos nos últimos 12 meses.
- */
-async function calcularDyCarteiraTeorico() {
-    // 1. Verifica se a carteira já foi calculada e tem ativos
-    if (!carteiraCalculada || carteiraCalculada.length === 0) return 0;
+    /**
+     * Calcula o Dividend Yield (DY) Teórico da carteira atual.
+     * Lógica: Pega a quantidade de cotas que você tem HOJE e aplica
+     * aos proventos pagos por esses ativos nos últimos 12 meses.
+     */
+    async function calcularDyCarteiraTeorico() {
+        // 1. Verifica se a carteira já foi calculada e tem ativos
+        if (!carteiraCalculada || carteiraCalculada.length === 0) return 0;
 
-    // 2. Calcula o valor total financeiro da carteira hoje (Cotação Atual * Qtd)
-    // Usamos 'precosAtuais' que já deve estar populado no app
-    const mapPrecos = new Map(precosAtuais.map(p => [p.symbol, p.regularMarketPrice]));
-    let valorTotalCarteira = 0;
+        // 2. Calcula o valor total financeiro da carteira hoje (Cotação Atual * Qtd)
+        // Usamos 'precosAtuais' que já deve estar populado no app
+        const mapPrecos = new Map(precosAtuais.map(p => [p.symbol, p.regularMarketPrice]));
+        let valorTotalCarteira = 0;
 
-    carteiraCalculada.forEach(ativo => {
-        const preco = mapPrecos.get(ativo.symbol) || 0;
-        valorTotalCarteira += (preco * ativo.quantity);
-    });
+        carteiraCalculada.forEach(ativo => {
+            const preco = mapPrecos.get(ativo.symbol) || 0;
+            valorTotalCarteira += (preco * ativo.quantity);
+        });
 
-    // Evita divisão por zero
-    if (valorTotalCarteira === 0) return 0;
+        // Evita divisão por zero
+        if (valorTotalCarteira === 0) return 0;
 
-    const cacheKey = `cache_grafico_historico_${currentUserId}`;
-    let rawDividends = await getCache(cacheKey);
+        const cacheKey = `cache_grafico_historico_${currentUserId}`;
+        let rawDividends = await getCache(cacheKey);
 
-    // Se não tiver no cache, força uma busca na API
-    if (!rawDividends) {
-        const ativosCarteira = carteiraCalculada.map(a => a.symbol);
-        try {
-            // Chama sua função existente que busca histórico no backend/scraper
-            rawDividends = await callScraperHistoricoPortfolioAPI(ativosCarteira);
+        // Se não tiver no cache, força uma busca na API
+        if (!rawDividends) {
+            const ativosCarteira = carteiraCalculada.map(a => a.symbol);
+            try {
+                // Chama sua função existente que busca histórico no backend/scraper
+                rawDividends = await callScraperHistoricoPortfolioAPI(ativosCarteira);
 
-            // Salva no cache se der certo
-            if (rawDividends && rawDividends.length > 0) {
-                await setCache(cacheKey, rawDividends, CACHE_IA_HISTORICO); // CACHE_IA_HISTORICO deve ser uma const existente
+                // Salva no cache se der certo
+                if (rawDividends && rawDividends.length > 0) {
+                    await setCache(cacheKey, rawDividends, CACHE_IA_HISTORICO); // CACHE_IA_HISTORICO deve ser uma const existente
+                }
+            } catch (e) {
+                console.error("Erro ao calcular DY (API):", e);
+                return 0;
             }
-        } catch (e) {
-            console.error("Erro ao calcular DY (API):", e);
-            return 0;
         }
+
+        if (!rawDividends || !Array.isArray(rawDividends)) return 0;
+
+        // 4. Define a janela de tempo (Últimos 12 meses a partir de hoje)
+        const hoje = new Date();
+        const umAnoAtras = new Date();
+        umAnoAtras.setFullYear(hoje.getFullYear() - 1);
+
+        let totalDividendos12m = 0;
+
+        // Mapa rápido de quantidades: { 'MXRF11': 100, ... }
+        const mapQtd = new Map(carteiraCalculada.map(a => [a.symbol, a.quantity]));
+
+        // 5. Itera sobre cada provento do histórico
+        rawDividends.forEach(div => {
+            // Usa paymentDate preferencialmente, ou dataCom como fallback
+            const dataRefStr = div.paymentDate || div.dataCom;
+            if (!dataRefStr) return;
+
+            const dataRef = new Date(dataRefStr);
+
+            // Verifica se o pagamento está dentro dos últimos 12 meses
+            if (dataRef >= umAnoAtras && dataRef <= hoje) {
+                // Pega a quantidade que o usuário tem HOJE desse ativo
+                const qtdAtual = mapQtd.get(div.symbol) || 0;
+
+                // Simula: Se eu tivesse essa quantidade na época, quanto teria recebido?
+                if (qtdAtual > 0) {
+                    totalDividendos12m += (Number(div.value) * qtdAtual);
+                }
+            }
+        });
+
+        // 6. Retorna o objeto com % e Valor Absoluto
+        const dyPercent = (totalDividendos12m / valorTotalCarteira) * 100;
+
+        return {
+            dyPercent: dyPercent,
+            totalDiv12m: totalDividendos12m
+        };
     }
 
-    if (!rawDividends || !Array.isArray(rawDividends)) return 0;
+    window.mostrarDyCarteira = async function () {
+        const btn = document.querySelector('button[title="Ver Performance da Carteira"]');
+        const originalText = btn ? btn.innerText : '?';
+        if (btn) btn.innerText = '...';
 
-    // 4. Define a janela de tempo (Últimos 12 meses a partir de hoje)
-    const hoje = new Date();
-    const umAnoAtras = new Date();
-    umAnoAtras.setFullYear(hoje.getFullYear() - 1);
+        try {
+            const dados = await calcularDyCarteiraTeorico();
 
-    let totalDividendos12m = 0;
+            const dyVal = dados.dyPercent || 0;
+            const totalVal = dados.totalDiv12m || 0;
+            const mensalMedia = totalVal / 12;
+            const dyFmt = dyVal.toFixed(2).replace('.', ',') + '%';
+            const valFmt = formatBRL(totalVal);
+            const mensalFmt = formatBRL(mensalMedia);
 
-    // Mapa rápido de quantidades: { 'MXRF11': 100, ... }
-    const mapQtd = new Map(carteiraCalculada.map(a => [a.symbol, a.quantity]));
+            let corTitulo = '';
+            let textoAvaliacao = '';
+            let badgeBg = '';
 
-    // 5. Itera sobre cada provento do histórico
-    rawDividends.forEach(div => {
-        // Usa paymentDate preferencialmente, ou dataCom como fallback
-        const dataRefStr = div.paymentDate || div.dataCom;
-        if (!dataRefStr) return;
-
-        const dataRef = new Date(dataRefStr);
-
-        // Verifica se o pagamento está dentro dos últimos 12 meses
-        if (dataRef >= umAnoAtras && dataRef <= hoje) {
-            // Pega a quantidade que o usuário tem HOJE desse ativo
-            const qtdAtual = mapQtd.get(div.symbol) || 0;
-
-            // Simula: Se eu tivesse essa quantidade na época, quanto teria recebido?
-            if (qtdAtual > 0) {
-                totalDividendos12m += (Number(div.value) * qtdAtual);
+            if (dyVal < 6) {
+                corTitulo = 'text-red-400';
+                textoAvaliacao = 'Abaixo da Inflação';
+                badgeBg = 'bg-red-500/10 text-red-400 border-red-500/20';
+            } else if (dyVal < 10) {
+                corTitulo = 'text-yellow-400';
+                textoAvaliacao = 'Bom Retorno';
+                badgeBg = 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20';
+            } else {
+                corTitulo = 'text-green-400';
+                textoAvaliacao = 'Excelente Retorno';
+                badgeBg = 'bg-green-500/10 text-green-400 border-green-500/20';
             }
-        }
-    });
 
-    // 6. Retorna o objeto com % e Valor Absoluto
-    const dyPercent = (totalDividendos12m / valorTotalCarteira) * 100;
+            const isLight = document.body.classList.contains('light-mode');
+            const bgCardInner = isLight ? '#f9fafb' : '#151515';
+            const brCardInner = isLight ? 'rgba(0,0,0,0.05)' : '#1F1F1F';
+            const txtColor = isLight ? '#1f2937' : '#ffffff';
 
-    return { 
-        dyPercent: dyPercent, 
-        totalDiv12m: totalDividendos12m 
-    };
-}
-
-window.mostrarDyCarteira = async function() {
-    const btn = document.querySelector('button[title="Ver DY da Carteira"]');
-    const originalText = btn ? btn.innerText : '?';
-    if(btn) btn.innerText = '...';
-
-    try {
-        const dados = await calcularDyCarteiraTeorico();
-
-        const dyVal = dados.dyPercent || 0;
-        const totalVal = dados.totalDiv12m || 0;
-        const dyFmt = dyVal.toFixed(2) + '%';
-        const valFmt = formatBRL(totalVal);
-
-        let corTitulo = '';
-        let textoAvaliacao = '';
-        let corTextoBadge = '';
-
-        if (dyVal < 6) {
-            corTitulo = 'text-red-500';
-            textoAvaliacao = 'Baixo';
-            corTextoBadge = '#ef4444';
-        } else if (dyVal < 10) {
-            corTitulo = 'text-yellow-400';
-            textoAvaliacao = 'Bom';
-            corTextoBadge = '#facc15';
-        } else {
-            corTitulo = 'text-green-500';
-            textoAvaliacao = 'Excelente';
-            corTextoBadge = '#22c55e';
-        }
-
-        const mensagemHtml = `
-            <div class="flex flex-col items-center w-full pt-1">
-                <span class="text-[10px] text-gray-500 uppercase tracking-widest font-bold mb-1 block">
-                    Dividend Yield (12m)
+            const mensagemHtml = `
+            <div class="flex flex-col items-center w-full pt-2">
+                <span class="text-[10px] text-gray-400 uppercase tracking-widest font-bold mb-2 block">
+                    Dividend Yield Anualizado
                 </span>
 
-                <div class="text-5xl font-bold ${corTitulo} tracking-tighter leading-none mb-5 drop-shadow-sm">
+                <div class="text-5xl font-bold ${corTitulo} tracking-tighter leading-none mb-4 drop-shadow-sm flex items-center justify-center gap-2">
                     ${dyFmt}
                 </div>
+                
+                <div class="mb-6">
+                    <span class="text-[9px] font-bold px-3 py-1 rounded-full border ${badgeBg} uppercase tracking-wider">${textoAvaliacao}</span>
+                </div>
 
-                <div class="details-group-card w-full" style="background-color: #1C1C1E !important; box-shadow: none;">
-                    <div class="details-row" style="border-bottom-color: rgba(255,255,255,0.05);">
-                        <span class="details-label" style="color: #9ca3af;">Classificação</span>
-                        <span class="details-value font-bold" style="color: ${corTextoBadge}">${textoAvaliacao}</span>
+                <div class="w-full rounded-2xl p-4 flex flex-col gap-3 text-left" style="background-color: ${bgCardInner}; border: 1px solid ${brCardInner};">
+                    <div class="flex justify-between items-center pb-3" style="border-bottom: 1px solid ${brCardInner};">
+                        <span class="flex items-center gap-2 text-xs font-medium" style="color: #9ca3af;">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 opacity-70" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                            Proventos em 12 Meses
+                        </span>
+                        <span class="text-sm font-bold" style="color: ${corTitulo};">${valFmt}</span>
                     </div>
-                    <div class="details-row">
-                        <span class="details-label" style="color: #9ca3af;">Retorno Aprox.</span>
-                        <span class="details-value text-white">${valFmt}</span>
+                    <div class="flex justify-between items-center">
+                        <span class="flex items-center gap-2 text-xs font-medium" style="color: #9ca3af;">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 opacity-70" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" /></svg>
+                            Média Mensal Est.
+                        </span>
+                        <span class="text-sm font-bold" style="color: ${txtColor};">${mensalFmt}</span>
                     </div>
                 </div>
             </div>
-        `;
+            `;
 
-        const modal = document.getElementById('custom-modal');
-        const modalTitle = document.getElementById('custom-modal-title');
-        const modalMessage = document.getElementById('custom-modal-message');
-        const modalContent = document.getElementById('custom-modal-content');
-        const btnOk = document.getElementById('custom-modal-ok');
-        const btnCancel = document.getElementById('custom-modal-cancel');
+            const modal = document.getElementById('custom-modal');
+            const modalTitle = document.getElementById('custom-modal-title');
+            const modalMessage = document.getElementById('custom-modal-message');
+            const modalContent = document.getElementById('custom-modal-content');
+            const btnOk = document.getElementById('custom-modal-ok');
+            const btnCancel = document.getElementById('custom-modal-cancel');
 
-        if(modalTitle) modalTitle.textContent = 'Performance';
+            if (modalTitle) modalTitle.textContent = 'Performance da Carteira';
 
-        // 1. Fundo #09090b (Cor exata do drawer de notificações)
-        // 2. Borda removida (border: none)
-        if(modalContent) {
-            modalContent.style.backgroundColor = '#09090b';
-            modalContent.style.border = 'none';
-            // Sombra suave para destacar do backdrop, já que não tem borda
-            modalContent.style.boxShadow = '0 25px 50px -12px rgba(0, 0, 0, 0.5)';
-        }
-
-        if(modalMessage) {
-            modalMessage.innerHTML = mensagemHtml;
-            modalMessage.style.textAlign = 'center'; 
-        }
-
-        if(btnCancel) btnCancel.style.display = 'none'; 
-
-        if(btnOk) {
-            const oldText = btnOk.innerText;
-            const oldOnClick = btnOk.onclick;
-            const oldClasses = btnOk.className;
-
-            btnOk.innerText = 'Fechar';
-
-            // Botão cinza escuro para combinar com o tema "stealth"
-            btnOk.className = 'py-2 px-6 bg-[#1C1C1E] border border-[#27272a] text-white text-xs font-bold rounded-full shadow-sm active:scale-95 transition-transform hover:bg-[#27272a]';
-
-            btnOk.onclick = function() {
-                modalContent.classList.add('modal-out');
-                setTimeout(() => {
-                    modal.classList.remove('visible');
-                    modalContent.classList.remove('modal-out');
-
-                    // Restaura os estilos originais para não afetar outros modais
-                    if(modalContent) {
-                        modalContent.style.backgroundColor = '';
-                        modalContent.style.border = '';
-                        modalContent.style.boxShadow = '';
-                    }
-
-                    if(btnCancel) btnCancel.style.display = 'block';
-                    btnOk.innerText = oldText;
-                    btnOk.onclick = oldOnClick;
-                    btnOk.className = oldClasses;
-
-                    if(modalMessage) modalMessage.innerHTML = '';
-                }, 200);
-            };
-        }
-
-        modal.classList.add('visible');
-        modalContent.classList.remove('modal-out');
-
-    } catch (e) {
-        console.error("Erro DY:", e);
-        showToast('Erro ao calcular.');
-    } finally {
-        if(btn) btn.innerText = originalText;
-    }
-};
-
-async function openIpcaModal() {
-    if(!ipcaPageModal) return;
-
-    ipcaPageModal.classList.add('visible');
-    ipcaPageContent.style.transform = ''; 
-    ipcaPageContent.classList.remove('closing');
-    document.body.style.overflow = 'hidden';
-
-    // Se já tiver cache, renderiza direto. Senão busca.
-    if (ipcaCacheData) {
-        renderizarGraficoIpca(ipcaCacheData);
-    } else {
-        buscarDadosIpca();
-    }
-}
-
-function closeIpcaModal() {
-    if(!ipcaPageContent) return;
-    ipcaPageContent.style.transform = '';
-    ipcaPageContent.classList.add('closing');
-    ipcaPageModal.classList.remove('visible');
-    document.body.style.overflow = '';
-}
-
-// --- FUNÇÃO DE BUSCA OTIMIZADA DO IPCA (COM CACHE DE 24H) ---
-async function buscarDadosIpca(force = false) {
-    const CACHE_KEY = 'vesto_ipca_data';
-    const CACHE_DURATION = 1000 * 60 * 60 * 24; // 24 Horas
-
-    // 1. Tenta pegar do Cache primeiro (se não for forçado)
-    if (!force) {
-        const cached = await getCache(CACHE_KEY);
-        if (cached) {
-            // Se achou no cache, usa imediatamente e não chama a API
-            atualizarInterfaceIpca(cached);
-            ipcaCacheData = cached; 
-            return;
-        }
-    }
-
-    // 2. Se não tem cache ou expirou, busca na API (Scraper)
-    try {
-        // Mostra estado de carregamento no widget se estiver vazio
-        const elValor12m = document.getElementById('ipca-valor-12m');
-        if(elValor12m && elValor12m.textContent === '...') {
-             // Opcional: Feedback visual sutil
-        }
-
-        const res = await fetch('/api/scraper', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ mode: 'ipca', payload: {} })
-        });
-
-        const data = await res.json();
-
-        if (data && data.json) {
-            // Salva no Cache por 24 horas
-            await setCache(CACHE_KEY, data.json, CACHE_DURATION);
-
-            // Atualiza Interface e Variável Global
-            ipcaCacheData = data.json;
-            atualizarInterfaceIpca(data.json);
-        }
-    } catch (e) {
-        console.error("Erro IPCA", e);
-        // Em caso de erro, tenta mostrar cache antigo se existir (fallback)
-        const oldCache = await getCache(CACHE_KEY);
-        if (oldCache) {
-            atualizarInterfaceIpca(oldCache);
-        } else {
-            const elBadge = document.getElementById('ipca-mes-badge');
-            if(elBadge) elBadge.textContent = 'Erro ao carregar';
-        }
-    }
-}
-
-function atualizarInterfaceIpca(dados) {
-    if (!dados) return;
-
-    // 1. Atualiza Widget do Dashboard
-    const elValor12m = document.getElementById('ipca-valor-12m');
-    const elBadgeMes = document.getElementById('ipca-mes-badge');
-
-    if(elValor12m) {
-        // Animação simples de transição
-        elValor12m.style.opacity = '0';
-        setTimeout(() => {
-            elValor12m.textContent = dados.acumulado_12m || '--';
-            elValor12m.style.opacity = '1';
-        }, 150);
-    }
-
-    // Pega o último mês disponível para o Badge
-    if(dados.historico && dados.historico.length > 0) {
-        const ultimo = dados.historico[dados.historico.length - 1]; // O array vem cronológico (Jan->Dez)
-        // Se vier invertido do scraper, ajustamos:
-        // No seu scraper atual: reverse() foi usado, então o último item é o mês mais recente.
-
-        if(elBadgeMes) {
-            // Ex: "Último: 0,56% (Jan)"
-            let mesCurto = ultimo.mes.split('/')[0]; 
-            // Se vier nome completo "Janeiro", corta para "Jan"
-            if(mesCurto.length > 3) mesCurto = mesCurto.substring(0,3);
-
-            elBadgeMes.textContent = `Último: ${ultimo.valor}% (${mesCurto})`;
-        }
-    }
-
-    // 2. Se o modal estiver aberto (ou para deixar pronto), renderiza o gráfico
-    renderizarGraficoIpca(dados);
-}
-
-function renderizarGraficoIpca(dados) {
-    const canvas = document.getElementById('ipca-chart');
-    const listaContainer = document.getElementById('ipca-lista-container');
-
-    if (!dados || !dados.historico) return;
-
-    const mapPatrimonio = {};
-    if (typeof patrimonio !== 'undefined' && Array.isArray(patrimonio)) {
-        patrimonio.forEach(p => {
-            if (p.date && p.value) {
-                const key = p.date.substring(0, 7); 
-                mapPatrimonio[key] = p.value;
+            if (modalContent) {
+                modalContent.style.backgroundColor = isLight ? '#ffffff' : '#18181A';
+                modalContent.style.border = isLight ? '1px solid rgba(0,0,0,0.05)' : '1px solid #1F1F1F';
+                modalContent.style.boxShadow = isLight ? '0 10px 25px -5px rgba(0, 0, 0, 0.1)' : '0 25px 50px -12px rgba(0, 0, 0, 0.5)';
             }
-        });
-    }
 
-    const mapProventos = {};
-    if (typeof proventosConhecidos !== 'undefined' && Array.isArray(proventosConhecidos)) {
-        proventosConhecidos.forEach(p => {
-            // Verifica data válida
-            if (!p.paymentDate) return;
-            const key = p.paymentDate.substring(0, 7); // YYYY-MM
-
-            // Calcula o total recebido neste pagamento (Valor * Qtd na data)
-            // Usa a função global getQuantidadeNaData se disponível
-            const qtd = (typeof getQuantidadeNaData === 'function') 
-                ? getQuantidadeNaData(p.symbol, p.paymentDate) 
-                : 0;
-
-            if (qtd > 0) {
-                const total = p.value * qtd;
-                mapProventos[key] = (mapProventos[key] || 0) + total;
+            if (modalMessage) {
+                modalMessage.innerHTML = mensagemHtml;
+                modalMessage.style.textAlign = 'center';
             }
-        });
-    }
 
-    // Helper para datas
-    const getYearMonthKey = (mesStr) => {
-        if (!mesStr) return null;
-        const parts = mesStr.includes('/') ? mesStr.split('/') : [mesStr];
-        if (parts.length < 2) return null;
+            if (btnCancel) btnCancel.style.display = 'none';
 
-        let m = parts[0].toLowerCase().trim();
-        let y = parts[1].trim();
+            if (btnOk) {
+                const oldText = btnOk.innerText;
+                const oldOnClick = btnOk.onclick;
+                const oldClasses = btnOk.className;
 
-        const monthMap = {
-            'jan': '01', 'fev': '02', 'mar': '03', 'abr': '04', 'mai': '05', 'jun': '06',
-            'jul': '07', 'ago': '08', 'set': '09', 'out': '10', 'nov': '11', 'dez': '12',
-            'janeiro': '01', 'fevereiro': '02', 'março': '03', 'abril': '04', 'maio': '05', 'junho': '06',
-            'julho': '07', 'agosto': '08', 'setembro': '09', 'outubro': '10', 'novembro': '11', 'dezembro': '12'
-        };
+                btnOk.innerText = 'Fechar';
 
-        if (!isNaN(m)) return `${y}-${m.padStart(2, '0')}`;
-        if (monthMap[m]) return `${y}-${monthMap[m]}`;
-        return null;
+                const btnBgClass = isLight ? 'bg-gray-100 hover:bg-gray-200 border-gray-200' : 'bg-[#1C1C1E] hover:bg-[#27272a] border-[#27272a]';
+                const btnTxtClass = isLight ? 'text-gray-800' : 'text-white';
+
+                btnOk.className = `py-2 px-6 ${btnBgClass} border ${btnTxtClass} text-xs font-bold rounded-full shadow-sm active:scale-95 transition-transform`;
+
+                btnOk.onclick = function () {
+                    modalContent.classList.add('modal-out');
+                    setTimeout(() => {
+                        modal.classList.remove('visible');
+                        modalContent.classList.remove('modal-out');
+
+                        if (modalContent) {
+                            modalContent.style.backgroundColor = '';
+                            modalContent.style.border = '';
+                            modalContent.style.boxShadow = '';
+                        }
+
+                        if (btnCancel) btnCancel.style.display = 'block';
+                        btnOk.innerText = oldText;
+                        btnOk.onclick = oldOnClick;
+                        btnOk.className = oldClasses;
+
+                        if (modalMessage) modalMessage.innerHTML = '';
+                    }, 200);
+                };
+            }
+
+            modal.classList.add('visible');
+            modalContent.classList.remove('modal-out');
+
+        } catch (e) {
+            console.error("Erro Performance:", e);
+            showToast('Erro ao calcular performance.');
+        } finally {
+            if (btn) btn.innerText = originalText;
+        }
     };
 
-    if(listaContainer) {
-        listaContainer.innerHTML = '';
+    async function openIpcaModal() {
+        if (!ipcaPageModal) return;
 
-        [...dados.historico].reverse().forEach(item => {
-            const valor = item.valor; // Inflação do mês
-            const ymKey = getYearMonthKey(item.mes);
+        ipcaPageModal.classList.add('visible');
+        ipcaPageContent.style.transform = '';
+        ipcaPageContent.classList.remove('closing');
+        document.body.style.overflow = 'hidden';
 
-            let erosaoPatHtml = '';
-            if (ymKey && mapPatrimonio[ymKey]) {
-                const saldoMes = mapPatrimonio[ymKey];
-                const impactoReais = saldoMes * (valor / 100);
-
-                const isPerda = impactoReais > 0; 
-                const sinal = isPerda ? '-' : '+';
-                const corErosao = isPerda ? 'text-red-400' : 'text-green-400';
-                const valorErosaoFmt = Math.abs(impactoReais).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-
-                erosaoPatHtml = `
-                    <div class="flex items-center gap-2 justify-end mt-0.5">
-                        <span class="text-[10px] text-gray-500 font-medium uppercase tracking-wider">Patrimônio</span>
-                        <span class="text-[11px] font-bold ${corErosao}">${sinal}${valorErosaoFmt}</span>
-                    </div>
-                `;
-            } else {
-                erosaoPatHtml = `
-                    <div class="flex items-center gap-2 justify-end mt-0.5 opacity-40">
-                        <span class="text-[10px] text-gray-500 font-medium uppercase tracking-wider">Patrimônio</span>
-                        <span class="text-[11px] text-gray-500 font-bold">--</span>
-                    </div>
-                `;
-            }
-
-            let erosaoDivHtml = '';
-            if (ymKey && mapProventos[ymKey]) {
-                const proventosMes = mapProventos[ymKey];
-                const impactoDiv = proventosMes * (valor / 100);
-
-                const isPerdaDiv = impactoDiv > 0;
-                const sinalDiv = isPerdaDiv ? '-' : '+';
-                const corErosaoDiv = isPerdaDiv ? 'text-red-400' : 'text-green-400';
-                const valorErosaoDivFmt = Math.abs(impactoDiv).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-
-                erosaoDivHtml = `
-                    <div class="flex items-center gap-2 justify-end mt-0.5">
-                        <span class="text-[10px] text-gray-500 font-medium uppercase tracking-wider">Proventos</span>
-                        <span class="text-[11px] font-bold ${corErosaoDiv}">${sinalDiv}${valorErosaoDivFmt}</span>
-                    </div>
-                `;
-            } else {
-                // Se não teve proventos no mês, mostra vazio ou traço (optei por traço suave)
-                erosaoDivHtml = `
-                    <div class="flex items-center gap-2 justify-end mt-0.5 opacity-30">
-                        <span class="text-[10px] text-gray-500 font-medium uppercase tracking-wider">Proventos</span>
-                        <span class="text-[11px] text-gray-500 font-bold">--</span>
-                    </div>
-                `;
-            }
-
-            // Cores do Badge de IPCA
-            let corTexto = 'text-white';
-            let barraCor = 'bg-orange-500';
-
-            if (valor >= 0.5) {
-                corTexto = 'text-red-400';
-                barraCor = 'bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.4)]';
-            } else if (valor < 0) {
-                corTexto = 'text-green-400';
-                barraCor = 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.4)]';
-            } else {
-                corTexto = 'text-orange-400';
-                barraCor = 'bg-orange-500';
-            }
-
-            let [mesNome, ano] = item.mes.includes('/') ? item.mes.split('/') : [item.mes, ''];
-
-            const html = `
-            <div class="flex items-center justify-between p-3 bg-[#1A1A1C] rounded-2xl mb-2">
-                <div class="flex items-center gap-3">
-                    <div class="w-1.5 h-12 rounded-full ${barraCor}"></div> <div class="flex flex-col">
-                        <span class="text-sm font-bold text-white capitalize">${mesNome}</span>
-                        <span class="text-[10px] text-gray-500 font-medium">${ano}</span>
-                    </div>
-                </div>
-
-                <div class="flex flex-col items-end">
-                    <div class="flex items-center gap-2 mb-1">
-                        <span class="text-[10px] text-gray-500 font-medium uppercase">IPCA</span>
-                        <span class="text-sm font-bold ${corTexto}">${valor.toFixed(2)}%</span>
-                    </div>
-
-                    ${erosaoPatHtml}
-
-                    ${erosaoDivHtml}
-                </div>
-            </div>`;
-
-            listaContainer.insertAdjacentHTML('beforeend', html);
-        });
+        // Se já tiver cache, renderiza direto. Senão busca.
+        if (ipcaCacheData) {
+            renderizarGraficoIpca(ipcaCacheData);
+        } else {
+            buscarDadosIpca();
+        }
     }
 
-    if (!canvas) return;
-    if (ipcaChartInstance) ipcaChartInstance.destroy();
+    function closeIpcaModal() {
+        if (!ipcaPageContent) return;
+        ipcaPageContent.style.transform = '';
+        ipcaPageContent.classList.add('closing');
+        ipcaPageModal.classList.remove('visible');
+        document.body.style.overflow = '';
+    }
 
-    const ctx = canvas.getContext('2d');
-    const labels = dados.historico.map(d => d.mes.split('/')[0].substring(0,3)); 
-    const values = dados.historico.map(d => d.valor);
-    const backgroundColors = values.map(v => v < 0 ? '#10B981' : '#F97316');
+    // --- FUNÇÃO DE BUSCA OTIMIZADA DO IPCA (COM CACHE DE 24H) ---
+    async function buscarDadosIpca(force = false) {
+        const CACHE_KEY = 'vesto_ipca_data';
+        const CACHE_DURATION = 1000 * 60 * 60 * 24; // 24 Horas
 
-    ipcaChartInstance = new Chart(ctx, {
-        type: 'bar',
-        data: {
-            labels: labels,
-            datasets: [{
-                data: values,
-                backgroundColor: backgroundColors,
-                borderRadius: 4,
-                barPercentage: 0.6
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: { display: false },
-                tooltip: {
-                    backgroundColor: '#151515',
-                    titleColor: '#fff',
-                    borderColor: '#333',
-                    borderWidth: 1,
-                    displayColors: false,
-                    callbacks: {
-                        label: (ctx) => ` IPCA: ${ctx.raw}%`
+        // 1. Tenta pegar do Cache primeiro (se não for forçado)
+        if (!force) {
+            const cached = await getCache(CACHE_KEY);
+            if (cached) {
+                // Se achou no cache, usa imediatamente e não chama a API
+                atualizarInterfaceIpca(cached);
+                ipcaCacheData = cached;
+                return;
+            }
+        }
+
+        // 2. Se não tem cache ou expirou, busca na API (Scraper)
+        try {
+            // Mostra estado de carregamento no widget se estiver vazio
+            const elValor12m = document.getElementById('ipca-valor-12m');
+            if (elValor12m && elValor12m.textContent === '...') {
+                // Opcional: Feedback visual sutil
+            }
+
+            const res = await fetch('/api/scraper', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ mode: 'ipca', payload: {} })
+            });
+
+            const data = await res.json();
+
+            if (data && data.json) {
+                // Salva no Cache por 24 horas
+                await setCache(CACHE_KEY, data.json, CACHE_DURATION);
+
+                // Atualiza Interface e Variável Global
+                ipcaCacheData = data.json;
+                atualizarInterfaceIpca(data.json);
+            }
+        } catch (e) {
+            console.error("Erro IPCA", e);
+            // Em caso de erro, tenta mostrar cache antigo se existir (fallback)
+            const oldCache = await getCache(CACHE_KEY);
+            if (oldCache) {
+                atualizarInterfaceIpca(oldCache);
+            } else {
+                const elBadge = document.getElementById('ipca-mes-badge');
+                if (elBadge) elBadge.textContent = 'Erro ao carregar';
+            }
+        }
+    }
+
+    function atualizarInterfaceIpca(dados) {
+        if (!dados) return;
+
+        // 1. Atualiza Widget do Dashboard
+        const elValor12m = document.getElementById('ipca-valor-12m');
+        const elBadgeMes = document.getElementById('ipca-mes-badge');
+
+        if (elValor12m) {
+            // Animação simples de transição
+            elValor12m.style.opacity = '0';
+            setTimeout(() => {
+                elValor12m.textContent = dados.acumulado_12m || '--';
+                elValor12m.style.opacity = '1';
+            }, 150);
+        }
+
+        // Pega o último mês disponível para o Badge
+        if (dados.historico && dados.historico.length > 0) {
+            const ultimo = dados.historico[dados.historico.length - 1]; // O array vem cronológico (Jan->Dez)
+            // Se vier invertido do scraper, ajustamos:
+            // No seu scraper atual: reverse() foi usado, então o último item é o mês mais recente.
+
+            if (elBadgeMes) {
+                // Ex: "Último: 0,56% (Jan)"
+                let mesCurto = ultimo.mes.split('/')[0];
+                // Se vier nome completo "Janeiro", corta para "Jan"
+                if (mesCurto.length > 3) mesCurto = mesCurto.substring(0, 3);
+
+                elBadgeMes.textContent = `Último: ${ultimo.valor}% (${mesCurto})`;
+            }
+        }
+
+        // 2. Se o modal estiver aberto (ou para deixar pronto), renderiza o gráfico
+        renderizarGraficoIpca(dados);
+    }
+
+    function renderizarGraficoIpca(dados) {
+        const isLight = document.body.classList.contains('light-mode');
+        const canvas = document.getElementById('ipca-chart');
+        const listaContainer = document.getElementById('ipca-lista-container');
+
+        if (!dados || !dados.historico) return;
+
+        const mapPatrimonio = {};
+        if (typeof patrimonio !== 'undefined' && Array.isArray(patrimonio)) {
+            patrimonio.forEach(p => {
+                if (p.date && p.value) {
+                    const key = p.date.substring(0, 7);
+                    mapPatrimonio[key] = p.value;
+                }
+            });
+        }
+
+        const mapProventos = {};
+        if (typeof proventosConhecidos !== 'undefined' && Array.isArray(proventosConhecidos)) {
+            proventosConhecidos.forEach(p => {
+                // Verifica data válida
+                if (!p.paymentDate) return;
+                const key = p.paymentDate.substring(0, 7); // YYYY-MM
+
+                // Calcula o total recebido neste pagamento (Valor * Qtd na data)
+                // Usa a função global getQuantidadeNaData se disponível
+                const qtd = (typeof getQuantidadeNaData === 'function')
+                    ? getQuantidadeNaData(p.symbol, p.paymentDate)
+                    : 0;
+
+                // Registra que existiu UM provento nessa data,
+                // mesmo que a Qtd calculada seja 0 (caso o usuário tenha apagado as transações passadas).
+                const total = p.value * Math.max(qtd, 1);
+                mapProventos[key] = (mapProventos[key] || 0) + total;
+            });
+        }
+
+        // Helper para datas
+        const getYearMonthKey = (mesStr) => {
+            if (!mesStr) return null;
+            const parts = mesStr.includes('/') ? mesStr.split('/') : [mesStr];
+            if (parts.length < 2) return null;
+
+            let m = parts[0].toLowerCase().trim();
+            let y = parts[1].trim();
+
+            const monthMap = {
+                'jan': '01', 'fev': '02', 'mar': '03', 'abr': '04', 'mai': '05', 'jun': '06',
+                'jul': '07', 'ago': '08', 'set': '09', 'out': '10', 'nov': '11', 'dez': '12',
+                'janeiro': '01', 'fevereiro': '02', 'março': '03', 'abril': '04', 'maio': '05', 'junho': '06',
+                'julho': '07', 'agosto': '08', 'setembro': '09', 'outubro': '10', 'novembro': '11', 'dezembro': '12'
+            };
+
+            if (!isNaN(m)) return `${y}-${m.padStart(2, '0')}`;
+            if (monthMap[m]) return `${y}-${monthMap[m]}`;
+            return null;
+        };
+
+        // Encontra a data de início da carteira (o menor ano-mês com saldo ou provento)
+        let earliestKey = null;
+        const allKeys = [...Object.keys(mapPatrimonio), ...Object.keys(mapProventos)];
+
+        if (allKeys.length > 0) {
+            allKeys.sort(); // String sort (e.g. "2023-01") works perfectly for YYYY-MM
+            earliestKey = allKeys[0].trim();
+        }
+
+        // Filtra o histórico para conter apenas dados retroativos até a criação da carteira
+        let historicoFiltrado = [...dados.historico];
+        if (earliestKey) {
+            const tempFiltrado = [];
+            for (let i = 0; i < historicoFiltrado.length; i++) {
+                const item = historicoFiltrado[i];
+                const ymKey = getYearMonthKey(item.mes);
+                if (ymKey) {
+                    if (ymKey >= earliestKey) {
+                        tempFiltrado.push(item);
+                    }
+                }
+            }
+            historicoFiltrado = tempFiltrado;
+        }
+
+        if (listaContainer) {
+            listaContainer.innerHTML = '';
+            listaContainer.classList.add('divide-y', 'divide-white/[0.04]', 'rounded-2xl', 'overflow-hidden', 'bg-[#141414]');
+
+            [...historicoFiltrado].reverse().forEach(item => {
+                const valor = item.valor; // Inflação do mês
+                const ymKey = getYearMonthKey(item.mes);
+
+                let erosaoPatHtml = '';
+                if (ymKey && mapPatrimonio[ymKey]) {
+                    const saldoMes = mapPatrimonio[ymKey];
+                    const impactoReais = saldoMes * (valor / 100);
+
+                    const isPerda = impactoReais > 0;
+                    const sinal = isPerda ? '-' : '+';
+                    const corErosao = isPerda ? 'text-red-400' : 'text-emerald-400';
+                    const valorErosaoFmt = Math.abs(impactoReais).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+
+                    erosaoPatHtml = `
+                    <div class="flex items-center gap-3 justify-end mt-1" >
+                        <span class="text-[10px] text-gray-500 font-medium tracking-wide">Patrimônio</span>
+                        <span class="text-xs font-bold ${corErosao} w-20 text-right tabular-nums">${sinal} ${Math.abs(impactoReais).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
+                    </div>`;
+                } else {
+                    erosaoPatHtml = `
+                    <div class="flex items-center gap-3 justify-end mt-1 opacity-40" >
+                        <span class="text-[10px] text-gray-500 font-medium tracking-wide">Patrimônio</span>
+                        <span class="text-xs font-bold text-gray-500 w-20 text-right tabular-nums">--</span>
+                    </div>`;
+                }
+
+                let erosaoDivHtml = '';
+                if (ymKey && mapProventos[ymKey]) {
+                    const proventosMes = mapProventos[ymKey];
+                    const impactoDiv = proventosMes * (valor / 100);
+
+                    const isPerdaDiv = impactoDiv > 0;
+                    const sinalDiv = isPerdaDiv ? '-' : '+';
+                    const corErosaoDiv = isPerdaDiv ? 'text-red-400' : 'text-emerald-400';
+                    const valorErosaoDivFmt = Math.abs(impactoDiv).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+
+                    erosaoDivHtml = `
+                    <div class="flex items-center gap-3 justify-end mt-1 mb-1" >
+                        <span class="text-[10px] text-gray-500 font-medium tracking-wide">Proventos</span>
+                        <span class="text-xs font-bold ${corErosaoDiv} w-20 text-right tabular-nums">${sinalDiv} ${Math.abs(impactoDiv).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
+                    </div>`;
+                } else {
+                    erosaoDivHtml = `
+                    <div class="flex items-center gap-3 justify-end mt-1 mb-1 opacity-30" >
+                        <span class="text-[10px] text-gray-500 font-medium tracking-wide">Proventos</span>
+                        <span class="text-xs font-bold text-gray-500 w-20 text-right tabular-nums">--</span>
+                    </div>`;
+                }
+
+                // Cores do Badge de IPCA
+                let corTexto = 'text-white';
+                let dotIcon = '';
+
+                if (valor >= 0.5) {
+                    corTexto = 'text-red-400';
+                    dotIcon = '<div class="w-1.5 h-1.5 rounded-full bg-red-400 shadow-[0_0_8px_rgba(239,68,68,0.6)]"></div>';
+                } else if (valor < 0) {
+                    corTexto = 'text-emerald-400';
+                    dotIcon = '<div class="w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.6)]"></div>';
+                } else {
+                    corTexto = 'text-orange-400';
+                    dotIcon = '<div class="w-1.5 h-1.5 rounded-full bg-orange-400 shadow-[0_0_8px_rgba(251,146,60,0.6)]"></div>';
+                }
+
+                let [mesNome, ano] = item.mes.includes('/') ? item.mes.split('/') : [item.mes, ''];
+
+                const isLight = document.body.classList.contains('light-mode');
+                const bgItem = isLight ? 'bg-white' : 'hover:bg-white/[0.02] transition-colors';
+                const txtMonth = isLight ? 'text-gray-800' : 'text-gray-200';
+
+                const html = `
+                <div class="group flex items-center justify-between p-4 ${bgItem}" >
+                    <div class="flex items-center gap-4">
+                        ${dotIcon}
+                        <div class="flex flex-col">
+                            <span class="text-[13px] font-bold ${txtMonth} capitalize">${mesNome}</span>
+                            <span class="text-[11px] text-gray-500 font-medium">${ano}</span>
+                        </div>
+                    </div>
+
+                    <div class="flex flex-col items-end">
+                        <div class="flex items-center gap-2 mb-2">
+                            <span class="text-[10px] text-gray-500 font-semibold uppercase tracking-widest">Rate</span>
+                            <span class="text-sm font-bold ${corTexto} tabular-nums">${valor.toFixed(2)}%</span>
+                        </div>
+                        ${erosaoPatHtml}
+                        ${erosaoDivHtml}
+                    </div>
+                </div>`;
+
+                listaContainer.insertAdjacentHTML('beforeend', html);
+            });
+        }
+
+        if (!canvas) return;
+        if (ipcaChartInstance) ipcaChartInstance.destroy();
+
+        const ctx = canvas.getContext('2d');
+        const labels = historicoFiltrado.map(d => d.mes.split('/')[0].substring(0, 3));
+        const values = historicoFiltrado.map(d => d.valor);
+        const backgroundColors = values.map(v => v < 0 ? '#10B981' : '#F97316');
+
+        const gradientFill = ctx.createLinearGradient(0, 0, 0, 400);
+        gradientFill.addColorStop(0, 'rgba(192, 132, 252, 0.45)');
+        gradientFill.addColorStop(1, 'rgba(192, 132, 252, 0.0)');
+
+        ipcaChartInstance = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'IPCA',
+                    data: values,
+                    fill: true,
+                    backgroundColor: gradientFill,
+                    borderColor: '#c084fc',
+                    borderWidth: 1.5,
+                    tension: 0.4,
+                    pointRadius: 0,
+                    pointHoverRadius: 4,
+                    pointHoverBackgroundColor: '#c084fc',
+                    pointHoverBorderWidth: 0,
+                    pointHitRadius: 15
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                layout: { padding: { left: 0, right: 0, top: 0, bottom: 0 } },
+                interaction: {
+                    mode: 'index',
+                    intersect: false
+                },
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        backgroundColor: isLight ? 'rgba(255, 255, 255, 0.95)' : 'rgba(20, 20, 22, 0.95)',
+                        titleColor: isLight ? '#1f2937' : '#aaaaaa',
+                        bodyColor: isLight ? '#4b5563' : '#ffffff',
+                        titleFont: { family: "'Inter', sans-serif", size: 11, weight: 'bold' },
+                        bodyFont: { family: "'Inter', sans-serif", size: 12, weight: 'bold' },
+                        borderColor: isLight ? '#e5e7eb' : '#333333',
+                        borderWidth: 1,
+                        padding: 10,
+                        cornerRadius: 8,
+                        displayColors: false,
+                        callbacks: {
+                            label: (ctx) => ` IPCA: ${ctx.raw}% `
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        display: false,
+                    },
+                    x: {
+                        display: false
                     }
                 }
             },
-            scales: {
-                y: { display: false },
-                x: { 
-                    grid: { display: false },
-                    ticks: { color: '#666', font: { size: 10 } }
+            plugins: [{
+                id: 'ipcaCrosshair',
+                afterDraw: (chart) => {
+                    if (chart.tooltip?._active?.length && chart.tooltip._eventPosition) {
+                        const ctx = chart.ctx;
+                        const activePoint = chart.tooltip._active[0];
+                        const x = activePoint.element.x;
+                        const y = chart.tooltip._eventPosition.y;
+
+                        const topY = chart.scales.y.top;
+                        const bottomY = chart.scales.y.bottom;
+                        const leftX = chart.scales.x.left;
+                        const rightX = chart.scales.x.right;
+
+                        // Pega a cor correspondente à data atual (verde se deflação, laranja se inflação, vermelho alto)
+                        const val = activePoint.element.$context.raw;
+                        let pointColor = 'rgba(251,146,60,0.8)'; // Orange
+                        if (val >= 0.5) pointColor = 'rgba(239,68,68,0.8)'; // Red
+                        else if (val < 0) pointColor = 'rgba(52,211,153,0.8)'; // Emerald
+
+                        ctx.save();
+                        ctx.lineWidth = 1;
+                        ctx.strokeStyle = isLight ? '#d1d5db' : '#404040';
+                        ctx.setLineDash([4, 4]);
+
+                        // Crosshair X e Y
+                        ctx.beginPath();
+                        ctx.moveTo(x, topY);
+                        ctx.lineTo(x, bottomY);
+                        ctx.stroke();
+
+                        ctx.beginPath();
+                        ctx.moveTo(leftX, y);
+                        ctx.lineTo(rightX, y);
+                        ctx.stroke();
+
+                        // O pino brilhante na intersecção
+                        ctx.beginPath();
+                        ctx.arc(x, y, 4, 0, 2 * Math.PI);
+                        ctx.fillStyle = pointColor;
+                        ctx.fill();
+                        ctx.restore();
+                    }
                 }
-            }
-        }
-    });
-}
+            }]
+        });
+    }
 
 
     if (btnOpenPatrimonio) {
@@ -8852,7 +9998,7 @@ function renderizarGraficoIpca(dados) {
                 touchStartPatrimonioY = e.touches[0].clientY;
                 touchMovePatrimonioY = touchStartPatrimonioY;
                 isDraggingPatrimonio = true;
-                patrimonioPageContent.style.transition = 'none'; 
+                patrimonioPageContent.style.transition = 'none';
             }
         }, { passive: true });
 
@@ -8862,7 +10008,7 @@ function renderizarGraficoIpca(dados) {
             const diff = touchMovePatrimonioY - touchStartPatrimonioY;
 
             if (diff > 0) {
-                if (e.cancelable) e.preventDefault(); 
+                if (e.cancelable) e.preventDefault();
                 patrimonioPageContent.style.transform = `translateY(${diff}px)`;
             }
         }, { passive: false });
@@ -8885,19 +10031,19 @@ function renderizarGraficoIpca(dados) {
     }
 
 
-if (btnOpenProventos) {
-    btnOpenProventos.addEventListener('click', openProventosModal);
-}
+    if (btnOpenProventos) {
+        btnOpenProventos.addEventListener('click', openProventosModal);
+    }
 
-if (proventosVoltarBtn) {
-    proventosVoltarBtn.addEventListener('click', closeProventosModal);
-}
+    if (proventosVoltarBtn) {
+        proventosVoltarBtn.addEventListener('click', closeProventosModal);
+    }
 
-if (proventosPageModal) {
-    proventosPageModal.addEventListener('click', (e) => {
-        if (e.target === proventosPageModal) closeProventosModal();
-    });
-}
+    if (proventosPageModal) {
+        proventosPageModal.addEventListener('click', (e) => {
+            if (e.target === proventosPageModal) closeProventosModal();
+        });
+    }
 
     if (proventosPageContent) {
         const scrollContainerProv = proventosPageContent.querySelector('.overflow-y-auto');
@@ -8910,7 +10056,7 @@ if (proventosPageModal) {
                 touchStartProventosY = e.touches[0].clientY;
                 touchMoveProventosY = touchStartProventosY;
                 isDraggingProventos = true;
-                proventosPageContent.style.transition = 'none'; 
+                proventosPageContent.style.transition = 'none';
             }
         }, { passive: true });
 
@@ -8920,7 +10066,7 @@ if (proventosPageModal) {
             const diff = touchMoveProventosY - touchStartProventosY;
 
             if (diff > 0) {
-                if (e.cancelable) e.preventDefault(); 
+                if (e.cancelable) e.preventDefault();
                 proventosPageContent.style.transform = `translateY(${diff}px)`;
             }
         }, { passive: false });
@@ -8944,19 +10090,19 @@ if (proventosPageModal) {
     }
 
 
-if (btnOpenAlocacao) {
-    btnOpenAlocacao.addEventListener('click', openAlocacaoModal);
-}
+    if (btnOpenAlocacao) {
+        btnOpenAlocacao.addEventListener('click', openAlocacaoModal);
+    }
 
-if (alocacaoVoltarBtn) {
-    alocacaoVoltarBtn.addEventListener('click', closeAlocacaoModal);
-}
+    if (alocacaoVoltarBtn) {
+        alocacaoVoltarBtn.addEventListener('click', closeAlocacaoModal);
+    }
 
-if (alocacaoPageModal) {
-    alocacaoPageModal.addEventListener('click', (e) => {
-        if (e.target === alocacaoPageModal) closeAlocacaoModal();
-    });
-}
+    if (alocacaoPageModal) {
+        alocacaoPageModal.addEventListener('click', (e) => {
+            if (e.target === alocacaoPageModal) closeAlocacaoModal();
+        });
+    }
 
     if (alocacaoPageContent) {
         const scrollContainerAloc = alocacaoPageContent.querySelector('.overflow-y-auto');
@@ -8969,7 +10115,7 @@ if (alocacaoPageModal) {
                 touchStartAlocacaoY = e.touches[0].clientY;
                 touchMoveAlocacaoY = touchStartAlocacaoY;
                 isDraggingAlocacao = true;
-                alocacaoPageContent.style.transition = 'none'; 
+                alocacaoPageContent.style.transition = 'none';
             }
         }, { passive: true });
 
@@ -8979,7 +10125,7 @@ if (alocacaoPageModal) {
             const diff = touchMoveAlocacaoY - touchStartAlocacaoY;
 
             if (diff > 0) {
-                if (e.cancelable) e.preventDefault(); 
+                if (e.cancelable) e.preventDefault();
                 alocacaoPageContent.style.transform = `translateY(${diff}px)`;
             }
         }, { passive: false });
@@ -9003,228 +10149,246 @@ if (alocacaoPageModal) {
     }
 
 
-if (btnOpenIpca) {
-    btnOpenIpca.addEventListener('click', openIpcaModal);
-}
+    if (btnOpenIpca) {
+        btnOpenIpca.addEventListener('click', openIpcaModal);
+    }
 
-if (ipcaVoltarBtn) {
-    ipcaVoltarBtn.addEventListener('click', closeIpcaModal);
-}
+    if (ipcaVoltarBtn) {
+        ipcaVoltarBtn.addEventListener('click', closeIpcaModal);
+    }
 
-if (ipcaPageContent) {
-    const scrollContainerIpca = ipcaPageContent.querySelector('.overflow-y-auto');
+    if (ipcaPageContent) {
+        const scrollContainerIpca = ipcaPageContent.querySelector('.overflow-y-auto');
 
-    ipcaPageContent.addEventListener('touchstart', (e) => {
-        if (e.target.tagName === 'CANVAS') return;
-        if (scrollContainerIpca && scrollContainerIpca.scrollTop === 0) {
-            touchStartIpcaY = e.touches[0].clientY;
-            touchMoveIpcaY = touchStartIpcaY;
-            isDraggingIpca = true;
-            ipcaPageContent.style.transition = 'none'; 
-        }
-    }, { passive: true });
-
-    ipcaPageContent.addEventListener('touchmove', (e) => {
-        if (!isDraggingIpca) return;
-        touchMoveIpcaY = e.touches[0].clientY;
-        const diff = touchMoveIpcaY - touchStartIpcaY;
-        if (diff > 0) {
-            if (e.cancelable) e.preventDefault(); 
-            ipcaPageContent.style.transform = `translateY(${diff}px)`;
-        }
-    }, { passive: false });
-
-    ipcaPageContent.addEventListener('touchend', (e) => {
-        if (!isDraggingIpca) return;
-        isDraggingIpca = false;
-        const diff = touchMoveIpcaY - touchStartIpcaY;
-        ipcaPageContent.style.transition = 'transform 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94)';
-        if (diff > 120) {
-            closeIpcaModal();
-        } else {
-            ipcaPageContent.style.transform = '';
-        }
-        touchStartIpcaY = 0; touchMoveIpcaY = 0;
-    });
-}
-
-// Iniciar a busca silenciosa do IPCA ao carregar o app (para preencher o widget)
-setTimeout(buscarDadosIpca, 2000);
-
-const carousel = document.getElementById('dashboard-carousel');
-const dots = document.querySelectorAll('.carousel-dot');
-
-if (carousel) {
-    carousel.addEventListener('scroll', () => {
-        const index = Math.round(carousel.scrollLeft / carousel.offsetWidth);
-
-        dots.forEach((dot, i) => {
-            if (i === index) {
-                dot.classList.add('active', 'bg-purple-600');
-                dot.classList.remove('bg-gray-700', 'w-1.5');
-                dot.style.width = '16px'; // Efeito pílula
-            } else {
-                dot.classList.remove('active', 'bg-purple-600');
-                dot.classList.add('bg-gray-700');
-                dot.style.width = '6px';
+        ipcaPageContent.addEventListener('touchstart', (e) => {
+            if (e.target.tagName === 'CANVAS') return;
+            if (scrollContainerIpca && scrollContainerIpca.scrollTop === 0) {
+                touchStartIpcaY = e.touches[0].clientY;
+                touchMoveIpcaY = touchStartIpcaY;
+                isDraggingIpca = true;
+                ipcaPageContent.style.transition = 'none';
             }
-        });
-    });
-}
+        }, { passive: true });
 
-function initCarouselSwipeBridge() {
-    const carousel = document.getElementById('dashboard-carousel');
-    if (!carousel) return;
+        ipcaPageContent.addEventListener('touchmove', (e) => {
+            if (!isDraggingIpca) return;
+            touchMoveIpcaY = e.touches[0].clientY;
+            const diff = touchMoveIpcaY - touchStartIpcaY;
+            if (diff > 0) {
+                if (e.cancelable) e.preventDefault();
+                ipcaPageContent.style.transform = `translateY(${diff}px)`;
+            }
+        }, { passive: false });
 
-    let startX = 0;
-    let isAtEnd = false;
-
-    carousel.addEventListener('touchstart', (e) => {
-        startX = e.touches[0].clientX;
-        // Verifica se está visualmente no final (com pequena tolerância)
-        const maxScroll = carousel.scrollWidth - carousel.clientWidth;
-        isAtEnd = carousel.scrollLeft >= (maxScroll - 5);
-    }, { passive: true });
-
-    carousel.addEventListener('touchend', (e) => {
-        // Se não estava no final, deixa o scroll normal acontecer e sai
-        if (!isAtEnd) return;
-
-        const endX = e.changedTouches[0].clientX;
-        const diff = startX - endX;
-
-        // Se arrastou para a esquerda (tentando avançar)
-        if (diff > 50) {
-            // *** O SEGREDO ESTÁ AQUI ***
-            // Impede que o 'tab-dashboard' perceba esse gesto, evitando o pulo duplo
-            e.stopPropagation(); 
-
-
-            // Força a ida APENAS para a aba Carteira
-            const btnCarteira = document.querySelector('button[data-tab="tab-carteira"]');
-            if (btnCarteira) btnCarteira.click();
-        }
-    });
-}
-
-document.addEventListener('DOMContentLoaded', initCarouselSwipeBridge);
-// Caso o DOM já tenha carregado (recarregamento via SPA/Módulo)
-initCarouselSwipeBridge();
-
-function openPagamentosModal(todosPagamentos) {
-    const modal = document.getElementById('pagamentos-page-modal');
-    const content = document.getElementById('tab-pagamentos-content');
-    const listaEl = document.getElementById('pagamentos-modal-lista');
-    const totalEl = document.getElementById('agenda-total-modal');
-
-    if (!modal || !content) return;
-
-    if (listaEl && todosPagamentos) {
-        listaEl.innerHTML = '';
-
-        // 1. Cálculos
-        let totalGeral = 0;
-        const dadosCalculados = todosPagamentos.map(p => {
-            const parts = p.paymentDate.split('-');
-            const dataObj = new Date(parts[0], parts[1] - 1, parts[2]);
-            const ativo = carteiraCalculada.find(c => c.symbol === p.symbol);
-            const qtd = ativo ? ativo.quantity : 0;
-            const valorTotal = p.value * qtd;
-            totalGeral += valorTotal;
-            return { ...p, dataObj, valorTotalCalculado: valorTotal, qtdCarteira: qtd };
-        });
-
-        // Atualiza Total
-        if (totalEl) {
-            totalEl.textContent = totalGeral.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-        }
-
-        // 2. Agrupamento
-        const grupos = {};
-        dadosCalculados.forEach(item => {
-            const mesAno = item.dataObj.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
-            const chave = mesAno.charAt(0).toUpperCase() + mesAno.slice(1);
-            if (!grupos[chave]) grupos[chave] = [];
-            grupos[chave].push(item);
-        });
-
-        // 3. Renderização
-        Object.keys(grupos).forEach((mes) => {
-            const itensMes = grupos[mes];
-
-            // Título do Mês
-            const wrapper = document.createElement('div');
-            wrapper.innerHTML = `
-                <div class="flex items-center gap-3 mb-3 pl-2 mt-4">
-                    <span class="w-1.5 h-1.5 rounded-full bg-[#3f3f46]"></span>
-                    <h3 class="text-xs font-bold text-[#71717a] uppercase tracking-widest">${mes}</h3>
-                </div>
-                <div class="space-y-2 lista-do-mes"></div>
-            `;
-            const containerMes = wrapper.querySelector('.lista-do-mes');
-
-            itensMes.forEach(prov => {
-                const dia = prov.dataObj.getDate().toString().padStart(2, '0');
-                const sem = prov.dataObj.toLocaleDateString('pt-BR', { weekday: 'short' }).replace('.', '').toUpperCase();
-                const isJCP = prov.type && prov.type.toUpperCase().includes('JCP');
-
-                // Cores de texto
-                const corTextoValor = isJCP ? 'text-[#fbbf24]' : 'text-[#4ade80]'; // Amarelo (JCP) ou Verde (DIV)
-                const tipoTexto = isJCP ? 'JCP' : 'Dividendos';
-                const barraLateral = isJCP ? 'bg-amber-500' : 'bg-[#4ade80]';
-
-                const card = document.createElement('div');
-
-                // Design Clean: Fundo escuro suave, sem borda externa, cantos arredondados
-                card.className = "relative flex items-center bg-[#141414] rounded-xl overflow-hidden mb-1";
-
-                card.innerHTML = `
-                    <div class="absolute left-0 top-0 bottom-0 w-1 ${barraLateral}"></div>
-
-                    <div class="flex items-center w-full p-3 pl-4">
-                        <div class="flex flex-col items-center justify-center pr-4 border-r border-[#27272a]">
-                            <span class="text-lg font-bold text-white leading-none tracking-tight">${dia}</span>
-                            <span class="text-[9px] font-bold text-[#525252] uppercase mt-0.5">${sem}</span>
-                        </div>
-
-                        <div class="flex-1 min-w-0 pl-4">
-                            <div class="flex items-center gap-2 mb-0.5">
-                                <span class="text-sm font-bold text-white tracking-wide">${prov.symbol}</span>
-                            </div>
-                            <p class="text-[10px] text-[#a1a1aa] font-medium truncate">
-                                ${prov.qtdCarteira} cotas • ${tipoTexto}
-                            </p>
-                        </div>
-
-                        <div class="text-right pr-1">
-                            <span class="block text-sm font-bold ${corTextoValor} tabular-nums tracking-tight">
-                                ${prov.valorTotalCalculado.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                            </span>
-                        </div>
-                    </div>
-                `;
-                containerMes.appendChild(card);
-            });
-
-            listaEl.appendChild(wrapper);
+        ipcaPageContent.addEventListener('touchend', (e) => {
+            if (!isDraggingIpca) return;
+            isDraggingIpca = false;
+            const diff = touchMoveIpcaY - touchStartIpcaY;
+            ipcaPageContent.style.transition = 'transform 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94)';
+            if (diff > 120) {
+                closeIpcaModal();
+            } else {
+                ipcaPageContent.style.transform = '';
+            }
+            touchStartIpcaY = 0; touchMoveIpcaY = 0;
         });
     }
 
-    modal.classList.add('visible');
-    content.classList.remove('closing');
-    content.style.transform = ''; 
-    document.body.style.overflow = 'hidden';
-}
+    // Iniciar a busca silenciosa do IPCA ao carregar o app (para preencher o widget)
+    setTimeout(buscarDadosIpca, 2000);
 
-window.closePagamentosModal = function() {
-    const modal = document.getElementById('pagamentos-page-modal');
-    const content = document.getElementById('tab-pagamentos-content');
-    if (!modal || !content) return;
+    const carousel = document.getElementById('dashboard-carousel');
+    const dots = document.querySelectorAll('.carousel-dot');
 
-    content.classList.add('closing');
-    modal.classList.remove('visible');
-    document.body.style.overflow = '';
-};
+    if (carousel) {
+        carousel.addEventListener('scroll', () => {
+            const index = Math.round(carousel.scrollLeft / carousel.offsetWidth);
+
+            dots.forEach((dot, i) => {
+                if (i === index) {
+                    dot.classList.add('active', 'bg-purple-600');
+                    dot.classList.remove('bg-gray-700', 'w-1.5');
+                    dot.style.width = '16px'; // Efeito pílula
+                } else {
+                    dot.classList.remove('active', 'bg-purple-600');
+                    dot.classList.add('bg-gray-700');
+                    dot.style.width = '6px';
+                }
+            });
+        });
+    }
+
+    function initCarouselSwipeBridge() {
+        const carousel = document.getElementById('dashboard-carousel');
+        if (!carousel) return;
+
+        let startX = 0;
+        let isAtEnd = false;
+
+        carousel.addEventListener('touchstart', (e) => {
+            startX = e.touches[0].clientX;
+            // Verifica se está visualmente no final (com pequena tolerância)
+            const maxScroll = carousel.scrollWidth - carousel.clientWidth;
+            isAtEnd = carousel.scrollLeft >= (maxScroll - 5);
+        }, { passive: true });
+
+        carousel.addEventListener('touchend', (e) => {
+            // Se não estava no final, deixa o scroll normal acontecer e sai
+            if (!isAtEnd) return;
+
+            const endX = e.changedTouches[0].clientX;
+            const diff = startX - endX;
+
+            // Se arrastou para a esquerda (tentando avançar)
+            if (diff > 50) {
+                // *** O SEGREDO ESTÁ AQUI ***
+                // Impede que o 'tab-dashboard' perceba esse gesto, evitando o pulo duplo
+                e.stopPropagation();
+
+
+                // Força a ida APENAS para a aba Carteira
+                const btnCarteira = document.querySelector('button[data-tab="tab-carteira"]');
+                if (btnCarteira) btnCarteira.click();
+            }
+        });
+    }
+
+    document.addEventListener('DOMContentLoaded', initCarouselSwipeBridge);
+    // Caso o DOM já tenha carregado (recarregamento via SPA/Módulo)
+    initCarouselSwipeBridge();
+
+    function openPagamentosModal(todosPagamentos) {
+        const modal = document.getElementById('pagamentos-page-modal');
+        const content = document.getElementById('tab-pagamentos-content');
+        const listaEl = document.getElementById('pagamentos-modal-lista');
+        const totalEl = document.getElementById('agenda-total-modal');
+
+        if (!modal || !content) return;
+
+        if (listaEl && todosPagamentos) {
+            listaEl.innerHTML = '';
+
+            // 1. Cálculos
+            let totalGeral = 0;
+            const dadosCalculados = todosPagamentos.map(p => {
+                const parts = p.paymentDate.split('-');
+                const dataObj = new Date(parts[0], parts[1] - 1, parts[2]);
+                const ativo = carteiraCalculada.find(c => c.symbol === p.symbol);
+                const qtd = ativo ? ativo.quantity : 0;
+                const valorTotal = p.value * qtd;
+                totalGeral += valorTotal;
+                return { ...p, dataObj, valorTotalCalculado: valorTotal, qtdCarteira: qtd };
+            });
+
+            // Atualiza Total
+            if (totalEl) {
+                totalEl.textContent = totalGeral.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+            }
+
+            // 2. Agrupamento
+            const grupos = {};
+            dadosCalculados.forEach(item => {
+                const mesAno = item.dataObj.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+                const chave = mesAno.charAt(0).toUpperCase() + mesAno.slice(1);
+                if (!grupos[chave]) grupos[chave] = [];
+                grupos[chave].push(item);
+            });
+
+            // 3. Renderização
+            Object.keys(grupos).forEach((mes) => {
+                const itensMes = grupos[mes];
+
+                // Título do Mês
+                const wrapper = document.createElement('div');
+                wrapper.innerHTML = `
+                    <div class="flex items-center gap-3 mb-3 pl-2 mt-4">
+                        <span class="w-1.5 h-1.5 rounded-full bg-[#3f3f46]"></span>
+                        <h3 class="text-xs font-bold text-[#71717a] uppercase tracking-widest">${mes}</h3>
+                    </div>
+                    <div class="space-y-2 lista-do-mes"></div>
+                `;
+                const containerMes = wrapper.querySelector('.lista-do-mes');
+
+                itensMes.forEach(prov => {
+                    const dia = prov.dataObj.getDate().toString().padStart(2, '0');
+                    const sem = prov.dataObj.toLocaleDateString('pt-BR', { weekday: 'short' }).replace('.', '').toUpperCase();
+                    const isJCP = prov.type && prov.type.toUpperCase().includes('JCP');
+
+                    // Cores de texto
+                    const corTextoValor = isJCP ? 'text-[#fbbf24]' : 'text-[#4ade80]'; // Amarelo (JCP) ou Verde (DIV)
+                    const tipoTexto = isJCP ? 'JCP' : 'Dividendos';
+                    const barraLateral = isJCP ? 'bg-amber-500' : 'bg-[#4ade80]';
+
+                    const card = document.createElement('div');
+
+                    const isLight = document.body.classList.contains('light-mode');
+                    const bgCard = isLight ? 'bg-gray-100' : 'bg-[#141414]';
+                    const txtTitle = isLight ? 'text-gray-800' : 'text-white';
+                    const txtSub = isLight ? 'text-gray-500' : 'text-[#a1a1aa]';
+                    const borderR = isLight ? 'border-gray-200' : 'border-[#27272a]';
+                    const txtDateSub = isLight ? 'text-gray-400' : 'text-[#525252]';
+
+                    // Design Clean: Fundo escuro suave, sem borda externa, cantos arredondados
+                    card.className = `relative flex items-center ${bgCard} rounded-xl overflow-hidden mb-1`;
+
+                    card.innerHTML = `
+                        <div class="absolute left-0 top-0 bottom-0 w-1 ${barraLateral}"></div>
+                        <div class="flex items-center w-full p-2.5">
+                            
+                            <!-- Bloco de Data (Estilo Calendário) -->
+                            <div class="flex flex-col items-center justify-center w-14 h-14 rounded-xl relative overflow-hidden flex-shrink-0 ${isLight ? 'bg-white border border-gray-200 shadow-sm' : 'bg-[#1a1a1c] border border-white/5 shadow-md'}">
+                                <div class="absolute top-0 w-full h-3.5 ${barraLateral} flex items-center justify-center">
+                                    <span class="text-[8px] font-black tracking-widest text-[#111] uppercase mix-blend-overlay opacity-80">${sem}</span>
+                                </div>
+                                <span class="text-xl font-bold ${txtTitle} leading-none mt-2 tracking-tighter">${dia}</span>
+                            </div>
+
+                            <!-- Informações do Ativo -->
+                            <div class="flex-1 min-w-0 pl-3">
+                                <div class="flex items-center gap-2 mb-0.5">
+                                    <span class="text-[13px] font-bold ${txtTitle} tracking-wide">${prov.symbol}</span>
+                                </div>
+                                <div class="flex flex-col gap-0.5">
+                                    <span class="text-[10px] ${txtSub} font-medium tracking-wide flex items-center gap-1.5 opacity-80">
+                                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-3 h-3 text-gray-500"><path d="M11.645 20.91l-.007-.003-.022-.012a15.247 15.247 0 01-.383-.218 25.18 25.18 0 01-4.244-3.17C4.688 15.36 2.25 12.174 2.25 8.25 2.25 5.322 4.714 3 8.25 3c1.804 0 3.196.85 3.75 1.5.554-.65 1.946-1.5 3.75-1.5 3.536 0 6 2.322 6 5.25 0 3.925-2.438 7.111-4.739 9.256a25.175 25.175 0 01-4.244 3.17 15.247 15.247 0 01-.383.219l-.022.012-.007.004-.003.001a.752.752 0 01-.704 0l-.003-.001z" /></svg>
+                                        ${prov.qtdCarteira} cotas
+                                    </span>
+                                    <span class="text-[10px] font-bold uppercase tracking-widest ${isJCP ? 'text-amber-500/80' : 'text-emerald-500/80'}">
+                                        ${tipoTexto}
+                                    </span>
+                                </div>
+                            </div>
+
+                            <!-- Valor Financeiro -->
+                            <div class="text-right pr-2">
+                                <span class="block text-sm font-black ${corTextoValor} tabular-nums tracking-tight">
+                                    ${prov.valorTotalCalculado.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                                </span>
+                            </div>
+                        </div>
+                    `;
+                    containerMes.appendChild(card);
+                });
+
+                listaEl.appendChild(wrapper);
+            });
+        }
+
+        modal.classList.add('visible');
+        content.classList.remove('closing');
+        content.style.transform = '';
+        document.body.style.overflow = 'hidden';
+    }
+
+    window.closePagamentosModal = function () {
+        const modal = document.getElementById('pagamentos-page-modal');
+        const content = document.getElementById('tab-pagamentos-content');
+        if (!modal || !content) return;
+
+        content.classList.add('closing');
+        modal.classList.remove('visible');
+        document.body.style.overflow = '';
+    };
 
 
     const modalPagamentosRef = document.getElementById('pagamentos-page-modal');
@@ -9256,7 +10420,7 @@ window.closePagamentosModal = function() {
                 touchStartPagamentosY = e.touches[0].clientY;
                 touchMovePagamentosY = touchStartPagamentosY;
                 isDraggingPagamentos = true;
-                contentPagamentosRef.style.transition = 'none'; 
+                contentPagamentosRef.style.transition = 'none';
             }
         }, { passive: true });
 
@@ -9268,7 +10432,7 @@ window.closePagamentosModal = function() {
 
             // Só move se for para baixo
             if (diff > 0) {
-                if (e.cancelable) e.preventDefault(); 
+                if (e.cancelable) e.preventDefault();
                 contentPagamentosRef.style.transform = `translateY(${diff}px)`;
             }
         }, { passive: false });
@@ -9325,257 +10489,323 @@ window.closePagamentosModal = function() {
         });
     }
 
-const objetivosModal = document.getElementById('objetivos-page-modal');
-const objetivosContent = document.getElementById('tab-objetivos-content');
-const objetivosVoltarBtn = document.getElementById('objetivos-voltar-btn');
-const objetivosLista = document.getElementById('objetivos-lista');
-const objetivosTotalAtivos = document.getElementById('objetivos-total-ativos');
+    const objetivosModal = document.getElementById('objetivos-page-modal');
+    const objetivosContent = document.getElementById('tab-objetivos-content');
+    const objetivosVoltarBtn = document.getElementById('objetivos-voltar-btn');
+    const objetivosLista = document.getElementById('objetivos-lista');
+    const objetivosTotalAtivos = document.getElementById('objetivos-total-ativos');
 
-let isDraggingObjetivos = false;
-let touchStartObjetivosY = 0;
-let touchMoveObjetivosY = 0;
+    let isDraggingObjetivos = false;
+    let touchStartObjetivosY = 0;
+    let touchMoveObjetivosY = 0;
 
-async function openObjetivosModal() {
-    if (!objetivosModal) return;
+    async function openObjetivosModal() {
+        if (!objetivosModal) return;
 
-    // 1. Mostra o fundo escuro (fade in)
-    objetivosModal.style.pointerEvents = 'auto';
-    objetivosModal.style.opacity = '1';
-    objetivosModal.classList.add('visible');
+        // 1. Mostra o fundo escuro (fade in)
+        objetivosModal.style.pointerEvents = 'auto';
+        objetivosModal.style.opacity = '1';
+        objetivosModal.classList.add('visible');
 
-    // 2. Faz o modal deslizar para cima
-    setTimeout(() => {
-        objetivosContent.style.transform = 'translateY(0)';
-    }, 50); // Pequeno delay para o navegador renderizar a animação
+        // 2. Faz o modal deslizar para cima
+        setTimeout(() => {
+            objetivosContent.style.transform = 'translateY(0)';
+        }, 50); // Pequeno delay para o navegador renderizar a animação
 
-    document.body.style.overflow = 'hidden';
+        document.body.style.overflow = 'hidden';
 
-    renderizarObjetivos();
-}
+        renderizarObjetivos();
+    }
 
-function closeObjetivosModal() {
-    if (!objetivosContent) return;
+    function closeObjetivosModal() {
+        if (!objetivosContent) return;
 
-    // 1. Faz o modal deslizar para baixo
-    objetivosContent.style.transition = 'transform 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94)';
-    objetivosContent.style.transform = 'translateY(100%)';
+        // 1. Faz o modal deslizar para baixo
+        objetivosContent.style.transition = 'transform 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94)';
+        objetivosContent.style.transform = 'translateY(100%)';
 
-    // 2. Tira o fundo escuro (fade out)
-    objetivosModal.style.opacity = '0';
-    objetivosModal.style.pointerEvents = 'none';
+        // 2. Tira o fundo escuro (fade out)
+        objetivosModal.style.opacity = '0';
+        objetivosModal.style.pointerEvents = 'none';
 
-    // 3. Aguarda a animação terminar para limpar
-    setTimeout(() => {
-        objetivosModal.classList.remove('visible');
-        document.body.style.overflow = '';
-    }, 50);
-}
+        // 3. Aguarda a animação terminar para limpar
+        setTimeout(() => {
+            objetivosModal.classList.remove('visible');
+            document.body.style.overflow = '';
+        }, 50);
+    }
 
-// Lógica Principal de Renderização (VERSÃO SUPER OTIMIZADA)
-async function renderizarObjetivos() {
-    if (!objetivosLista) return;
+    // Variável global para rastrear meta atual (padrão Cota Grátis)
+    let currentObjetivoTarget = 'cota_gratis';
 
-    // Captura o elemento do novo total global
-    const objetivosTotalInvestir = document.getElementById('objetivos-total-investir');
+    // Lógica Principal de Renderização (VERSÃO COM MÉDIA E METAS PERSONALIZÁVEIS)
+    async function renderizarObjetivos() {
+        if (!objetivosLista) return;
 
-    // Como agora é instantâneo, mal vamos ver esse loader, mas é bom manter por segurança
-    objetivosLista.innerHTML = '<div class="text-center py-10"><span class="loader-sm"></span><p class="text-xs text-gray-500 mt-2">Analisando carteira...</p></div>';
+        // Limpa estado atual
+        const objetivosTotalInvestir = document.getElementById('objetivos-total-investir');
+        objetivosLista.innerHTML = '<div class="text-center py-10"><span class="loader-sm"></span><p class="text-xs text-gray-500 mt-2">Analisando carteira...</p></div>';
 
-    // 1. Filtra apenas FIIs e Fiagros
-    const fiisCarteira = carteiraCalculada.filter(ativo => {
-        const symbol = ativo.symbol.toUpperCase();
-        return symbol.endsWith('11') || symbol.endsWith('12');
-    });
+        // 1. Filtra apenas FIIs e Fiagros
+        const fiisCarteira = carteiraCalculada.filter(ativo => {
+            const symbol = ativo.symbol.toUpperCase();
+            return symbol.endsWith('11') || symbol.endsWith('12');
+        });
 
-    if (fiisCarteira.length === 0) {
-        objetivosLista.innerHTML = `
-            <div class="flex flex-col items-center justify-center pt-10 opacity-50">
+        if (fiisCarteira.length === 0) {
+            const isLight = document.body.classList.contains('light-mode');
+            const bgEmpty = isLight ? 'bg-gray-100' : 'bg-[#151515]';
+
+            objetivosLista.innerHTML = `
+    <div class="flex flex-col items-center justify-center pt-10 opacity-50 ${bgEmpty} rounded-3xl p-6" >
                 <svg class="w-12 h-12 text-gray-600 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012-2v2M7 7h10" /></svg>
                 <p class="text-sm text-gray-400">Nenhum FII encontrado na carteira.</p>
-            </div>`;
-        if(objetivosTotalAtivos) objetivosTotalAtivos.textContent = "0";
-        if(objetivosTotalInvestir) objetivosTotalInvestir.textContent = "R$ 0,00";
-        return;
-    }
-
-    if(objetivosTotalAtivos) objetivosTotalAtivos.textContent = fiisCarteira.length;
-
-    let htmlFinal = '';
-    let somaTotalInvestir = 0; // Inicializa a soma global
-
-    // 2. Para cada FII, calcula os dados IMEDIATAMENTE a partir da memória
-    for (const ativo of fiisCarteira) {
-        const symbol = ativo.symbol;
-        const precoAtual = precosAtuais.find(p => p.symbol === symbol)?.regularMarketPrice || 0;
-        let ultimoRendimento = 0;
-
-        // BUSCA INSTANTÂNEA: Olha direto para os proventos que já vieram do StatusInvest na inicialização
-        const historicoDoFii = proventosConhecidos.filter(p => p.symbol === symbol && p.value > 0);
-
-        if (historicoDoFii.length > 0) {
-            // Ordena e pega o último valor pago
-            historicoDoFii.sort((a,b) => new Date(b.paymentDate) - new Date(a.paymentDate));
-            ultimoRendimento = historicoDoFii[0].value;
+            </div> `;
+            if (objetivosTotalAtivos) objetivosTotalAtivos.textContent = "0";
+            if (objetivosTotalInvestir) objetivosTotalInvestir.textContent = "R$ 0,00";
+            return;
         }
 
-        // CÁLCULO MAGIC NUMBER
-        if (precoAtual > 0 && ultimoRendimento > 0) {
-            const magicNumber = Math.ceil(precoAtual / ultimoRendimento);
-            const cotasAtuais = ativo.quantity;
-            const progresso = Math.min(100, (cotasAtuais / magicNumber) * 100);
+        if (objetivosTotalAtivos) objetivosTotalAtivos.textContent = fiisCarteira.length;
 
-            const cotasFaltantes = Math.max(0, magicNumber - cotasAtuais);
-            const investimentoNecessario = cotasFaltantes * precoAtual;
+        let htmlFinal = '';
+        let somaTotalInvestir = 0; // Inicializa a soma global
 
-            // SOMA AO TOTAL GLOBAL
-            somaTotalInvestir += investimentoNecessario;
+        // 2. Data de 1 ano atrás para média 12M
+        const umAnoAtras = new Date();
+        umAnoAtras.setFullYear(umAnoAtras.getFullYear() - 1);
 
-            // Status Visual Refinado (Barra Branca fina, sem bordas no card)
-            const atingiu = cotasAtuais >= magicNumber;
-            const corBarra = atingiu ? 'bg-yellow-500' : 'bg-white';
-            const corTexto = atingiu ? 'text-yellow-500' : 'text-white';
-            const msgStatus = atingiu ? 'Concluido!' : `Faltam <b class="text-white">${cotasFaltantes}</b> cotas`;
-            const msgInvest = atingiu ? 'A bola de neve começou.' : `Falta investir <b class="text-white">${formatBRL(investimentoNecessario)}</b>`;
+        // 3. Iteração e Cálculos Reais
+        for (const ativo of fiisCarteira) {
+            const symbol = ativo.symbol;
+            // PREÇO ATUAL ou PREÇO MÉDIO: para objetivos de cota grátis o investidor olha para o preço a mercado de tela hoje.
+            const precoAtual = precosAtuais.find(p => p.symbol === symbol)?.regularMarketPrice || 0;
+            let mediaRendimentos = 0;
 
-            htmlFinal += `
-            <div class="bg-[#151515] p-4 rounded-3xl relative overflow-hidden">
-                <div class="flex justify-between items-start mb-4">
+            const isLight = document.body.classList.contains('light-mode');
+            const bgCard = isLight ? 'bg-gray-100' : 'bg-[#151515]';
+            const bgIcon = isLight ? 'bg-white' : 'bg-[#0a0a0a]';
+            const borderIcon = isLight ? 'border-gray-200' : 'border-white/5';
+            const bgBar = isLight ? 'bg-gray-200' : 'bg-[#27272a]';
+            const bgInvest = isLight ? 'bg-white' : 'bg-[#222]';
+            const borderInvest = isLight ? 'border-gray-200' : 'border-white/5';
+            const txtInvest = isLight ? 'text-gray-600' : 'text-gray-300';
+            const borderRow = isLight ? 'border-gray-200' : 'border-white/5';
+            const corTitle = isLight ? 'text-gray-800' : 'text-white';
+            const corValue = isLight ? 'text-gray-800' : 'text-white';
+
+            // BUSCA PROVENTOS: Filtra proventos do fundo nos ultimos 12 meses
+            const proventosDoFundo = proventosConhecidos.filter(p => p.symbol === symbol && p.value > 0);
+
+            if (proventosDoFundo.length > 0) {
+                const ultimos12Meses = proventosDoFundo.filter(p => new Date(p.paymentDate) >= umAnoAtras);
+
+                if (ultimos12Meses.length > 0) {
+                    const soma12Meses = ultimos12Meses.reduce((acc, curr) => acc + curr.value, 0);
+                    // Divide por 12 se pagou todos os meses, se pagou menos dividimos pela qtd pra não distorcer negativamente tanto
+                    const denom = ultimos12Meses.length > 6 ? 12 : ultimos12Meses.length;
+                    mediaRendimentos = soma12Meses / denom;
+                } else {
+                    // Fallback se n tem 12m: media de tudo q tem
+                    const somaTudo = proventosDoFundo.reduce((acc, curr) => acc + curr.value, 0);
+                    mediaRendimentos = somaTudo / proventosDoFundo.length;
+                }
+            }
+
+            // CÁLCULO GERAL DA META
+            if (precoAtual > 0 && mediaRendimentos > 0) {
+                let metaCotasEsperada = 0;
+
+                if (currentObjetivoTarget === 'cota_gratis') {
+                    // Meta Cota Gratis: Proventos = Preco de 1 cota. Entao qtd = Preco / Provento
+                    metaCotasEsperada = Math.ceil(precoAtual / mediaRendimentos);
+                } else {
+                    // Meta Renda Fixa Ex: R$ 100 por mes. Qtd = MetaFinanceira / Provento
+                    const valorMetaCash = parseFloat(currentObjetivoTarget);
+                    metaCotasEsperada = Math.ceil(valorMetaCash / mediaRendimentos);
+                }
+
+                const cotasAtuais = ativo.quantity;
+                const progresso = Math.min(100, (cotasAtuais / metaCotasEsperada) * 100);
+
+                const cotasFaltantes = Math.max(0, metaCotasEsperada - cotasAtuais);
+                const investimentoNecessario = cotasFaltantes * precoAtual;
+
+                // SOMA AO TOTAL GLOBAL
+                somaTotalInvestir += investimentoNecessario;
+
+                const atingiu = cotasAtuais >= metaCotasEsperada;
+                const corBarra = atingiu ? 'bg-yellow-500' : (isLight ? 'bg-gray-800' : 'bg-white');
+                const corTexto = atingiu ? 'text-yellow-500' : (isLight ? 'text-gray-800' : 'text-white');
+
+                const msgStatus = atingiu ? 'Concluido!' : `Faltam <b class="${corValue}">${formatCurrencyShort(cotasFaltantes)}</b> cotas`;
+                const msgInvest = atingiu ? 'Objetivo alcançado.' : `Falta investir <b class="${corValue}">${formatBRL(investimentoNecessario)}</b> `;
+
+                htmlFinal += `
+                <div class="${bgCard} p-4 rounded-3xl relative overflow-hidden" >
+                    <div class="flex justify-between items-start mb-4">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-2xl ${bgIcon} flex items-center justify-center shadow-inner border ${borderIcon}">
+                                <span class="text-xs font-bold ${corTitle} tracking-wider">${symbol.substring(0, 2)}</span>
+                            </div>
+                            <div>
+                                <h4 class="text-base font-bold ${corTitle} leading-none">${symbol}</h4>
+                                <span class="text-[10px] text-gray-500 font-medium mt-1 block">Preço: ${formatBRL(precoAtual)} • Média.Div/Mês: ${formatBRL(mediaRendimentos)}</span>
+                            </div>
+                        </div>
+                        <div class="text-right">
+                            <span class="text-[9px] text-gray-500 uppercase font-bold tracking-widest block mb-0.5">Meta</span>
+                            <span class="text-lg font-bold ${corValue} leading-none">${formatCurrencyShort(metaCotasEsperada)}</span>
+                            <span class="text-[9px] text-gray-500 block font-medium">cotas</span>
+                        </div>
+                    </div>
+
+                    <div class="w-full ${bgBar} h-1.5 rounded-full overflow-hidden mb-2 shadow-inner">
+                        <div class="h-full rounded-full ${corBarra} transition-all duration-1000" style="width: ${progresso}%"></div>
+                    </div>
+
+                    <div class="flex justify-between items-center text-[10px] font-bold tracking-wider">
+                        <span class="text-gray-500">${Math.floor(progresso)}% CONCLUÍDO</span>
+                        <span class="${corTexto}">${formatCurrencyShort(cotasAtuais)} / ${formatCurrencyShort(metaCotasEsperada)}</span>
+                    </div>
+
+                    <div class="mt-4 pt-3 border-t ${borderRow} flex justify-between items-center">
+                        <div class="text-[11px] text-gray-400">${msgStatus}</div>
+                        <div class="text-[10px] font-bold ${txtInvest} ${bgInvest} px-2.5 py-1.5 rounded-xl border ${borderInvest}">
+                            ${msgInvest}
+                        </div>
+                    </div>
+                </div> `;
+            } else {
+                htmlFinal += `
+                <div class="${bgCard} p-4 rounded-3xl relative overflow-hidden opacity-50" >
                     <div class="flex items-center gap-3">
-                        <div class="w-10 h-10 rounded-2xl bg-[#0a0a0a] flex items-center justify-center shadow-inner border border-white/5">
-                            <span class="text-xs font-bold text-white tracking-wider">${symbol.substring(0,2)}</span>
+                        <div class="w-10 h-10 rounded-2xl ${bgIcon} flex items-center justify-center border ${borderIcon}">
+                            <span class="text-xs font-bold ${corTitle} tracking-wider">${symbol.substring(0, 2)}</span>
                         </div>
                         <div>
-                            <h4 class="text-base font-bold text-white leading-none">${symbol}</h4>
-                            <span class="text-[10px] text-gray-500 font-medium mt-1 block">Preço: ${formatBRL(precoAtual)} • Div: ${formatBRL(ultimoRendimento)}</span>
+                            <h4 class="text-base font-bold ${corTitle} leading-none">${symbol}</h4>
+                            <span class="text-[10px] text-red-400 font-medium mt-1 block">Dados insuficientes para calcular média</span>
                         </div>
                     </div>
-                    <div class="text-right">
-                        <span class="text-[9px] text-gray-500 uppercase font-bold tracking-widest block mb-0.5">Meta</span>
-                        <span class="text-lg font-bold text-white leading-none">${magicNumber}</span>
-                        <span class="text-[9px] text-gray-600 block font-medium">cotas</span>
-                    </div>
-                </div>
+                </div> `;
+            }
+        }
 
-                <div class="w-full bg-[#27272a] h-1.5 rounded-full overflow-hidden mb-2 shadow-inner">
-                    <div class="h-full rounded-full ${corBarra} transition-all duration-1000" style="width: ${progresso}%"></div>
-                </div>
+        objetivosLista.innerHTML = htmlFinal;
 
-                <div class="flex justify-between items-center text-[10px] font-bold tracking-wider">
-                    <span class="text-gray-500">${Math.floor(progresso)}% CONCLUÍDO</span>
-                    <span class="${corTexto}">${cotasAtuais} / ${magicNumber}</span>
-                </div>
-
-                <div class="mt-4 pt-3 border-t border-white/5 flex justify-between items-center">
-                    <div class="text-[11px] text-gray-400">${msgStatus}</div>
-                    <div class="text-[10px] font-bold text-gray-300 bg-[#222] px-2.5 py-1.5 rounded-xl border border-white/5">
-                        ${msgInvest}
-                    </div>
-                </div>
-            </div>`;
-        } else {
-            // Caso falte dados para calcular
-            htmlFinal += `
-            <div class="bg-[#151515] p-4 rounded-3xl relative overflow-hidden opacity-50">
-                <div class="flex items-center gap-3">
-                    <div class="w-10 h-10 rounded-2xl bg-[#0a0a0a] flex items-center justify-center border border-white/5">
-                         <span class="text-xs font-bold text-white tracking-wider">${symbol.substring(0,2)}</span>
-                    </div>
-                    <div>
-                        <h4 class="text-base font-bold text-white leading-none">${symbol}</h4>
-                        <span class="text-[10px] text-red-400 font-medium mt-1 block">Dados insuficientes para cálculo</span>
-                    </div>
-                </div>
-            </div>`;
+        if (objetivosTotalInvestir) {
+            objetivosTotalInvestir.textContent = formatBRL(somaTotalInvestir);
         }
     }
 
-    objetivosLista.innerHTML = htmlFinal;
+    // Escutadores dos Botões de Filtro de Meta 
+    const objetivoFilterBtns = document.querySelectorAll('.objetivo-filter-btn');
+    if (objetivoFilterBtns.length > 0) {
+        objetivoFilterBtns.forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                // Atualiza o estado visual das pills de filtro
+                objetivoFilterBtns.forEach(b => {
+                    b.classList.remove('bg-white', 'text-black', 'border-white', 'active');
+                    b.classList.add('bg-[#151515]', 'text-gray-400', 'border-[#2C2C2E]');
+                    // Aplica estilo light mode se necessario (simplificado)
+                    if (document.body.classList.contains('light-mode')) {
+                        b.classList.replace('bg-[#151515]', 'bg-gray-100');
+                        b.classList.replace('border-[#2C2C2E]', 'border-gray-200');
+                    }
+                });
 
-    // Atualiza o valor total formatado no DOM da tela
-    if (objetivosTotalInvestir) {
-        objetivosTotalInvestir.textContent = formatBRL(somaTotalInvestir);
-    }
-}
+                e.target.classList.add('active', 'bg-white', 'text-black', 'border-white');
+                e.target.classList.remove('bg-[#151515]', 'text-gray-400', 'border-[#2C2C2E]', 'bg-gray-100', 'border-gray-200');
 
-if (objetivosVoltarBtn) objetivosVoltarBtn.addEventListener('click', closeObjetivosModal);
-if (objetivosModal) objetivosModal.addEventListener('click', (e) => { if(e.target === objetivosModal) closeObjetivosModal(); });
-
-if (objetivosContent) {
-    const scrollContainerObj = objetivosContent.querySelector('.overflow-y-auto');
-
-    objetivosContent.addEventListener('touchstart', (e) => {
-        if (scrollContainerObj && scrollContainerObj.scrollTop === 0) {
-            touchStartObjetivosY = e.touches[0].clientY;
-            touchMoveObjetivosY = touchStartObjetivosY;
-            isDraggingObjetivos = true;
-            objetivosContent.style.transition = 'none'; 
-        }
-    }, { passive: true });
-
-    objetivosContent.addEventListener('touchmove', (e) => {
-        if (!isDraggingObjetivos) return;
-        touchMoveObjetivosY = e.touches[0].clientY;
-        const diff = touchMoveObjetivosY - touchStartObjetivosY;
-        if (diff > 0) {
-            if (e.cancelable) e.preventDefault(); 
-            objetivosContent.style.transform = `translateY(${diff}px)`;
-        }
-    }, { passive: false });
-
-    objetivosContent.addEventListener('touchend', (e) => {
-        if (!isDraggingObjetivos) return;
-        isDraggingObjetivos = false;
-        const diff = touchMoveObjetivosY - touchStartObjetivosY;
-        objetivosContent.style.transition = 'transform 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94)';
-
-        if (diff > 120) {
-            closeObjetivosModal();
-        } else {
-            objetivosContent.style.transform = '';
-        }
-        touchStartObjetivosY = 0; touchMoveObjetivosY = 0;
-    });
-}
-
-window.openObjetivosModal = openObjetivosModal;
-
-window.renderizarListaImoveis = function(imoveis) {
-    // O container agora é estático no HTML, dentro da tab Portfólio
-    let container = document.getElementById('detalhes-imoveis-container');
-
-    if (!container) {
-        console.warn('renderizarListaImoveis: container não encontrado');
-        return;
+                // Atualiza o Global Target e re-renderiza a aba
+                currentObjetivoTarget = e.target.getAttribute('data-target');
+                renderizarObjetivos();
+            });
+        });
     }
 
-    if (!imoveis || !Array.isArray(imoveis) || imoveis.length === 0) {
-        container.innerHTML = '';
-        return;
+    if (objetivosVoltarBtn) objetivosVoltarBtn.addEventListener('click', closeObjetivosModal);
+    if (objetivosModal) objetivosModal.addEventListener('click', (e) => { if (e.target === objetivosModal) closeObjetivosModal(); });
+
+    if (objetivosContent) {
+        const scrollContainerObj = objetivosContent.querySelector('.overflow-y-auto');
+
+        objetivosContent.addEventListener('touchstart', (e) => {
+            // Skip drag-to-close if touching a horizontally scrollable area (e.g. filters)
+            if (e.target.closest('.overflow-x-auto')) return;
+            if (scrollContainerObj && scrollContainerObj.scrollTop === 0) {
+                touchStartObjetivosY = e.touches[0].clientY;
+                touchMoveObjetivosY = touchStartObjetivosY;
+                isDraggingObjetivos = true;
+                objetivosContent.style.transition = 'none';
+            }
+        }, { passive: true });
+
+        objetivosContent.addEventListener('touchmove', (e) => {
+            if (!isDraggingObjetivos) return;
+            touchMoveObjetivosY = e.touches[0].clientY;
+            const diff = touchMoveObjetivosY - touchStartObjetivosY;
+            if (diff > 0) {
+                if (e.cancelable) e.preventDefault();
+                objetivosContent.style.transform = `translateY(${diff}px)`;
+            }
+        }, { passive: false });
+
+        objetivosContent.addEventListener('touchend', (e) => {
+            if (!isDraggingObjetivos) return;
+            isDraggingObjetivos = false;
+            const diff = touchMoveObjetivosY - touchStartObjetivosY;
+            objetivosContent.style.transition = 'transform 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94)';
+
+            if (diff > 120) {
+                closeObjetivosModal();
+            } else {
+                objetivosContent.style.transform = '';
+            }
+            touchStartObjetivosY = 0; touchMoveObjetivosY = 0;
+        });
     }
 
-    // 1. Processar dados: Agrupar por Estado e Ordenar (Maior pro Menor)
-    const estadosCount = {};
-    imoveis.forEach(imovel => {
-        const uf = imovel.estado || 'Outros';
-        estadosCount[uf] = (estadosCount[uf] || 0) + 1;
-    });
+    window.openObjetivosModal = openObjetivosModal;
 
-    const sortedEstados = Object.entries(estadosCount).sort((a, b) => b[1] - a[1]);
-    const labels = sortedEstados.map(e => e[0]);
-    const data = sortedEstados.map(e => e[1]);
-    const bgColors = ['#8b5cf6', '#3b82f6', '#10b981', '#f59e0b', '#f43f5e', '#06b6d4', '#ec4899', '#84cc16', '#a855f7', '#14b8a6'];
+    window.renderizarListaImoveis = function (imoveis) {
+        // O container agora é estático no HTML, dentro da tab Portfólio
+        let container = document.getElementById('detalhes-imoveis-container');
 
-    const totalImoveis = imoveis.length;
+        if (!container) {
+            console.warn('renderizarListaImoveis: container não encontrado');
+            return;
+        }
 
-    // 2. Gerar a Legenda Customizada (HTML)
-    let legendHtml = sortedEstados.map((estadoInfo, index) => {
-        const uf = estadoInfo[0];
-        const count = estadoInfo[1];
-        const color = bgColors[index % bgColors.length];
-        const percent = Math.round((count / totalImoveis) * 100);
+        if (!imoveis || !Array.isArray(imoveis) || imoveis.length === 0) {
+            container.innerHTML = '';
+            return;
+        }
 
-        return `
-            <div class="flex items-center justify-between">
+        // 1. Processar dados: Agrupar por Estado e Ordenar (Maior pro Menor)
+        const estadosCount = {};
+        imoveis.forEach(imovel => {
+            const uf = imovel.estado || 'Outros';
+            estadosCount[uf] = (estadosCount[uf] || 0) + 1;
+        });
+
+        const sortedEstados = Object.entries(estadosCount).sort((a, b) => b[1] - a[1]);
+        const labels = sortedEstados.map(e => e[0]);
+        const data = sortedEstados.map(e => e[1]);
+        const bgColors = ['#8b5cf6', '#3b82f6', '#10b981', '#f59e0b', '#f43f5e', '#06b6d4', '#ec4899', '#84cc16', '#a855f7', '#14b8a6'];
+
+        const totalImoveis = imoveis.length;
+
+        // 2. Gerar a Legenda Customizada (HTML)
+        let legendHtml = sortedEstados.map((estadoInfo, index) => {
+            const uf = estadoInfo[0];
+            const count = estadoInfo[1];
+            const color = bgColors[index % bgColors.length];
+            const percent = Math.round((count / totalImoveis) * 100);
+
+            return `
+    <div class="flex items-center justify-between" >
                 <div class="flex items-center gap-1.5">
                     <span class="w-2.5 h-2.5 rounded-full shadow-sm" style="background-color: ${color}"></span>
                     <span class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">${uf}</span>
@@ -9585,58 +10815,64 @@ window.renderizarListaImoveis = function(imoveis) {
                     <span class="text-[11px] font-bold text-white">${count}</span>
                 </div>
             </div>
-        `;
-    }).join('');
+    `;
+        }).join('');
 
-    // 3. Lógica do "Ver Mais" (Lista de Imóveis)
-    const LIMIT = 4;
-    const temMais = totalImoveis > LIMIT;
-    const imoveisIniciais = imoveis.slice(0, LIMIT);
-    const imoveisOcultos = imoveis.slice(LIMIT);
+        // 3. Lógica do "Ver Mais" (Lista de Imóveis)
+        const LIMIT = 4;
+        const temMais = totalImoveis > LIMIT;
+        const imoveisIniciais = imoveis.slice(0, LIMIT);
+        const imoveisOcultos = imoveis.slice(LIMIT);
 
-    const gerarCardImovel = (imovel) => `
-        <div class="bg-[#151515] rounded-xl p-2.5 shadow-sm flex flex-col justify-between relative overflow-hidden h-full">
-            <span class="text-[11px] font-bold text-white tracking-tight leading-snug mb-2 relative z-10">${imovel.nome}</span>
-            <div class="flex justify-between items-end relative z-10 border-t border-white/5 pt-1.5 mt-auto">
+        const isLight = document.body.classList.contains('light-mode');
+        const bgCard = isLight ? 'bg-gray-100' : 'bg-[#151515]';
+        const txtTitle = isLight ? 'text-gray-800' : 'text-white';
+        const txtValue = isLight ? 'text-gray-700' : 'text-gray-300';
+        const borderCard = isLight ? 'border-gray-200' : 'border-white/5';
+
+        const gerarCardImovel = (imovel) => `
+    <div class="${bgCard} rounded-xl p-2.5 shadow-sm flex flex-col justify-between relative overflow-hidden h-full" >
+            <span class="text-[11px] font-bold ${txtTitle} tracking-tight leading-snug mb-2 relative z-10">${imovel.nome}</span>
+            <div class="flex justify-between items-end relative z-10 border-t ${borderCard} pt-1.5 mt-auto">
                 <div class="flex flex-col min-w-[30%]">
                     <span class="text-[7px] text-gray-500 font-bold tracking-widest uppercase leading-none mb-1">UF</span>
-                    <span class="text-[10px] text-gray-300 font-bold leading-none">${imovel.estado}</span>
+                    <span class="text-[10px] ${txtValue} font-bold leading-none">${imovel.estado}</span>
                 </div>
                 <div class="flex flex-col text-right max-w-[65%]">
                     <span class="text-[7px] text-gray-500 font-bold tracking-widest uppercase leading-none mb-1">A.B.L.</span>
-                    <span class="text-[9px] text-gray-300 font-bold leading-none truncate w-full">${imovel.abl || '-'}</span>
+                    <span class="text-[9px] ${txtValue} font-bold leading-none truncate w-full">${imovel.abl || '-'}</span>
                 </div>
             </div>
         </div>
     `;
 
-    const htmlVisivel = imoveisIniciais.map(gerarCardImovel).join('');
-    const htmlOculto = temMais ? imoveisOcultos.map(gerarCardImovel).join('') : '';
+        const htmlVisivel = imoveisIniciais.map(gerarCardImovel).join('');
+        const htmlOculto = temMais ? imoveisOcultos.map(gerarCardImovel).join('') : '';
 
-    const btnVerMaisHtml = temMais ? `
-        <button id="btn-toggle-imoveis" onclick="window.toggleListaImoveis(this)" class="w-full mt-2 py-3 bg-[#151515] hover:bg-[#1c1c1e] text-gray-400 text-[10px] font-bold uppercase tracking-widest rounded-xl transition-colors flex items-center justify-center gap-2 cursor-pointer">
-            Ver todos os ${totalImoveis} imóveis
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 transition-transform duration-300" id="icon-toggle-imoveis" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" /></svg>
+        const btnVerMaisHtml = temMais ? `
+    <button id="btn-toggle-imoveis" onclick="window.toggleListaImoveis(this)" class="w-full mt-2 py-3 ${bgCard} hover:${isLight ? 'bg-gray-200' : 'bg-[#1c1c1e]'} text-gray-400 text-[10px] font-bold uppercase tracking-widest rounded-xl transition-colors flex items-center justify-center gap-2 cursor-pointer border ${isLight ? 'border-gray-200' : 'border-transparent'}">
+        Ver todos os ${totalImoveis} imóveis
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 transition-transform duration-300" id="icon-toggle-imoveis" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"> <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" /></svg>
         </button>
     ` : '';
 
-    // 4. Injeta o HTML completo
-    container.innerHTML = `
-        <div class="border-t border-[#2C2C2E] pt-8 mb-10 mt-8">
-            <h4 class="text-[10px] font-bold text-gray-300 uppercase tracking-widest mb-3 pl-1">Portfólio de Imóveis</h4>
+        // 4. Injeta o HTML completo
+        container.innerHTML = `
+    <div class="border-t ${isLight ? 'border-gray-200' : 'border-[#2C2C2E]'} pt-8 mb-10 mt-8" >
+            <h4 class="text-[10px] font-bold ${isLight ? 'text-gray-500' : 'text-gray-300'} uppercase tracking-widest mb-3 pl-1">Portfólio de Imóveis</h4>
 
-            <div class="bg-[#151515] rounded-xl p-4 shadow-sm mb-4">
+            <div class="${bgCard} rounded-xl p-4 shadow-sm mb-4">
                 <div class="flex flex-col items-center">
 
                     <div class="relative w-44 h-44 flex-shrink-0 flex items-center justify-center -my-2">
                         <canvas id="imoveis-chart" class="relative z-10 w-full h-full"></canvas>
                         <div class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none z-0 mt-1">
                             <span class="text-[9px] text-gray-500 font-bold tracking-widest uppercase mb-0.5">Total</span>
-                            <span class="text-3xl font-bold text-white leading-none tracking-tighter">${totalImoveis}</span>
+                            <span class="text-3xl font-bold ${txtTitle} leading-none tracking-tighter">${totalImoveis}</span>
                         </div>
                     </div>
 
-                    <div class="w-full mt-2 pt-4 border-t border-[#2C2C2E]">
+                    <div class="w-full mt-2 pt-4 border-t ${isLight ? 'border-gray-200' : 'border-[#2C2C2E]'}">
                         <div class="grid grid-cols-2 gap-x-4 gap-y-3">
                             ${legendHtml}
                         </div>
@@ -9657,92 +10893,92 @@ window.renderizarListaImoveis = function(imoveis) {
         </div>
     `;
 
-    // 5. Renderizar o Gráfico com Chart.js
-    const canvas = document.getElementById('imoveis-chart');
-    if (!canvas) return;
+        // 5. Renderizar o Gráfico com Chart.js
+        const canvas = document.getElementById('imoveis-chart');
+        if (!canvas) return;
 
-    const ctx = canvas.getContext('2d');
-    if (window.imoveisChartInstance) window.imoveisChartInstance.destroy();
+        const ctx = canvas.getContext('2d');
+        if (window.imoveisChartInstance) window.imoveisChartInstance.destroy();
 
-    window.imoveisChartInstance = new Chart(ctx, {
-        type: 'doughnut',
-        data: {
-            labels: labels,
-            datasets: [{
-                data: data,
-                backgroundColor: bgColors.slice(0, labels.length),
-                borderWidth: 0,
-                hoverOffset: 4
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            cutout: '76%',
-            layout: { 
-                padding: 18 
+        window.imoveisChartInstance = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: labels,
+                datasets: [{
+                    data: data,
+                    backgroundColor: bgColors.slice(0, labels.length),
+                    borderWidth: 0,
+                    hoverOffset: 4
+                }]
             },
-            plugins: {
-                legend: { display: false },
-                tooltip: {
-                    backgroundColor: 'rgba(21, 21, 21, 0.95)', 
-                    titleColor: '#fff', 
-                    bodyColor: '#ccc', 
-                    borderColor: '#2C2C2E', 
-                    borderWidth: 1, 
-                    padding: 10, 
-                    bodyFont: { size: 12, weight: 'bold' },
-                    callbacks: { label: function(context) { return ' ' + context.label + ': ' + context.raw + ' imóvel(is)'; } }
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                cutout: '76%',
+                layout: {
+                    padding: 18
+                },
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        backgroundColor: isLight ? 'rgba(255, 255, 255, 0.95)' : 'rgba(21, 21, 21, 0.95)',
+                        titleColor: isLight ? '#1f2937' : '#fff',
+                        bodyColor: isLight ? '#4b5563' : '#ccc',
+                        borderColor: isLight ? '#e5e7eb' : '#2C2C2E',
+                        borderWidth: 1,
+                        padding: 10,
+                        bodyFont: { size: 12, weight: 'bold' },
+                        callbacks: { label: function (context) { return ' ' + context.label + ': ' + context.raw + ' imóvel(is)'; } }
+                    }
                 }
             }
-        }
-    });
-};
+        });
+    };
 
-window.toggleListaImoveis = function(btn) {
-    const extras = document.getElementById('imoveis-extras');
+    window.toggleListaImoveis = function (btn) {
+        const extras = document.getElementById('imoveis-extras');
 
-    if (extras.classList.contains('hidden')) {
-        // Expandir (agora muda para 'grid' em vez de 'flex')
-        extras.classList.remove('hidden');
-        extras.classList.add('grid');
-        btn.innerHTML = `
+        if (extras.classList.contains('hidden')) {
+            // Expandir (agora muda para 'grid' em vez de 'flex')
+            extras.classList.remove('hidden');
+            extras.classList.add('grid');
+            btn.innerHTML = `
             Mostrar Menos
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 transition-transform duration-300 rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" /></svg>
+    <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 transition-transform duration-300 rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"> <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" /></svg>
         `;
-    } else {
-        // Recolher
-        extras.classList.add('hidden');
-        extras.classList.remove('grid');
+        } else {
+            // Recolher
+            extras.classList.add('hidden');
+            extras.classList.remove('grid');
 
-        const chartWrapper = document.getElementById('lista-imoveis-wrapper');
-        if (chartWrapper) chartWrapper.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            const chartWrapper = document.getElementById('lista-imoveis-wrapper');
+            if (chartWrapper) chartWrapper.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 
-        // Conta quantos elementos filhos existem no total
-        const total = document.querySelectorAll('#lista-imoveis-wrapper .bg-\\[\\#151515\\]').length;
+            // Conta quantos elementos filhos existem no total
+            const total = document.querySelectorAll('#lista-imoveis-wrapper .bg-\\[\\#151515\\]').length;
 
-        btn.innerHTML = `
+            btn.innerHTML = `
             Ver todos os ${total} imóveis
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 transition-transform duration-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" /></svg>
+    <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 transition-transform duration-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"> <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" /></svg>
         `;
-    }
-};
+        }
+    };
 
     await init();
 });
 
 // ─── Calculadora de Juros Compostos ───────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
-    const btnCalc      = document.getElementById('btn-calc-juros');
-    const drawer       = document.getElementById('calc-drawer');
-    const arrow        = document.getElementById('calc-arrow');
-    const inPrincipal  = document.getElementById('calc-principal');
-    const inAporte     = document.getElementById('calc-aporte');
-    const inTaxa       = document.getElementById('calc-taxa');
-    const inAnos       = document.getElementById('calc-anos');
+    const btnCalc = document.getElementById('btn-calc-juros');
+    const drawer = document.getElementById('calc-drawer');
+    const arrow = document.getElementById('calc-arrow');
+    const inPrincipal = document.getElementById('calc-principal');
+    const inAporte = document.getElementById('calc-aporte');
+    const inTaxa = document.getElementById('calc-taxa');
+    const inAnos = document.getElementById('calc-anos');
     const outInvestido = document.getElementById('calc-result-investido');
-    const outJuros     = document.getElementById('calc-result-juros');
-    const outFinal     = document.getElementById('calc-result-final');
+    const outJuros = document.getElementById('calc-result-juros');
+    const outFinal = document.getElementById('calc-result-final');
 
     if (!btnCalc || !drawer) return;
 
@@ -9754,15 +10990,15 @@ document.addEventListener('DOMContentLoaded', () => {
     btnCalc.addEventListener('click', () => {
         isOpen = !isOpen;
         drawer.style.maxHeight = isOpen ? (drawer.scrollHeight + 500) + 'px' : '0';
-        arrow.style.transform  = isOpen ? 'rotate(90deg)' : 'rotate(0deg)';
+        arrow.style.transform = isOpen ? 'rotate(90deg)' : 'rotate(0deg)';
     });
 
     function calcular() {
-        const P        = parseFloat(inPrincipal.value) || 0;
-        const PMT      = parseFloat(inAporte.value)    || 0;
-        const taxaAnual = parseFloat(inTaxa.value)     || 0;
-        const anos     = parseFloat(inAnos.value)      || 0;
-        const n        = anos * 12;
+        const P = parseFloat(inPrincipal.value) || 0;
+        const PMT = parseFloat(inAporte.value) || 0;
+        const taxaAnual = parseFloat(inTaxa.value) || 0;
+        const anos = parseFloat(inAnos.value) || 0;
+        const n = anos * 12;
         const totalInvestido = P + PMT * n;
 
         let montante;
@@ -9777,11 +11013,229 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const totalJuros = Math.max(0, montante - totalInvestido);
         outInvestido.textContent = fmt(totalInvestido);
-        outJuros.textContent     = fmt(totalJuros);
-        outFinal.textContent     = fmt(montante);
+        outJuros.textContent = fmt(totalJuros);
+        outFinal.textContent = fmt(montante);
 
         if (isOpen) drawer.style.maxHeight = (drawer.scrollHeight + 500) + 'px';
     }
 
     [inPrincipal, inAporte, inTaxa, inAnos].forEach(el => el.addEventListener('input', calcular));
+});
+
+// ─── Perfil de Usuário ────────────────────────────────────────────────────────
+// Self-contained module — não depende de vestoDB nem showToast (ambos estão
+// dentro da closure principal e são inacessíveis neste escopo).
+
+const profileDB = {
+    _db: null,
+    open() {
+        return new Promise((resolve, reject) => {
+            if (this._db) { resolve(this._db); return; }
+            const req = indexedDB.open('vestoCacheDB', 2);
+            req.onupgradeneeded = (e) => {
+                const db = e.target.result;
+                if (!db.objectStoreNames.contains('apiCache'))
+                    db.createObjectStore('apiCache', { keyPath: 'key' });
+                if (!db.objectStoreNames.contains('userSettings'))
+                    db.createObjectStore('userSettings', { keyPath: 'key' });
+            };
+            req.onsuccess = (e) => { this._db = e.target.result; resolve(this._db); };
+            req.onerror = (e) => reject(e.target.error);
+        });
+    },
+    async get(key) {
+        const db = await this.open();
+        return new Promise((resolve, reject) => {
+            const tx = db.transaction('userSettings', 'readonly');
+            const req = tx.objectStore('userSettings').get(key);
+            req.onsuccess = () => resolve(req.result);
+            req.onerror = (e) => reject(e.target.error);
+        });
+    },
+    async put(value) {
+        const db = await this.open();
+        return new Promise((resolve, reject) => {
+            const tx = db.transaction('userSettings', 'readwrite');
+            const req = tx.objectStore('userSettings').put(value);
+            req.onsuccess = () => resolve();
+            req.onerror = (e) => reject(e.target.error);
+        });
+    },
+    async remove(key) {
+        const db = await this.open();
+        return new Promise((resolve, reject) => {
+            const tx = db.transaction('userSettings', 'readwrite');
+            const req = tx.objectStore('userSettings').delete(key);
+            req.onsuccess = () => resolve();
+            req.onerror = (e) => reject(e.target.error);
+        });
+    }
+};
+
+function _profileToast(msg, isError) {
+    const toastEl = document.getElementById('toast-notification');
+    const msgEl = document.getElementById('toast-message');
+    const errIcon = document.getElementById('toast-icon-error');
+    const okIcon = document.getElementById('toast-icon-success');
+    if (!toastEl || !msgEl) return;
+    msgEl.textContent = msg;
+    if (errIcon) errIcon.classList.toggle('hidden', !isError);
+    if (okIcon) okIcon.classList.toggle('hidden', isError);
+    toastEl.style.background = isError ? '#991b1b' : '#166534';
+    toastEl.style.opacity = '1';
+    toastEl.style.transform = 'translateY(0)';
+    clearTimeout(window._profileToastTimer);
+    window._profileToastTimer = setTimeout(() => {
+        toastEl.style.opacity = '0';
+        toastEl.style.transform = 'translateY(-20px)';
+    }, 2500);
+}
+
+window.openProfileModal = function () {
+    const modal = document.getElementById('profile-settings-modal');
+    if (!modal) return;
+    modal.classList.add('visible');
+    modal.classList.remove('hidden'); // Just in case it has hidden from previous code
+
+    // Opcional: reativar animação
+    const c = modal.querySelector('.modal-content');
+    if (c) {
+        c.classList.remove('modal-out');
+    }
+};
+
+document.addEventListener('DOMContentLoaded', async () => {
+    const modal = document.getElementById('profile-settings-modal');
+    const btnClose = document.getElementById('close-profile-modal-btn');
+    const btnCancel = document.getElementById('btn-cancel-profile');
+    const btnSave = document.getElementById('btn-save-profile');
+
+    const uiProfileImg = document.getElementById('user-profile-img');
+    const uiProfileFallback = document.getElementById('user-profile-fallback');
+
+    const previewImg = document.getElementById('modal-preview-img');
+    const previewFallback = document.getElementById('modal-preview-fallback');
+
+    const btnUpload = document.getElementById('btn-upload-photo');
+    const fileInput = document.getElementById('profile-file-input');
+    const btnDelete = document.getElementById('btn-delete-photo');
+
+    const presetBtns = document.querySelectorAll('.preset-avatar-btn');
+
+    let currentSelectedImage = null;
+
+    // ── Close ────────────────────────────────────────────────────────────────
+    function closeProfileModal() {
+        if (!modal) return;
+        const c = modal.querySelector('.modal-content');
+        if (c) {
+            c.classList.add('modal-out');
+        }
+        setTimeout(() => {
+            modal.classList.remove('visible');
+        }, 200);
+    }
+
+    const profileContainer = document.getElementById('profile-picture-container');
+    if (profileContainer) profileContainer.addEventListener('click', window.openProfileModal);
+    if (btnClose) btnClose.addEventListener('click', closeProfileModal);
+    if (btnCancel) btnCancel.addEventListener('click', closeProfileModal);
+    // Fecha no backdrop
+    if (modal) modal.addEventListener('click', (e) => { if (e.target === modal) closeProfileModal(); });
+
+    // ── Upload (max 2 MB) ────────────────────────────────────────────────────
+    if (btnUpload && fileInput) {
+        btnUpload.addEventListener('click', () => fileInput.click());
+        fileInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            if (file.size > 2 * 1024 * 1024) {
+                _profileToast('A imagem excede 2 MB. Escolha uma menor.', true);
+                fileInput.value = '';
+                return;
+            }
+            const reader = new FileReader();
+            reader.onload = (ev) => { currentSelectedImage = ev.target.result; updatePreview(); };
+            reader.readAsDataURL(file);
+            fileInput.value = ''; // permite re-selecionar o mesmo arquivo
+        });
+    }
+
+    // ── Preset Avatars ───────────────────────────────────────────────────────
+    presetBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+            // Remove seleção visual anterior
+            presetBtns.forEach(b => b.classList.remove('border-purple-500'));
+            btn.classList.add('border-purple-500');
+            currentSelectedImage = btn.dataset.avatar;
+            updatePreview();
+        });
+    });
+
+    // ── Remover Foto ─────────────────────────────────────────────────────────
+    if (btnDelete) {
+        btnDelete.addEventListener('click', () => {
+            currentSelectedImage = null;
+            presetBtns.forEach(b => b.classList.remove('border-purple-500'));
+            updatePreview();
+        });
+    }
+
+    // ── Helpers visuais ──────────────────────────────────────────────────────
+    function updatePreview() {
+        if (currentSelectedImage) {
+            previewImg.src = currentSelectedImage;
+            previewImg.classList.remove('hidden');
+            previewFallback.classList.add('hidden');
+            if (btnDelete) btnDelete.classList.remove('hidden');
+        } else {
+            previewImg.src = '';
+            previewImg.classList.add('hidden');
+            previewFallback.classList.remove('hidden');
+            if (btnDelete) btnDelete.classList.add('hidden');
+        }
+    }
+
+    function applyProfileToUI(imgData) {
+        if (imgData) {
+            uiProfileImg.src = imgData;
+            uiProfileImg.classList.remove('hidden');
+            uiProfileFallback.classList.add('hidden');
+        } else {
+            uiProfileImg.src = '';
+            uiProfileImg.classList.add('hidden');
+            uiProfileFallback.classList.remove('hidden');
+        }
+    }
+
+    // ── Salvar ───────────────────────────────────────────────────────────────
+    if (btnSave) {
+        btnSave.addEventListener('click', async () => {
+            try {
+                if (currentSelectedImage) {
+                    await profileDB.put({ key: 'profilePicture', data: currentSelectedImage });
+                } else {
+                    await profileDB.remove('profilePicture');
+                }
+                applyProfileToUI(currentSelectedImage);
+                _profileToast('Perfil atualizado!', false);
+                closeProfileModal();
+            } catch (err) {
+                console.error('[Profile] Erro ao salvar:', err);
+                _profileToast('Erro ao salvar perfil.', true);
+            }
+        });
+    }
+
+    // ── Carregar perfil salvo ────────────────────────────────────────────────
+    try {
+        const stored = await profileDB.get('profilePicture');
+        if (stored && stored.data) {
+            currentSelectedImage = stored.data;
+            applyProfileToUI(currentSelectedImage);
+            updatePreview();
+        }
+    } catch (e) {
+        console.log('[Profile] Sem foto salva ou DB indisponível.');
+    }
 });

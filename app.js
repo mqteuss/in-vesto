@@ -4499,7 +4499,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const list = document.getElementById('market-indices-list');
         if (!container || !list) return;
 
-        const cacheKey = 'market_indices_v1';
+        const cacheKey = 'market_indices_v2';
         const CACHE_TTL = isB3Open() ? 1000 * 60 * 15 : 1000 * 60 * 60 * 4;
 
         if (force) {
@@ -4542,10 +4542,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                 return;
             }
 
-            list.innerHTML = data.map(item => {
+            const pillsHtml = data.map(item => {
                 const isPositive = item.variacao.startsWith('+');
                 const isNegative = item.variacao.startsWith('-');
-                let colorClass = 'text-gray-400 border-white/5 bg-[#1A1A1C]'; // Default neutral
+                let colorClass = 'text-gray-400 border-white/5 bg-[#1A1A1C]';
                 let iconHtml = '';
 
                 if (isPositive) {
@@ -4569,6 +4569,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                     </div>
                 `;
             }).join('');
+
+            // Duplica os itens para criar loop infinito do marquee
+            list.innerHTML = pillsHtml + pillsHtml;
 
         } catch (e) {
             console.error('Erro ao carregar índices de mercado:', e);

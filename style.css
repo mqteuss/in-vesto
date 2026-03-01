@@ -1543,6 +1543,33 @@ body.privacy-mode [data-field="pl-valor"] {
     pointer-events: none;
 }
 
+/* ── Marquee Ticker (Índices de Mercado) ── */
+@keyframes marqueeScroll {
+    0% {
+        transform: translateX(0);
+    }
+
+    100% {
+        transform: translateX(-50%);
+    }
+}
+
+.indices-marquee-wrapper {
+    position: relative;
+    mask-image: linear-gradient(to right, transparent, black 24px, black calc(100% - 24px), transparent);
+    -webkit-mask-image: linear-gradient(to right, transparent, black 24px, black calc(100% - 24px), transparent);
+}
+
+.indices-marquee-track {
+    animation: marqueeScroll 20s linear infinite;
+    width: max-content;
+    will-change: transform;
+}
+
+.indices-marquee-track:hover {
+    animation-play-state: paused;
+}
+
 /* Keyframes Globais */
 @keyframes slideInStagger {
     from {

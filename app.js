@@ -8468,10 +8468,14 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             // 1. Constrói um contêiner temporário off-screen com TODOS os itens
             const tempContainer = document.createElement('div');
+            // Usando position absolute mas sem left -9999px para evitar que o iOS/Android descarte a renderização extra viewport
             tempContainer.style.position = 'absolute';
-            tempContainer.style.left = '-9999px';
             tempContainer.style.top = '0';
-            tempContainer.style.width = '400px'; // Largura fixa razoável para mobile
+            tempContainer.style.left = '0';
+            tempContainer.style.zIndex = '-9999';
+            tempContainer.style.opacity = '0'; // Esconde visualmente mas mantém no fluxo de renderização local
+            tempContainer.style.pointerEvents = 'none';
+            tempContainer.style.width = '400px';
             tempContainer.style.backgroundColor = '#000000';
             tempContainer.style.padding = '16px';
             tempContainer.style.boxSizing = 'border-box';
@@ -8511,7 +8515,13 @@ document.addEventListener('DOMContentLoaded', async () => {
                 backgroundColor: '#000000',
                 scale: 2,
                 logging: false,
-                windowWidth: 400
+                windowWidth: 400,
+                x: 0,
+                y: 0,
+                scrollX: 0,
+                scrollY: 0,
+                width: 400,
+                height: tempContainer.scrollHeight
             });
 
             // Limpa o DOM temporário imediatamente

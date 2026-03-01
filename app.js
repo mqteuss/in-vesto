@@ -246,6 +246,28 @@ function loadSheetJS() {
     });
 }
 
+function loadHtml2Canvas() {
+    return new Promise((resolve, reject) => {
+        if (window.html2canvas) return resolve();
+        const script = document.createElement('script');
+        script.src = "https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js";
+        script.onload = () => resolve();
+        script.onerror = () => reject(new Error("Falha ao carregar html2canvas."));
+        document.body.appendChild(script);
+    });
+}
+
+function loadJsPDF() {
+    return new Promise((resolve, reject) => {
+        if (window.jspdf) return resolve();
+        const script = document.createElement('script');
+        script.src = "https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js";
+        script.onload = () => resolve();
+        script.onerror = () => reject(new Error("Falha ao carregar jsPDF."));
+        document.body.appendChild(script);
+    });
+}
+
 function renderProventosHtml(proventosParaExibir, quantidade) {
     if (!proventosParaExibir || proventosParaExibir.length === 0) {
         return `<div class="mt-4 pt-3 border-t border-[#2C2C2E] text-center">
@@ -257,7 +279,7 @@ function renderProventosHtml(proventosParaExibir, quantidade) {
     hoje.setHours(0, 0, 0, 0);
 
     const totalReceberGeral = proventosParaExibir.reduce((acc, p) => {
-        return acc + (p.totalValue || (p.value * quantidade));
+        return acc + (p.totalValue || (p.value * (p._qtdElegivel || quantidade)));
     }, 0);
 
     const linhasHtml = proventosParaExibir.map(p => {
@@ -265,7 +287,7 @@ function renderProventosHtml(proventosParaExibir, quantidade) {
         const dataPag = new Date(parts[0], parts[1] - 1, parts[2]);
         const isPago = dataPag <= hoje;
         const dataFormatada = formatDate(p.paymentDate).substring(0, 5);
-        const valorParcela = p.totalValue || (p.value * quantidade);
+        const valorParcela = p.totalValue || (p.value * (p._qtdElegivel || quantidade));
 
         return `<div class="flex justify-between items-center py-2 border-b border-[#2C2C2E] last:border-0 text-xs">
             <div class="flex items-center gap-2">
@@ -3680,9 +3702,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             // Ignora passados
             if (dataPag < hoje) return false;
 
-            // Verifica carteira
-            const ativoNaCarteira = carteiraCalculada.find(c => c.symbol === p.symbol);
-            return ativoNaCarteira && ativoNaCarteira.quantity > 0;
+            // Verifica se o usuário tem direito (Data Com ou Data Pag)
+            const dataRef = p.dataCom || p.paymentDate;
+            const qtd = getQuantidadeNaData(p.symbol, dataRef);
+            return qtd > 0;
         }).sort((a, b) => a.paymentDate.localeCompare(b.paymentDate));
 
         if (pagamentosReais.length === 0) {
@@ -3708,8 +3731,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             const mes = dataObj.toLocaleString('pt-BR', { month: 'short' }).replace('.', '').toUpperCase();
 
             // Cálculos
-            const ativoNaCarteira = carteiraCalculada.find(c => c.symbol === prov.symbol);
-            const qtd = ativoNaCarteira ? ativoNaCarteira.quantity : 0;
+            const dataReferencia = prov.dataCom || prov.paymentDate;
+            const qtd = getQuantidadeNaData(prov.symbol, dataReferencia);
             const totalReceber = prov.value * qtd;
 
             const item = document.createElement('div');
@@ -3874,6 +3897,12 @@ document.addEventListener('DOMContentLoaded', async () => {
             carteiraStatus.classList.remove('hidden');
             renderizarDashboardSkeletons(false);
 
+            // Oculta Timeline se a carteira estiver vazia
+            const timelineContainer = document.getElementById('timeline-pagamentos-container');
+            const timelineLista = document.getElementById('timeline-lista');
+            if (timelineContainer) timelineContainer.classList.add('hidden');
+            if (timelineLista) timelineLista.innerHTML = '';
+
             // Zera Dashboard
             if (totalCarteiraValor) totalCarteiraValor.textContent = formatBRL(0);
             if (totalCaixaValor) totalCaixaValor.textContent = formatBRL(saldoCaixa);
@@ -3964,17 +3993,20 @@ document.addEventListener('DOMContentLoaded', async () => {
             listaProventosFuturos.forEach(p => {
                 const dataReferencia = p.dataCom || p.paymentDate;
                 const qtdElegivel = getQuantidadeNaData(ativo.symbol, dataReferencia);
+                p._qtdElegivel = qtdElegivel; // Salva para o renderizador usar
                 if (qtdElegivel > 0) {
                     proventoReceber += (qtdElegivel * p.value);
                 }
             });
+
+            const proventosElegiveis = listaProventosFuturos.filter(p => (p._qtdElegivel || 0) > 0);
 
             const dadosRender = {
                 dadoPreco, precoFormatado, variacaoFormatada, corVariacao,
                 totalPosicao, custoTotal, lucroPrejuizo, lucroPrejuizoPercent,
                 corPL,
                 dadoProvento,
-                listaProventos: listaProventosFuturos, // Passa APENAS os futuros para o renderizador do card
+                listaProventos: proventosElegiveis, // Passa APENAS os futuros e elegíveis para o renderizador do card
                 proventoReceber,
                 percentWallet
             };
@@ -8347,6 +8379,122 @@ document.addEventListener('DOMContentLoaded', async () => {
                 exportCsvBtn.disabled = false;
             }
         });
+    }
+
+    const btnExportExtratoFoto = document.getElementById('btn-export-extrato-foto');
+    const btnExportExtratoPdf = document.getElementById('btn-export-extrato-pdf');
+
+    if (btnExportExtratoFoto) {
+        btnExportExtratoFoto.addEventListener('click', async () => {
+            await handleExportExtrato('foto');
+        });
+    }
+
+    if (btnExportExtratoPdf) {
+        btnExportExtratoPdf.addEventListener('click', async () => {
+            await handleExportExtrato('pdf');
+        });
+    }
+
+    async function handleExportExtrato(formato) {
+        const proventosEmExibicao = document.getElementById('lista-historico-proventos');
+        if (!proventosEmExibicao || proventosEmExibicao.children.length === 0 || proventosEmExibicao.innerHTML.includes('Nenhum provento efetivado')) {
+            showToast("Sem dados de proventos para exportar.");
+            return;
+        }
+
+        const btnFotoOriginalHTML = btnExportExtratoFoto ? btnExportExtratoFoto.innerHTML : '';
+        const btnPdfOriginalHTML = btnExportExtratoPdf ? btnExportExtratoPdf.innerHTML : '';
+
+        try {
+            if (formato === 'foto' && btnExportExtratoFoto) {
+                btnExportExtratoFoto.innerHTML = `<span class="loader-sm"></span>`;
+                btnExportExtratoFoto.disabled = true;
+                await loadHtml2Canvas();
+
+                const canvas = await html2canvas(proventosEmExibicao, {
+                    backgroundColor: '#000000',
+                    scale: 2
+                });
+
+                const dataUrl = canvas.toDataURL('image/png');
+
+                try {
+                    const blob = await (await fetch(dataUrl)).blob();
+                    const file = new File([blob], 'extrato_proventos.png', { type: 'image/png' });
+                    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+                        await navigator.share({
+                            files: [file],
+                            title: 'Extrato de Proventos',
+                        });
+                    } else {
+                        downloadBlob(blob, 'extrato_proventos.png');
+                    }
+                } catch (e) {
+                    console.error('Erro ao compartilhar', e);
+                    const blob = await (await fetch(dataUrl)).blob();
+                    downloadBlob(blob, 'extrato_proventos.png');
+                }
+                showToast("Extrato em foto gerado com sucesso!", "success");
+            } else if (formato === 'pdf' && btnExportExtratoPdf) {
+                btnExportExtratoPdf.innerHTML = `<span class="loader-sm"></span>`;
+                btnExportExtratoPdf.disabled = true;
+                await loadHtml2Canvas();
+                await loadJsPDF();
+
+                const canvas = await html2canvas(proventosEmExibicao, {
+                    backgroundColor: '#000000',
+                    scale: 2
+                });
+
+                const imgData = canvas.toDataURL('image/png');
+                const pdf = new window.jspdf.jsPDF({
+                    orientation: 'portrait',
+                    unit: 'px',
+                    format: [canvas.width, canvas.height]
+                });
+
+                pdf.addImage(imgData, 'PNG', 0, 0, canvas.width, canvas.height);
+                const pdfBlob = pdf.output('blob');
+
+                try {
+                    const file = new File([pdfBlob], 'extrato_proventos.pdf', { type: 'application/pdf' });
+                    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+                        await navigator.share({
+                            files: [file],
+                            title: 'Extrato de Proventos PDF',
+                        });
+                    } else {
+                        downloadBlob(pdfBlob, 'extrato_proventos.pdf');
+                    }
+                } catch (e) {
+                    console.error('Erro ao compartilhar PDF', e);
+                    downloadBlob(pdfBlob, 'extrato_proventos.pdf');
+                }
+                showToast("Extrato em PDF gerado com sucesso!", "success");
+            }
+        } catch (e) {
+            console.error("Erro ao gerar extrato:", e);
+            showToast("Erro ao gerar arquivo: " + e.message);
+        } finally {
+            if (formato === 'foto' && btnExportExtratoFoto) {
+                btnExportExtratoFoto.innerHTML = btnFotoOriginalHTML;
+                btnExportExtratoFoto.disabled = false;
+            } else if (formato === 'pdf' && btnExportExtratoPdf) {
+                btnExportExtratoPdf.innerHTML = btnPdfOriginalHTML;
+                btnExportExtratoPdf.disabled = false;
+            }
+        }
+    }
+
+    function downloadBlob(blob, filename) {
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = filename;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(link.href);
     }
 
     const importExcelBtn = document.getElementById('import-excel-btn');

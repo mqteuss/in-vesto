@@ -629,69 +629,76 @@ async function scrapeFundamentos(ticker) {
 }
 
 // ---------------------------------------------------------
-// PARTE 1.4: ÍNDICES DE MERCADO (IBOV, IFIX, SP500, Dólar) -> YAHOO
+// PARTE 1.4: ÍNDICES DE MERCADO (IBOV, IFIX, SP500, Dólar) -> YAHOO v8
+// Usa a mesma API v8/finance/chart que já funciona no fetchYahooFinance
 // ---------------------------------------------------------
 async function scrapeMarketIndices() {
-    try {
-        const symbols = '^BVSP,IFIX.SA,^GSPC,BRL=X';
-        const url = `https://query1.finance.yahoo.com/v7/finance/quote?symbols=${symbols}`;
+    const indexDefs = [
+        { symbol: '^BVSP', nome: 'IBOV', isCurrency: false },
+        { symbol: 'IFIX.SA', nome: 'IFIX', isCurrency: false },
+        { symbol: '^GSPC', nome: 'S&P 500', isCurrency: false },
+        { symbol: 'BRL=X', nome: 'Dólar', isCurrency: true },
+    ];
+
+    async function fetchIndexData(symbol) {
+        const buildUrl = (host) =>
+            `https://${host}.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?range=1d&interval=1d&includePrePost=false`;
 
         let data;
         try {
-            const res = await fetchWithRetry(url, { headers: { 'Accept': 'application/json' } });
-            data = res.data;
+            ({ data } = await fetchWithRetry(buildUrl('query1'), {
+                headers: { 'Accept': 'application/json' }
+            }));
         } catch (e) {
-            const url2 = `https://query2.finance.yahoo.com/v7/finance/quote?symbols=${symbols}`;
-            const res = await fetchWithRetry(url2, { headers: { 'Accept': 'application/json' } });
-            data = res.data;
+            ({ data } = await fetchWithRetry(buildUrl('query2'), {
+                headers: { 'Accept': 'application/json' }
+            }));
         }
 
-        const results = data?.quoteResponse?.result || [];
-        const indices = [];
+        const result = data?.chart?.result?.[0];
+        if (!result) return null;
 
-        results.forEach(quote => {
-            let nome = quote.symbol;
-            if (nome === '^BVSP') nome = 'IBOV';
-            if (nome === 'IFIX.SA') nome = 'IFIX';
-            if (nome === '^GSPC') nome = 'S&P 500';
-            if (nome === 'BRL=X') nome = 'Dólar';
+        const meta = result.meta;
+        const price = meta.regularMarketPrice;
+        const prevClose = meta.chartPreviousClose || meta.previousClose;
 
-            let valor = quote.regularMarketPrice;
-            let variacao = quote.regularMarketChangePercent;
+        if (!price || !prevClose) return null;
 
-            if (valor === undefined || variacao === undefined) return;
+        const change = ((price - prevClose) / prevClose) * 100;
+        return { price, change };
+    }
 
-            // Formatação do valor numérico
-            let valorFormatado = '';
-            if (nome === 'IBOV' || nome === 'IFIX' || nome === 'S&P 500') {
-                // Formata em pontos (inteiro com separador de milhar para grandes índices)
-                if (valor > 1000) {
-                    valorFormatado = Math.floor(valor).toLocaleString('pt-BR');
+    try {
+        const results = await Promise.allSettled(
+            indexDefs.map(async (def) => {
+                const data = await fetchIndexData(def.symbol);
+                if (!data) return null;
+
+                let valorFormatado;
+                if (def.isCurrency) {
+                    valorFormatado = 'R$ ' + data.price.toFixed(2).replace('.', ',');
+                } else if (data.price > 1000) {
+                    valorFormatado = Math.floor(data.price).toLocaleString('pt-BR');
                 } else {
-                    valorFormatado = valor.toFixed(2).replace('.', ',');
+                    valorFormatado = data.price.toFixed(2).replace('.', ',');
                 }
-            } else if (nome === 'Dólar') {
-                valorFormatado = 'R$ ' + valor.toFixed(4).replace('.', ',');
-            }
 
-            // Variação formatada com sinal
-            let varNum = parseFloat(variacao);
-            let varSignal = varNum > 0 ? '+' : '';
-            let varFormatada = varSignal + varNum.toFixed(2).replace('.', ',') + '%';
+                const signal = data.change > 0 ? '+' : '';
+                const varFormatada = signal + data.change.toFixed(2).replace('.', ',') + '%';
 
-            indices.push({ nome, valor: valorFormatado, variacao: varFormatada });
-        });
+                return { nome: def.nome, valor: valorFormatado, variacao: varFormatada };
+            })
+        );
 
-        // Garantir ordem
-        const order = ['IBOV', 'IFIX', 'S&P 500', 'Dólar'];
-        indices.sort((a, b) => order.indexOf(a.nome) - order.indexOf(b.nome));
-
-        return indices;
+        return results
+            .filter(r => r.status === 'fulfilled' && r.value !== null)
+            .map(r => r.value);
     } catch (e) {
         console.error("Erro scraper market indices", e.message);
         return [];
     }
 }
+
 
 // ---------------------------------------------------------
 // PARTE 1.5: RANKINGS (Maiores Altas + Baixas) -> INVESTIDOR10

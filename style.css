@@ -1148,6 +1148,32 @@ input:-webkit-autofill:active {
     box-shadow: none !important;
 }
 
+.month-filter-input {
+    height: 38px;
+    border-radius: 9999px;
+    padding: 0 12px;
+    color: #9ca3af;
+    background-color: #141414 !important;
+    border: none !important;
+    font-size: 13px;
+    font-weight: 600;
+    text-transform: uppercase;
+    outline: none;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.month-filter-input::-webkit-calendar-picker-indicator {
+    filter: invert(0.6);
+    cursor: pointer;
+}
+
+.month-filter-input:hover,
+.month-filter-input:focus {
+    color: #ffffff;
+    background-color: #1a1a1c !important;
+}
+
 .filter-funnel-btn:active {
     transform: scale(0.95);
     background-color: #1a1a1a !important;

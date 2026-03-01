@@ -629,87 +629,62 @@ async function scrapeFundamentos(ticker) {
 }
 
 // ---------------------------------------------------------
-// PARTE 1.4: ÍNDICES DE MERCADO (IBOV, IFIX, SP500, Dólar)
+// PARTE 1.4: ÍNDICES DE MERCADO (IBOV, IFIX, SP500, Dólar) -> YAHOO
 // ---------------------------------------------------------
 async function scrapeMarketIndices() {
     try {
-        const url = 'https://investidor10.com.br/';
-        const { data } = await fetchWithRetry(url);
-        const $ = cheerio.load(data);
+        const symbols = '^BVSP,IFIX.SA,^GSPC,BRL=X';
+        const url = `https://query1.finance.yahoo.com/v7/finance/quote?symbols=${symbols}`;
 
+        let data;
+        try {
+            const res = await fetchWithRetry(url, { headers: { 'Accept': 'application/json' } });
+            data = res.data;
+        } catch (e) {
+            const url2 = `https://query2.finance.yahoo.com/v7/finance/quote?symbols=${symbols}`;
+            const res = await fetchWithRetry(url2, { headers: { 'Accept': 'application/json' } });
+            data = res.data;
+        }
+
+        const results = data?.quoteResponse?.result || [];
         const indices = [];
 
-        // Investidor10 has a top header bar with market indices. We scrape that.
-        // It looks like: <div class="index-item"> <span>IBOV</span> <span class="value">...</span> <span class="variation positive">...</span> </div>
-        // Adjust selectors according to the website's structure for indices
-        $('.indices-bar .item, .top-header .item, .indices .item').each((i, el) => {
-            const nome = $(el).find('.name, .title').text().trim() || $(el).find('a').first().text().trim();
-            const valor = $(el).find('.value, .price').text().trim();
-            let variacao = $(el).find('.variation, .pct').text().trim();
+        results.forEach(quote => {
+            let nome = quote.symbol;
+            if (nome === '^BVSP') nome = 'IBOV';
+            if (nome === 'IFIX.SA') nome = 'IFIX';
+            if (nome === '^GSPC') nome = 'S&P 500';
+            if (nome === 'BRL=X') nome = 'Dólar';
 
-            // Fallback to text parsing if classes are different
-            if (!nome) {
-                const parts = $(el).text().split(/\s+/).filter(Boolean);
-                if (parts.length >= 3) {
-                    // Very hacky fallback, relying on the fact that an index is name, value, variation
-                    if (parts[0].toUpperCase() === 'IBOVESPA') parts[0] = 'IBOV';
-                    indices.push({
-                        nome: parts[0],
-                        valor: parts[1],
-                        variacao: parts[2]
-                    });
-                }
-            } else {
-                if (nome.toUpperCase() === 'IBOVESPA') {
-                    indices.push({ nome: 'IBOV', valor, variacao });
-                } else if (nome.toUpperCase().includes('DÓLAR') || nome.toUpperCase().includes('DOLAR')) {
-                    indices.push({ nome: 'Dólar', valor, variacao });
-                } else if (nome.toUpperCase() === 'IFIX') {
-                    indices.push({ nome: 'IFIX', valor, variacao });
-                } else if (nome.toUpperCase().includes('S&P')) {
-                    indices.push({ nome: 'S&P 500', valor, variacao });
+            let valor = quote.regularMarketPrice;
+            let variacao = quote.regularMarketChangePercent;
+
+            if (valor === undefined || variacao === undefined) return;
+
+            // Formatação do valor numérico
+            let valorFormatado = '';
+            if (nome === 'IBOV' || nome === 'IFIX' || nome === 'S&P 500') {
+                // Formata em pontos (inteiro com separador de milhar para grandes índices)
+                if (valor > 1000) {
+                    valorFormatado = Math.floor(valor).toLocaleString('pt-BR');
                 } else {
-                    indices.push({ nome, valor, variacao });
+                    valorFormatado = valor.toFixed(2).replace('.', ',');
                 }
+            } else if (nome === 'Dólar') {
+                valorFormatado = 'R$ ' + valor.toFixed(4).replace('.', ',');
             }
+
+            // Variação formatada com sinal
+            let varNum = parseFloat(variacao);
+            let varSignal = varNum > 0 ? '+' : '';
+            let varFormatada = varSignal + varNum.toFixed(2).replace('.', ',') + '%';
+
+            indices.push({ nome, valor: valorFormatado, variacao: varFormatada });
         });
 
-        // Hardcode a few if the generic scraping fails, or scrape google finance
-        if (indices.length === 0) {
-            console.log("Fallback google finance scraper for indices");
-            // Fallback Google Finance
-            const fetchIndex = async (ticker, name) => {
-                try {
-                    const { data: qData } = await fetchWithRetry(`https://www.google.com/finance/quote/${ticker}`, {
-                        headers: { 'User-Agent': 'Mozilla/5.0' }
-                    });
-                    const $q = cheerio.load(qData);
-                    const valor = $q('.YMlKec.fxKbKc').first().text().trim();
-                    let variacao = $q('.JwB6zf').first().text().trim();
-                    if ($q('.VOXKne').find('.P2Luy.Ez2Ioe.Zk7sWe').length > 0) {
-                        variacao = '-' + variacao;
-                    } else if ($q('.VOXKne').find('.P2Luy.Ebnabc.Zk7sWe').length > 0) {
-                        variacao = '+' + variacao;
-                    }
-                    if (valor) return { nome: name, valor, variacao };
-                } catch (e) {
-                    console.log("Failed google finance fallback for", ticker)
-                }
-                return null;
-            };
-
-            const ibov = await fetchIndex('IBOV:INDEXBVMF', 'IBOV');
-            const ifix = await fetchIndex('IFIX:INDEXBVMF', 'IFIX');
-            const spx = await fetchIndex('SPX:INDEXSP', 'S&P 500');
-            const usd = await fetchIndex('USD-BRL', 'Dólar');
-            const eur = await fetchIndex('EUR-BRL', 'Euro');
-
-            if (ibov) indices.push(ibov);
-            if (ifix) indices.push(ifix);
-            if (spx) indices.push(spx);
-            if (usd) indices.push(usd);
-            if (eur) indices.push(eur);
-        }
+        // Garantir ordem
+        const order = ['IBOV', 'IFIX', 'S&P 500', 'Dólar'];
+        indices.sort((a, b) => order.indexOf(a.nome) - order.indexOf(b.nome));
 
         return indices;
     } catch (e) {

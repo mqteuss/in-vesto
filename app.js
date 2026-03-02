@@ -2104,7 +2104,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         if (!listaHistorico) return;
 
-        const currentSignature = `${transacoes.length}-${lastTransId}-${histFilterType}-${histSearchTerm}-${histMonthFilter}`;
+        const currentSignature = `${transacoes.length}-${histFilterType}-${histSearchTerm}-${histMonthFilter}`;
 
         if (currentSignature === lastHistoricoListSignature && historicoVirtualizer) {
             return;
@@ -2188,7 +2188,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const listaHistoricoProventos = document.getElementById('lista-historico-proventos');
         const scrollContainer = document.getElementById('tab-historico');
 
-        const currentSignature = `${proventosConhecidos.length}-${lastProvId}-${termoBusca}-${provMonthFilter}`;
+        const currentSignature = `${proventosConhecidos.length}-${provSearchTerm}-${provMonthFilter}`;
 
         if (currentSignature === lastHistoricoProventosSignature && proventosVirtualizer) {
             return;

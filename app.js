@@ -2210,7 +2210,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             const dataPag = new Date(parts[0], parts[1] - 1, parts[2]);
             if (dataPag > hoje) return false;
 
-            const buscaValida = termoBusca === '' || p.symbol.includes(termoBusca);
+            const buscaValida = provSearchTerm === '' || p.symbol.includes(provSearchTerm);
             const dataRef = p.dataCom || p.paymentDate;
             const mesValido = provMonthFilter === '' || dataRef.startsWith(provMonthFilter);
             return buscaValida && mesValido;

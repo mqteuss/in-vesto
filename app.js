@@ -2104,8 +2104,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         if (!listaHistorico) return;
 
-        const lastTransId = transacoes.length > 0 ? transacoes[transacoes.length - 1].id : 'none';
-        const currentSignature = `${transacoes.length}-${lastTransId}-${histFilterType}-${histSearchTerm}`;
+        const currentSignature = `${transacoes.length}-${lastTransId}-${histFilterType}-${histSearchTerm}-${histMonthFilter}`;
 
         if (currentSignature === lastHistoricoListSignature && historicoVirtualizer) {
             return;
@@ -2189,9 +2188,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const listaHistoricoProventos = document.getElementById('lista-historico-proventos');
         const scrollContainer = document.getElementById('tab-historico');
 
-        const lastProvId = proventosConhecidos.length > 0 ? proventosConhecidos[proventosConhecidos.length - 1].id : 'none';
-        const termoBusca = provSearchTerm || '';
-        const currentSignature = `${proventosConhecidos.length}-${lastProvId}-${termoBusca}`;
+        const currentSignature = `${proventosConhecidos.length}-${lastProvId}-${termoBusca}-${provMonthFilter}`;
 
         if (currentSignature === lastHistoricoProventosSignature && proventosVirtualizer) {
             return;
@@ -8435,7 +8432,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     async function handleExportExtrato(formato, tipo) {
         const isProventos = tipo === 'proventos';
         const emptyMessage = isProventos ? 'Nenhum provento efetivado' : 'Nenhum registro encontrado';
-        const filePrefix = isProventos ? 'extrato_proventos' : 'extrato_transacoes';
+        const timestamp = new Date().getTime();
+        const filePrefix = isProventos ? `extrato_proventos_${timestamp}` : `extrato_transacoes_${timestamp}`;
         const titleShare = isProventos ? 'Extrato de Proventos' : 'Extrato de Transações';
         const currentVirtualizer = isProventos ? proventosVirtualizer : historicoVirtualizer;
 

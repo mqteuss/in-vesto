@@ -8392,14 +8392,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     const transacoesMonthInput = document.getElementById('transacoes-month-filter');
 
     if (proventosMonthInput) {
-        proventosMonthInput.addEventListener('change', (e) => {
+        proventosMonthInput.addEventListener('input', (e) => {
             provMonthFilter = e.target.value; // 'YYYY-MM'
             if (window.renderizarHistoricoProventosGlobal) window.renderizarHistoricoProventosGlobal();
         });
     }
 
     if (transacoesMonthInput) {
-        transacoesMonthInput.addEventListener('change', (e) => {
+        transacoesMonthInput.addEventListener('input', (e) => {
             histMonthFilter = e.target.value; // 'YYYY-MM'
             if (window.renderizarHistoricoGlobal) window.renderizarHistoricoGlobal();
         });
@@ -8430,6 +8430,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     async function handleExportExtrato(formato, tipo) {
+        // Força a perda de foco de qualquer input ativo (importante no PWA/iOS) 
+        // para garantir que os eventos disparados no evento "blur" (ou "input") 
+        // sejam refletidos nas variáveis globais antes da exportação.
+        if (document.activeElement && typeof document.activeElement.blur === 'function') {
+            document.activeElement.blur();
+        }
+
         const isProventos = tipo === 'proventos';
         const emptyMessage = isProventos ? 'Nenhum provento efetivado' : 'Nenhum registro encontrado';
         const timestamp = new Date().getTime();

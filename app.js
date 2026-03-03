@@ -2211,8 +2211,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (dataPag > hoje) return false;
 
             const buscaValida = provSearchTerm === '' || p.symbol.includes(provSearchTerm);
-            const dataRef = p.dataCom || p.paymentDate;
-            const mesValido = provMonthFilter === '' || dataRef.startsWith(provMonthFilter);
+            const mesValido = provMonthFilter === '' || p.paymentDate.startsWith(provMonthFilter);
             return buscaValida && mesValido;
         }).sort((a, b) => new Date(b.paymentDate) - new Date(a.paymentDate));
 

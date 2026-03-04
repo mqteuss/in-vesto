@@ -2078,12 +2078,19 @@ document.addEventListener('DOMContentLoaded', async () => {
                 return acc + Number(item.value || 0);
             }, 0);
 
-            // HTML do Header — estilo unificado com Mercado
+            // HTML do Header — estilo unificado com Mercado + botão de compartilhar
             const headerHtml = `
             <h3 class="text-[11px] font-bold text-neutral-500 uppercase tracking-widest">${mes}</h3>
-            <span class="text-[10px] font-mono font-bold text-gray-400 bg-[#1C1C1E] px-2 py-0.5 rounded-md">
-                Total: ${formatBRL(totalMes)}
-            </span>
+            <div class="flex items-center gap-2">
+                <span class="text-[10px] font-mono font-bold text-gray-400 bg-[#1C1C1E] px-2 py-0.5 rounded-md">
+                    Total: ${formatBRL(totalMes)}
+                </span>
+                <button class="share-month-btn" data-mes="${mes}" title="Compartilhar ${mes}">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+                    </svg>
+                </button>
+            </div>
         `;
 
             flatList.push({ type: 'header', month: mes, total: totalMes, htmlContent: headerHtml });
@@ -8382,95 +8389,112 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
 
-    const btnExportExtratoFoto = document.getElementById('btn-export-extrato-foto');
-    const btnExportExtratoPdf = document.getElementById('btn-export-extrato-pdf');
-    const btnExportTransacoesFoto = document.getElementById('btn-export-transacoes-foto');
-    const btnExportTransacoesPdf = document.getElementById('btn-export-transacoes-pdf');
+    // ========== EXPORT VIA SHARE ICONS NOS HEADERS DE MÊS ==========
+    // Event delegation: captura cliques nos ícones de compartilhar dentro dos headers do VirtualScroller
+    const listaHistoricoEl = document.getElementById('lista-historico');
+    const listaProventosEl = document.getElementById('lista-historico-proventos');
 
-    const proventosMonthInput = document.getElementById('proventos-month-filter');
-    const transacoesMonthInput = document.getElementById('transacoes-month-filter');
+    function handleShareMonthClick(e, tipo) {
+        const btn = e.target.closest('.share-month-btn');
+        if (!btn) return;
+        e.stopPropagation();
 
-    if (proventosMonthInput) {
-        proventosMonthInput.addEventListener('input', (e) => {
-            provMonthFilter = e.target.value; // 'YYYY-MM'
-            if (window.renderizarHistoricoProventosGlobal) window.renderizarHistoricoProventosGlobal();
+        const mes = btn.dataset.mes; // Ex: "FEVEREIRO - 2026"
+        if (!mes) return;
+
+        showExportMonthModal(mes, tipo);
+    }
+
+    if (listaHistoricoEl) {
+        listaHistoricoEl.addEventListener('click', (e) => handleShareMonthClick(e, 'transacoes'));
+    }
+    if (listaProventosEl) {
+        listaProventosEl.addEventListener('click', (e) => handleShareMonthClick(e, 'proventos'));
+    }
+
+    // Modal flutuante para escolher formato de exportação
+    function showExportMonthModal(mes, tipo) {
+        // Remove modal anterior se existir
+        const old = document.getElementById('export-month-modal');
+        if (old) old.remove();
+
+        const modal = document.createElement('div');
+        modal.id = 'export-month-modal';
+        modal.className = 'export-month-modal visible';
+        modal.innerHTML = `
+            <div class="export-month-modal-backdrop"></div>
+            <div class="export-month-modal-content">
+                <p class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">Compartilhar ${mes}</p>
+                <button class="export-month-option" data-format="foto">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                    <span>Exportar como Foto</span>
+                </button>
+                <button class="export-month-option" data-format="pdf">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                    </svg>
+                    <span>Exportar como PDF</span>
+                </button>
+            </div>
+        `;
+        document.body.appendChild(modal);
+
+        // Bind actions
+        modal.querySelectorAll('.export-month-option').forEach(opt => {
+            opt.addEventListener('click', async () => {
+                const format = opt.dataset.format;
+                modal.remove();
+                await handleExportMonth(format, tipo, mes);
+            });
+        });
+
+        // Fechar ao clicar no backdrop
+        modal.querySelector('.export-month-modal-backdrop').addEventListener('click', () => {
+            modal.remove();
         });
     }
 
-    if (transacoesMonthInput) {
-        transacoesMonthInput.addEventListener('input', (e) => {
-            histMonthFilter = e.target.value; // 'YYYY-MM'
-            if (window.renderizarHistoricoGlobal) window.renderizarHistoricoGlobal();
-        });
-    }
-
-    if (btnExportExtratoFoto) {
-        btnExportExtratoFoto.addEventListener('click', async () => {
-            await handleExportExtrato('foto', 'proventos');
-        });
-    }
-
-    if (btnExportExtratoPdf) {
-        btnExportExtratoPdf.addEventListener('click', async () => {
-            await handleExportExtrato('pdf', 'proventos');
-        });
-    }
-
-    if (btnExportTransacoesFoto) {
-        btnExportTransacoesFoto.addEventListener('click', async () => {
-            await handleExportExtrato('foto', 'transacoes');
-        });
-    }
-
-    if (btnExportTransacoesPdf) {
-        btnExportTransacoesPdf.addEventListener('click', async () => {
-            await handleExportExtrato('pdf', 'transacoes');
-        });
-    }
-
-    async function handleExportExtrato(formato, tipo) {
-        // Força a perda de foco de qualquer input ativo (importante no PWA/iOS) 
-        // para garantir que os eventos disparados no evento "blur" (ou "input") 
-        // sejam refletidos nas variáveis globais antes da exportação.
-        if (document.activeElement && typeof document.activeElement.blur === 'function') {
-            document.activeElement.blur();
-        }
-
+    // Exportação de um mês específico usando os dados já no VirtualScroller
+    async function handleExportMonth(formato, tipo, targetMonth) {
         const isProventos = tipo === 'proventos';
-        const emptyMessage = isProventos ? 'Nenhum provento efetivado' : 'Nenhum registro encontrado';
-        const timestamp = new Date().getTime();
-        const filePrefix = isProventos ? `extrato_proventos_${timestamp}` : `extrato_transacoes_${timestamp}`;
-        const titleShare = isProventos ? 'Extrato de Proventos' : 'Extrato de Transações';
         const currentVirtualizer = isProventos ? proventosVirtualizer : historicoVirtualizer;
+        const timestamp = new Date().getTime();
+        const filePrefix = isProventos ? `proventos_${targetMonth}_${timestamp}` : `transacoes_${targetMonth}_${timestamp}`;
+        const titleShare = `${targetMonth}`;
 
-        // Verifica se há dados na instância do VirtualScroller
         if (!currentVirtualizer || !currentVirtualizer.positions || currentVirtualizer.positions.length === 0) {
-            showToast(`Sem dados de ${tipo} para exportar.`);
+            showToast(`Sem dados para exportar.`);
             return;
         }
 
-        let btnFoto, btnPdf;
-        if (isProventos) {
-            btnFoto = btnExportExtratoFoto;
-            btnPdf = btnExportExtratoPdf;
-        } else {
-            btnFoto = btnExportTransacoesFoto;
-            btnPdf = btnExportTransacoesPdf;
+        // Filtra apenas as posições que pertencem ao mês clicado
+        let capturing = false;
+        const monthPositions = [];
+        for (const pos of currentVirtualizer.positions) {
+            if (pos.item.type === 'header') {
+                if (pos.item.month === targetMonth) {
+                    capturing = true;
+                    monthPositions.push(pos);
+                    continue;
+                } else if (capturing) {
+                    // Chegou no próximo header, para de capturar
+                    break;
+                }
+            } else if (capturing) {
+                monthPositions.push(pos);
+            }
         }
 
-        const btnFotoOriginalHTML = btnFoto ? btnFoto.innerHTML : '';
-        const btnPdfOriginalHTML = btnPdf ? btnPdf.innerHTML : '';
+        if (monthPositions.length === 0) {
+            showToast(`Nenhum dado encontrado para ${targetMonth}.`);
+            return;
+        }
 
         try {
-            if (formato === 'foto' && btnFoto) {
-                btnFoto.innerHTML = `<span class="loader-sm"></span>`;
-                btnFoto.disabled = true;
-            } else if (formato === 'pdf' && btnPdf) {
-                btnPdf.innerHTML = `<span class="loader-sm"></span>`;
-                btnPdf.disabled = true;
-            }
+            showToast('Gerando extrato...', 'success');
 
-            // 1. Constrói um wrapper oculto off-screen para o html2canvas conseguir renderizar tudo sem que o usuário veja
             const exportWrapper = document.createElement('div');
             exportWrapper.style.position = 'fixed';
             exportWrapper.style.top = '0';
@@ -8487,25 +8511,22 @@ document.addEventListener('DOMContentLoaded', async () => {
             tempContainer.style.padding = '16px';
             tempContainer.style.boxSizing = 'border-box';
 
-            // Adiciona um título ao export
-            const headerTitle = document.createElement('div');
-            headerTitle.style.color = '#fff';
-            headerTitle.style.fontSize = '18px';
-            headerTitle.style.fontWeight = 'bold';
-            headerTitle.style.marginBottom = '16px';
-            headerTitle.style.textAlign = 'center';
-            headerTitle.innerText = titleShare;
-            tempContainer.appendChild(headerTitle);
-
-            // Popula com todos os itens do virtualizer
-            currentVirtualizer.positions.forEach(pos => {
+            // Popula com os itens filtrados daquele mês
+            monthPositions.forEach(pos => {
                 const itemEl = document.createElement('div');
-                itemEl.style.position = 'relative'; // Remove absolute do virtualizer original
-                itemEl.style.marginBottom = '8px'; // Espaçamento normal
+                itemEl.style.position = 'relative';
+                itemEl.style.marginBottom = '8px';
                 itemEl.style.width = '100%';
 
                 if (pos.item.type === 'header') {
-                    itemEl.innerHTML = `<div class="virtual-header-row">${pos.item.htmlContent}</div>`;
+                    // Renderiza o header SEM o botão de compartilhar (para não aparecer na imagem)
+                    const cleanHeader = `
+                        <h3 class="text-[11px] font-bold text-neutral-500 uppercase tracking-widest">${pos.item.month}</h3>
+                        <span class="text-[10px] font-mono font-bold text-gray-400 bg-[#1C1C1E] px-2 py-0.5 rounded-md">
+                            Total: ${formatBRL(pos.item.total)}
+                        </span>
+                    `;
+                    itemEl.innerHTML = `<div class="virtual-header-row">${cleanHeader}</div>`;
                 } else {
                     itemEl.innerHTML = currentVirtualizer.renderRowFn(pos.item.data);
                 }
@@ -8515,7 +8536,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             exportWrapper.appendChild(tempContainer);
             document.body.appendChild(exportWrapper);
 
-            // 2. Carrega as bibliotecas e gera o Canvas
             await loadHtml2Canvas();
             if (formato === 'pdf') await loadJsPDF();
 
@@ -8526,7 +8546,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                 windowWidth: 400
             });
 
-            // Limpa o DOM temporário imediatamente
             document.body.removeChild(exportWrapper);
 
             const imgData = canvas.toDataURL('image/png');
@@ -8536,10 +8555,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     const blob = await (await fetch(imgData)).blob();
                     const file = new File([blob], `${filePrefix}.png`, { type: 'image/png' });
                     if (navigator.canShare && navigator.canShare({ files: [file] })) {
-                        await navigator.share({
-                            files: [file],
-                            title: titleShare,
-                        });
+                        await navigator.share({ files: [file], title: titleShare });
                     } else {
                         downloadBlob(blob, `${filePrefix}.png`);
                     }
@@ -8548,24 +8564,20 @@ document.addEventListener('DOMContentLoaded', async () => {
                     const blob = await (await fetch(imgData)).blob();
                     downloadBlob(blob, `${filePrefix}.png`);
                 }
-                showToast(`Extrato (${tipo}) em foto gerado!`, "success");
+                showToast(`Extrato de ${targetMonth} gerado!`, "success");
             } else if (formato === 'pdf') {
                 const pdf = new window.jspdf.jsPDF({
                     orientation: 'portrait',
                     unit: 'px',
                     format: [canvas.width, canvas.height]
                 });
-
                 pdf.addImage(imgData, 'PNG', 0, 0, canvas.width, canvas.height);
                 const pdfBlob = pdf.output('blob');
 
                 try {
                     const file = new File([pdfBlob], `${filePrefix}.pdf`, { type: 'application/pdf' });
                     if (navigator.canShare && navigator.canShare({ files: [file] })) {
-                        await navigator.share({
-                            files: [file],
-                            title: `${titleShare} PDF`,
-                        });
+                        await navigator.share({ files: [file], title: `${titleShare} PDF` });
                     } else {
                         downloadBlob(pdfBlob, `${filePrefix}.pdf`);
                     }
@@ -8573,21 +8585,15 @@ document.addEventListener('DOMContentLoaded', async () => {
                     console.error('Erro ao compartilhar PDF', e);
                     downloadBlob(pdfBlob, `${filePrefix}.pdf`);
                 }
-                showToast(`Extrato (${tipo}) em PDF gerado!`, "success");
+                showToast(`PDF de ${targetMonth} gerado!`, "success");
             }
         } catch (e) {
             console.error("Erro ao gerar extrato:", e);
             showToast("Erro ao gerar arquivo: " + e.message);
-        } finally {
-            if (formato === 'foto' && btnFoto) {
-                btnFoto.innerHTML = btnFotoOriginalHTML;
-                btnFoto.disabled = false;
-            } else if (formato === 'pdf' && btnPdf) {
-                btnPdf.innerHTML = btnPdfOriginalHTML;
-                btnPdf.disabled = false;
-            }
         }
     }
+
+
 
     function downloadBlob(blob, filename) {
         const link = document.createElement('a');

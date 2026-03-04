@@ -1903,6 +1903,115 @@ body.light-mode .virtual-header-row {
     border-bottom: 1px solid #e5e7eb;
 }
 
+/* Botão de compartilhar no header do mês */
+.share-month-btn {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #6b7280;
+    background-color: transparent;
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    flex-shrink: 0;
+    padding: 0;
+}
+
+.share-month-btn:hover {
+    color: #c084fc;
+    background-color: rgba(192, 132, 252, 0.1);
+}
+
+.share-month-btn:active {
+    transform: scale(0.9);
+}
+
+body.light-mode .share-month-btn {
+    color: #9ca3af;
+}
+
+body.light-mode .share-month-btn:hover {
+    color: #7c3aed;
+    background-color: rgba(124, 58, 237, 0.08);
+}
+
+/* Modal de exportação por mês */
+.export-month-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 200;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    animation: fadeIn 0.15s ease-out;
+}
+
+.export-month-modal-backdrop {
+    position: absolute;
+    inset: 0;
+    background-color: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+}
+
+.export-month-modal-content {
+    position: relative;
+    z-index: 1;
+    background-color: #1C1C1E;
+    border: 1px solid #2C2C2E;
+    border-radius: 20px;
+    padding: 20px;
+    min-width: 260px;
+    max-width: 320px;
+    animation: modalIn 0.2s ease-out;
+}
+
+.export-month-option {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    padding: 12px 14px;
+    border-radius: 12px;
+    background-color: transparent;
+    border: none;
+    color: #e5e5e5;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    margin-bottom: 4px;
+}
+
+.export-month-option:last-child {
+    margin-bottom: 0;
+}
+
+.export-month-option:hover {
+    background-color: rgba(255, 255, 255, 0.06);
+}
+
+.export-month-option:active {
+    transform: scale(0.97);
+    background-color: rgba(255, 255, 255, 0.1);
+}
+
+body.light-mode .export-month-modal-content {
+    background-color: #ffffff;
+    border-color: #e5e7eb;
+}
+
+body.light-mode .export-month-option {
+    color: #1f2937;
+}
+
+body.light-mode .export-month-option:hover {
+    background-color: rgba(0, 0, 0, 0.04);
+}
+
 h1,
 h2,
 h3,

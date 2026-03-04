@@ -8566,12 +8566,15 @@ document.addEventListener('DOMContentLoaded', async () => {
                 }
                 showToast(`Extrato de ${targetMonth} gerado!`, "success");
             } else if (formato === 'pdf') {
+                const pdfWidth = canvas.width / 2;
+                const pdfHeight = canvas.height / 2;
                 const pdf = new window.jspdf.jsPDF({
-                    orientation: 'portrait',
+                    orientation: pdfHeight > pdfWidth ? 'portrait' : 'landscape',
                     unit: 'px',
-                    format: [canvas.width, canvas.height]
+                    format: [pdfWidth, pdfHeight],
+                    hotfixes: ['px_scaling']
                 });
-                pdf.addImage(imgData, 'PNG', 0, 0, canvas.width, canvas.height);
+                pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
                 const pdfBlob = pdf.output('blob');
 
                 try {

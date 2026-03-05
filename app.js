@@ -2082,7 +2082,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             const headerHtml = `
             <h3 class="text-[11px] font-bold text-neutral-500 uppercase tracking-widest">${mes}</h3>
             <div class="flex items-center gap-2">
-                <span class="text-[10px] font-mono font-bold text-gray-400 bg-[#1C1C1E] px-2 py-0.5 rounded-md">
+                <span class="text-[11px] font-medium text-gray-400">
                     Total: ${formatBRL(totalMes)}
                 </span>
                 <button class="share-month-btn" data-mes="${mes}" title="Compartilhar ${mes}">
@@ -2148,7 +2148,16 @@ document.addEventListener('DOMContentLoaded', async () => {
         const rowRenderer = (t) => {
             const isVenda = t.type === 'sell';
             const totalTransacao = t.quantity * t.price;
-            const dia = new Date(t.date).getDate().toString().padStart(2, '0');
+
+            let diaStr = t.date;
+            if (t.date && t.date.includes('-')) {
+                const parts = t.date.split('-');
+                const dateObj = new Date(parts[0], parts[1] - 1, parts[2]);
+                diaStr = dateObj.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' }).replace('.', '');
+            } else {
+                const dateObj = new Date(t.date);
+                diaStr = dateObj.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' }).replace('.', '');
+            }
 
             // Ícones
             const arrowDownGreen = `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 14l-7 7m0 0l-7-7m7 7V3" /></svg>`;
@@ -2169,14 +2178,14 @@ document.addEventListener('DOMContentLoaded', async () => {
                             <h4 class="text-sm font-bold text-white tracking-tight leading-none">${t.symbol}</h4>
                             </div>
                         <div class="flex items-center gap-1.5 mt-1 text-[11px] text-gray-500 leading-none">
-                            <span class="font-medium text-gray-400">Dia ${dia}</span>
+                            <span class="font-medium text-gray-400">${diaStr}</span>
                             <span>•</span>
                             <span>${t.quantity} cotas</span>
                         </div>
                     </div>
                 </div>
                 <div class="text-right flex flex-col items-end justify-center">
-                    <span class="text-[15px] font-bold text-white tracking-tight">${formatBRL(totalTransacao)}</span>
+                    <span class="text-[15px] font-medium text-white tracking-tight">${formatBRL(totalTransacao)}</span>
                     <span class="text-[11px] text-gray-500 mt-0.5">${formatBRL(t.price)}</span>
                 </div>
             </div>
@@ -2253,7 +2262,14 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         const rowRenderer = (p) => {
             const qtd = p.qtdCalculada;
-            const dia = p.paymentDate.split('-')[2];
+
+            let diaStr = p.paymentDate;
+            if (p.paymentDate && p.paymentDate.includes('-')) {
+                const parts = p.paymentDate.split('-');
+                const dateObj = new Date(parts[0], parts[1] - 1, parts[2]);
+                diaStr = dateObj.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' }).replace('.', '');
+            }
+
             const total = p.totalCalculado;
 
             // Cálculo do Valor Unitário (para exibir abaixo do total)
@@ -2292,14 +2308,14 @@ document.addEventListener('DOMContentLoaded', async () => {
                             ${tagHtml}
                         </div>
                         <div class="flex items-center gap-1.5 mt-1 text-[11px] text-gray-500 leading-none">
-                            <span class="font-medium text-gray-400">Dia ${dia}</span>
+                            <span class="font-medium text-gray-400">${diaStr}</span>
                             <span>•</span>
                             <span>${qtd} cotas</span>
                         </div>
                     </div>
                 </div>
                 <div class="text-right flex flex-col items-end justify-center">
-                    <span class="text-[15px] font-bold text-white tracking-tight">+ ${formatBRL(total)}</span>
+                    <span class="text-[15px] font-medium text-white tracking-tight">+ ${formatBRL(total)}</span>
 
                     <span class="text-[11px] text-gray-500 mt-0.5">${formatBRL(valorUnitario)}</span>
                 </div>

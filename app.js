@@ -8590,17 +8590,23 @@ document.addEventListener('DOMContentLoaded', async () => {
                     const valUni = p.totalCalculado / qtd;
 
                     let diaStr = p.paymentDate;
-                    if (diaStr && diaStr.includes('-')) {
-                        const parts = diaStr.split('-');
-                        diaStr = `${parts[2]}/${parts[1]}`; // dd/mm
+                    if (diaStr) {
+                        try {
+                            const dateObj = new Date(diaStr);
+                            if (diaStr.length === 10) dateObj.setMinutes(dateObj.getMinutes() + dateObj.getTimezoneOffset());
+                            if (!isNaN(dateObj.getTime())) diaStr = dateObj.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' }).replace('.', '');
+                        } catch (e) { }
                     }
 
                     leftContent = `
-                        <div style="display: flex; gap: 12px; align-items: center;">
-                            <div style="font-family: monospace; font-size: 12px; color: #71717a; font-weight: 600; width: 40px;">${diaStr}</div>
+                        <div style="display: flex; gap: 16px; align-items: center;">
+                            <div style="font-family: monospace; font-size: 13px; color: #71717a; font-weight: 600; width: 44px; text-transform: uppercase;">${diaStr}</div>
                             <div>
-                                <div style="font-weight: 700; font-size: 14px; color: #e5e5e5;">${p.symbol}</div>
-                                <div style="font-size: 11px; color: #71717a; margin-top: 2px;">${qtd} cotas • ${formatBRL(valUni)}</div>
+                                <div style="font-weight: 700; font-size: 14px; color: #e5e5e5; display: flex; align-items: center; gap: 6px;">
+                                    ${p.symbol}
+                                    <span style="font-size: 9px; padding: 2px 4px; border-radius: 4px; background: #063013; color: #22c55e;">PROVENTO</span>
+                                </div>
+                                <div style="font-size: 11px; color: #71717a; margin-top: 3px;">${qtd} cotas • ${formatBRL(valUni)}</div>
                             </div>
                         </div>
                     `;
@@ -8615,20 +8621,23 @@ document.addEventListener('DOMContentLoaded', async () => {
                     const isVenda = t.type === 'sell';
 
                     let diaStr = t.date;
-                    if (diaStr && diaStr.includes('-')) {
-                        const parts = diaStr.split('-');
-                        diaStr = `${parts[2]}/${parts[1]}`; // dd/mm
+                    if (diaStr) {
+                        try {
+                            const dateObj = new Date(diaStr);
+                            if (diaStr.length === 10) dateObj.setMinutes(dateObj.getMinutes() + dateObj.getTimezoneOffset());
+                            if (!isNaN(dateObj.getTime())) diaStr = dateObj.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' }).replace('.', '');
+                        } catch (e) { }
                     }
 
                     leftContent = `
-                        <div style="display: flex; gap: 12px; align-items: center;">
-                            <div style="font-family: monospace; font-size: 12px; color: #71717a; font-weight: 600; width: 40px;">${diaStr}</div>
+                        <div style="display: flex; gap: 16px; align-items: center;">
+                            <div style="font-family: monospace; font-size: 13px; color: #71717a; font-weight: 600; width: 44px; text-transform: uppercase;">${diaStr}</div>
                             <div>
                                 <div style="font-weight: 700; font-size: 14px; color: #e5e5e5; display: flex; align-items: center; gap: 6px;">
                                     ${t.symbol} 
                                     <span style="font-size: 9px; padding: 2px 4px; border-radius: 4px; background: ${isVenda ? '#3f1118' : '#063013'}; color: ${isVenda ? '#ef4444' : '#22c55e'};">${isVenda ? 'VENDA' : 'COMPRA'}</span>
                                 </div>
-                                <div style="font-size: 11px; color: #71717a; margin-top: 2px;">${t.quantity} cotas • ${formatBRL(t.price)}</div>
+                                <div style="font-size: 11px; color: #71717a; margin-top: 3px;">${t.quantity} cotas • ${formatBRL(t.price)}</div>
                             </div>
                         </div>
                     `;

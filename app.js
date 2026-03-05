@@ -8533,37 +8533,133 @@ document.addEventListener('DOMContentLoaded', async () => {
             exportWrapper.style.pointerEvents = 'none';
 
             const tempContainer = document.createElement('div');
-            // Aumentando width do container para não cortar os valores à direita
-            tempContainer.style.width = '450px';
-            tempContainer.style.backgroundColor = '#000000';
-            tempContainer.style.padding = '16px';
+            tempContainer.style.width = '420px';
+            tempContainer.style.backgroundColor = '#111111'; // Dark receipt background
+            tempContainer.style.padding = '32px 24px';
             tempContainer.style.boxSizing = 'border-box';
-            // Garante que a fonte padrão não quebre
             tempContainer.style.fontFamily = 'Inter, ui-sans-serif, system-ui, sans-serif';
+            tempContainer.style.color = '#e5e5e5';
+            tempContainer.style.borderTop = '8px solid #8b5cf6'; // Purple accent line like a real document
+
+            // 1. Cabecalho Oficial (Comprovante)
+            const titleText = isProventos ? 'Comprovante de Rendimentos' : 'Relatório de Transações';
+            const dataHora = new Date().toLocaleString('pt-BR');
+            let totalMes = 0;
+
+            const logoHtml = `
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; border-bottom: 1px solid #2C2C2E; padding-bottom: 16px;">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <img src="icons/icon-192x192.png" style="width: 28px; height: 28px; border-radius: 6px;" />
+                        <span style="font-weight: 700; font-size: 16px; letter-spacing: -0.5px;">Vesto</span>
+                    </div>
+                    <div style="text-align: right;">
+                        <div style="font-size: 10px; color: #71717a; text-transform: uppercase; letter-spacing: 1px; font-weight: 700;">${titleText}</div>
+                        <div style="font-size: 12px; font-weight: 500; color: #a1a1aa;">${targetMonth}</div>
+                    </div>
+                </div>
+            `;
+
+            const listContainer = document.createElement('div');
+            listContainer.style.display = 'flex';
+            listContainer.style.flexDirection = 'column';
+            listContainer.style.gap = '12px';
 
             // Popula com os itens filtrados daquele mês
             monthPositions.forEach(pos => {
-                const itemEl = document.createElement('div');
-                itemEl.style.position = 'relative';
-                itemEl.style.marginBottom = '8px';
-                itemEl.style.width = '100%';
-
                 if (pos.item.type === 'header') {
-                    // Renderiza o header SEM o botão de compartilhar (para não aparecer na imagem)
-                    const cleanHeader = `
-                        <div class="flex items-center justify-between w-full">
-                            <h3 class="text-[11px] font-bold text-gray-500 uppercase tracking-widest">${pos.item.month}</h3>
-                            <span class="text-[11px] font-medium text-gray-400">
-                                Total: ${formatBRL(pos.item.total)}
-                            </span>
+                    totalMes = pos.item.total; // Captura o total do mês
+                    return; // Pula o header nativo
+                }
+
+                const data = pos.item.data;
+                const rowEl = document.createElement('div');
+                rowEl.style.display = 'flex';
+                rowEl.style.justifyContent = 'space-between';
+                rowEl.style.alignItems = 'center';
+                rowEl.style.padding = '10px 0';
+                rowEl.style.borderBottom = '1px solid #1C1C1E';
+                // Layout de Recibo
+
+                let leftContent = '';
+                let rightContent = '';
+
+                if (isProventos) {
+                    // Proventos
+                    const p = data;
+                    const qtd = p.qtdCalculada || 1;
+                    const valUni = p.totalCalculado / qtd;
+
+                    let diaStr = p.paymentDate;
+                    if (diaStr && diaStr.includes('-')) {
+                        const parts = diaStr.split('-');
+                        diaStr = `${parts[2]}/${parts[1]}`; // dd/mm
+                    }
+
+                    leftContent = `
+                        <div style="display: flex; gap: 12px; align-items: center;">
+                            <div style="font-family: monospace; font-size: 12px; color: #71717a; font-weight: 600; width: 40px;">${diaStr}</div>
+                            <div>
+                                <div style="font-weight: 700; font-size: 14px; color: #e5e5e5;">${p.symbol}</div>
+                                <div style="font-size: 11px; color: #71717a; margin-top: 2px;">${qtd} cotas • ${formatBRL(valUni)}</div>
+                            </div>
                         </div>
                     `;
-                    itemEl.innerHTML = `<div class="virtual-header-row">${cleanHeader}</div>`;
+                    rightContent = `
+                        <div style="text-align: right; font-weight: 600; font-size: 14px; color: #e5e5e5; font-family: monospace;">+ ${formatBRL(p.totalCalculado)}</div>
+                    `;
+
                 } else {
-                    itemEl.innerHTML = currentVirtualizer.renderRowFn(pos.item.data);
+                    // Transações
+                    const t = data;
+                    const totalT = t.quantity * t.price;
+                    const isVenda = t.type === 'sell';
+
+                    let diaStr = t.date;
+                    if (diaStr && diaStr.includes('-')) {
+                        const parts = diaStr.split('-');
+                        diaStr = `${parts[2]}/${parts[1]}`; // dd/mm
+                    }
+
+                    leftContent = `
+                        <div style="display: flex; gap: 12px; align-items: center;">
+                            <div style="font-family: monospace; font-size: 12px; color: #71717a; font-weight: 600; width: 40px;">${diaStr}</div>
+                            <div>
+                                <div style="font-weight: 700; font-size: 14px; color: #e5e5e5; display: flex; align-items: center; gap: 6px;">
+                                    ${t.symbol} 
+                                    <span style="font-size: 9px; padding: 2px 4px; border-radius: 4px; background: ${isVenda ? '#3f1118' : '#063013'}; color: ${isVenda ? '#ef4444' : '#22c55e'};">${isVenda ? 'VENDA' : 'COMPRA'}</span>
+                                </div>
+                                <div style="font-size: 11px; color: #71717a; margin-top: 2px;">${t.quantity} cotas • ${formatBRL(t.price)}</div>
+                            </div>
+                        </div>
+                    `;
+                    rightContent = `
+                        <div style="text-align: right; font-weight: 600; font-size: 14px; color: #e5e5e5; font-family: monospace;">${formatBRL(totalT)}</div>
+                    `;
                 }
-                tempContainer.appendChild(itemEl);
+
+                rowEl.innerHTML = `
+                    ${leftContent}
+                    ${rightContent}
+                `;
+
+                listContainer.appendChild(rowEl);
             });
+
+            // Footer
+            const footerHtml = `
+                <div style="margin-top: 24px; padding-top: 16px; border-top: 1px dashed #3f3f46; display: flex; justify-content: space-between; align-items: flex-end;">
+                    <div style="font-size: 10px; color: #71717a;">
+                        <div>Gerado via Vesto App</div>
+                        <div>${dataHora}</div>
+                    </div>
+                    <div style="text-align: right;">
+                        <div style="font-size: 11px; color: #a1a1aa; text-transform: uppercase; font-weight: 700; letter-spacing: 1px; margin-bottom: 2px;">Total do Período</div>
+                        <div style="font-size: 18px; font-weight: 700; color: ${isProventos ? '#4ade80' : '#e5e5e5'}; font-family: monospace;">${formatBRL(totalMes)}</div>
+                    </div>
+                </div>
+            `;
+
+            tempContainer.innerHTML = logoHtml + listContainer.outerHTML + footerHtml;
 
             exportWrapper.appendChild(tempContainer);
             document.body.appendChild(exportWrapper);
@@ -8572,7 +8668,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (formato === 'pdf') await loadJsPDF();
 
             const canvas = await html2canvas(tempContainer, {
-                backgroundColor: '#000000',
+                backgroundColor: '#111111',
                 scale: 2,
                 logging: false,
                 windowWidth: 400

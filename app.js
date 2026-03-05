@@ -2080,13 +2080,13 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             // HTML do Header — estilo unificado com Mercado + botão de compartilhar
             const headerHtml = `
-            <h3 class="text-[11px] font-bold text-neutral-500 uppercase tracking-widest">${mes}</h3>
+            <h3 class="text-[11px] font-bold text-gray-500 uppercase tracking-widest">${mes}</h3>
             <div class="flex items-center gap-2">
                 <span class="text-[11px] font-medium text-gray-400">
                     Total: ${formatBRL(totalMes)}
                 </span>
-                <button class="share-month-btn" data-mes="${mes}" title="Compartilhar ${mes}">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <button class="share-month-btn text-gray-500 hover:text-white transition-colors" data-mes="${mes}" title="Compartilhar ${mes}">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
                     </svg>
                 </button>
@@ -2188,7 +2188,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     </div>
                 </div>
                 <div class="text-right flex flex-col items-end justify-center">
-                    <span class="text-[15px] font-medium text-white tracking-tight">${formatBRL(totalTransacao)}</span>
+                    <span class="text-[15px] text-gray-200 tracking-tight">${formatBRL(totalTransacao)}</span>
                     <span class="text-[11px] text-gray-500 mt-0.5">${formatBRL(t.price)}</span>
                 </div>
             </div>
@@ -2324,7 +2324,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     </div>
                 </div>
                 <div class="text-right flex flex-col items-end justify-center">
-                    <span class="text-[15px] font-medium text-white tracking-tight">+ ${formatBRL(total)}</span>
+                    <span class="text-[15px] text-gray-200 tracking-tight">+ ${formatBRL(total)}</span>
 
                     <span class="text-[11px] text-gray-500 mt-0.5">${formatBRL(valorUnitario)}</span>
                 </div>

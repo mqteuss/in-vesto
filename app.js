@@ -2150,13 +2150,16 @@ document.addEventListener('DOMContentLoaded', async () => {
             const totalTransacao = t.quantity * t.price;
 
             let diaStr = t.date;
-            if (t.date && t.date.includes('-')) {
-                const parts = t.date.split('-');
-                const dateObj = new Date(parts[0], parts[1] - 1, parts[2]);
-                diaStr = dateObj.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' }).replace('.', '');
-            } else {
+            try {
                 const dateObj = new Date(t.date);
-                diaStr = dateObj.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' }).replace('.', '');
+                if (t.date && t.date.length === 10) {
+                    dateObj.setMinutes(dateObj.getMinutes() + dateObj.getTimezoneOffset());
+                }
+                if (!isNaN(dateObj.getTime())) {
+                    diaStr = dateObj.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' }).replace('.', '');
+                }
+            } catch (e) {
+                // Ignore fallback to raw string
             }
 
             // Ícones
@@ -2264,10 +2267,16 @@ document.addEventListener('DOMContentLoaded', async () => {
             const qtd = p.qtdCalculada;
 
             let diaStr = p.paymentDate;
-            if (p.paymentDate && p.paymentDate.includes('-')) {
-                const parts = p.paymentDate.split('-');
-                const dateObj = new Date(parts[0], parts[1] - 1, parts[2]);
-                diaStr = dateObj.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' }).replace('.', '');
+            try {
+                const dateObj = new Date(p.paymentDate);
+                if (p.paymentDate && p.paymentDate.length === 10) {
+                    dateObj.setMinutes(dateObj.getMinutes() + dateObj.getTimezoneOffset());
+                }
+                if (!isNaN(dateObj.getTime())) {
+                    diaStr = dateObj.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' }).replace('.', '');
+                }
+            } catch (e) {
+                // Ignore
             }
 
             const total = p.totalCalculado;

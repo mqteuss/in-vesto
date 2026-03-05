@@ -8533,10 +8533,13 @@ document.addEventListener('DOMContentLoaded', async () => {
             exportWrapper.style.pointerEvents = 'none';
 
             const tempContainer = document.createElement('div');
-            tempContainer.style.width = '400px';
+            // Aumentando width do container para não cortar os valores à direita
+            tempContainer.style.width = '450px';
             tempContainer.style.backgroundColor = '#000000';
             tempContainer.style.padding = '16px';
             tempContainer.style.boxSizing = 'border-box';
+            // Garante que a fonte padrão não quebre
+            tempContainer.style.fontFamily = 'Inter, ui-sans-serif, system-ui, sans-serif';
 
             // Popula com os itens filtrados daquele mês
             monthPositions.forEach(pos => {
@@ -8548,10 +8551,12 @@ document.addEventListener('DOMContentLoaded', async () => {
                 if (pos.item.type === 'header') {
                     // Renderiza o header SEM o botão de compartilhar (para não aparecer na imagem)
                     const cleanHeader = `
-                        <h3 class="text-[11px] font-bold text-neutral-500 uppercase tracking-widest">${pos.item.month}</h3>
-                        <span class="text-[10px] font-mono font-bold text-gray-400 bg-[#1C1C1E] px-2 py-0.5 rounded-md">
-                            Total: ${formatBRL(pos.item.total)}
-                        </span>
+                        <div class="flex items-center justify-between w-full">
+                            <h3 class="text-[11px] font-bold text-gray-500 uppercase tracking-widest">${pos.item.month}</h3>
+                            <span class="text-[11px] font-medium text-gray-400">
+                                Total: ${formatBRL(pos.item.total)}
+                            </span>
+                        </div>
                     `;
                     itemEl.innerHTML = `<div class="virtual-header-row">${cleanHeader}</div>`;
                 } else {

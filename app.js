@@ -8549,8 +8549,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             const logoHtml = `
                 <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; border-bottom: 1px solid #2C2C2E; padding-bottom: 16px;">
                     <div style="display: flex; align-items: center; gap: 8px;">
-                        <img src="icons/icon-192x192.png" style="width: 28px; height: 28px; border-radius: 6px;" />
-                        <span style="font-weight: 700; font-size: 16px; letter-spacing: -0.5px;">Vesto</span>
+                        <img src="icons/icon-192x192.png" style="width: 28px; height: 28px; border-radius: 6px; display: block;" />
+                        <span style="font-weight: 700; font-size: 16px; letter-spacing: -0.5px; display: inline-block; line-height: 1;">Vesto</span>
                     </div>
                     <div style="text-align: right;">
                         <div style="font-size: 10px; color: #71717a; text-transform: uppercase; letter-spacing: 1px; font-weight: 700;">${titleText}</div>
@@ -8602,9 +8602,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                         <div style="display: flex; gap: 16px; align-items: center;">
                             <div style="font-family: monospace; font-size: 13px; color: #71717a; font-weight: 600; width: 44px; text-transform: uppercase;">${diaStr}</div>
                             <div>
-                                <div style="font-weight: 700; font-size: 14px; color: #e5e5e5; display: flex; align-items: center; gap: 6px;">
+                                <div style="font-weight: 700; font-size: 14px; color: #e5e5e5; display: flex; align-items: center; gap: 6px; line-height: 1;">
                                     ${p.symbol}
-                                    <span style="font-size: 9px; padding: 2px 4px; border-radius: 4px; background: #063013; color: #22c55e;">PROVENTO</span>
+                                    <span style="font-size: 9px; padding: 2px 4px; border-radius: 4px; background: #063013; color: #22c55e; display: inline-flex; align-items: center; justify-content: center; height: 16px;">PROVENTO</span>
                                 </div>
                                 <div style="font-size: 11px; color: #71717a; margin-top: 3px;">${qtd} cotas • ${formatBRL(valUni)}</div>
                             </div>
@@ -8633,9 +8633,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                         <div style="display: flex; gap: 16px; align-items: center;">
                             <div style="font-family: monospace; font-size: 13px; color: #71717a; font-weight: 600; width: 44px; text-transform: uppercase;">${diaStr}</div>
                             <div>
-                                <div style="font-weight: 700; font-size: 14px; color: #e5e5e5; display: flex; align-items: center; gap: 6px;">
+                                <div style="font-weight: 700; font-size: 14px; color: #e5e5e5; display: flex; align-items: center; gap: 6px; line-height: 1;">
                                     ${t.symbol} 
-                                    <span style="font-size: 9px; padding: 2px 4px; border-radius: 4px; background: ${isVenda ? '#3f1118' : '#063013'}; color: ${isVenda ? '#ef4444' : '#22c55e'};">${isVenda ? 'VENDA' : 'COMPRA'}</span>
+                                    <span style="font-size: 9px; padding: 2px 4px; border-radius: 4px; background: ${isVenda ? '#3f1118' : '#063013'}; color: ${isVenda ? '#ef4444' : '#22c55e'}; display: inline-flex; align-items: center; justify-content: center; height: 16px;">${isVenda ? 'VENDA' : 'COMPRA'}</span>
                                 </div>
                                 <div style="font-size: 11px; color: #71717a; margin-top: 3px;">${t.quantity} cotas • ${formatBRL(t.price)}</div>
                             </div>

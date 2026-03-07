@@ -2785,6 +2785,16 @@ document.addEventListener('DOMContentLoaded', async () => {
                 animation: { animateScale: true, animateRotate: true },
                 onHover: (event, elements) => {
                     canvas.style.cursor = elements.length > 0 ? 'pointer' : 'default';
+                    // Esconde o total do centro quando hover numa fatia (evita sobreposição com tooltip)
+                    const centerEl = document.getElementById('alocacao-total-center');
+                    const centerLabel = centerEl?.previousElementSibling;
+                    if (elements.length > 0) {
+                        if (centerEl) centerEl.style.opacity = '0';
+                        if (centerLabel) centerLabel.style.opacity = '0';
+                    } else {
+                        if (centerEl) centerEl.style.opacity = '1';
+                        if (centerLabel) centerLabel.style.opacity = '1';
+                    }
                 }
             }
         });
@@ -2947,16 +2957,16 @@ document.addEventListener('DOMContentLoaded', async () => {
             });
         }
 
-        // ═══════════════════════════════════════════════════
-        // METAS DE ALOCAÇÃO (Atual vs Meta)
-        // ═══════════════════════════════════════════════════
-        renderizarMetasAlocacao(dadosAtivos, totalGeral);
+
     }
 
     // Estado do filtro de alocação
     let alocacaoFilterMode = 'ativo'; // 'ativo' ou 'segmento'
 
-    // Mapa de segmentos conhecidos dos FIIs
+    // Cache de segmentos em localStorage (permanente — dados nunca mudam)
+    const SEGMENTOS_CACHE_KEY = 'vesto_segmentos_cache';
+
+    // Mapa de segmentos conhecidos dos FIIs (fallback estático)
     const SEGMENTOS_FII = {
         'BTCI11': 'Recebíveis', 'KNCR11': 'Recebíveis', 'MXRF11': 'Híbrido',
         'HGLG11': 'Logística', 'XPLG11': 'Logística', 'VILG11': 'Logística',
@@ -2967,17 +2977,57 @@ document.addEventListener('DOMContentLoaded', async () => {
         'XPCA11': 'Agro', 'VGIR11': 'Recebíveis', 'CPTS11': 'Recebíveis'
     };
 
+    // Cache em memória para a sessão atual
+    let _segmentosCache = null;
+
+    function _carregarSegmentosCache() {
+        if (_segmentosCache) return _segmentosCache;
+        try {
+            const raw = localStorage.getItem(SEGMENTOS_CACHE_KEY);
+            if (raw) {
+                const parsed = JSON.parse(raw);
+                // Verifica TTL — expira após 24h
+                if (parsed._ts && (Date.now() - parsed._ts) < SEGMENTOS_CACHE_TTL) {
+                    _segmentosCache = parsed;
+                    return _segmentosCache;
+                }
+            }
+        } catch(e) {}
+        _segmentosCache = { _ts: Date.now() };
+        return _segmentosCache;
+    }
+
+    function _salvarSegmentoCache(ticker, segmento) {
+        const cache = _carregarSegmentosCache();
+        if (cache[ticker] === segmento) return;
+        cache[ticker] = segmento;
+        _segmentosCache = cache;
+        try { localStorage.setItem(SEGMENTOS_CACHE_KEY, JSON.stringify(cache)); } catch(e) {}
+    }
+
     function getSegmento(ticker) {
-        // Tenta pegar do mapa estático primeiro, depois dos fundamentos em cache
-        if (SEGMENTOS_FII[ticker]) return SEGMENTOS_FII[ticker];
-        // Tenta buscar dos dados de fundamentos se existirem em cache
+        // 1. Cache local em memória/localStorage (mais rápido)
+        const cache = _carregarSegmentosCache();
+        if (cache[ticker]) return cache[ticker];
+
+        // 2. Mapa estático de fallback
+        if (SEGMENTOS_FII[ticker]) {
+            _salvarSegmentoCache(ticker, SEGMENTOS_FII[ticker]);
+            return SEGMENTOS_FII[ticker];
+        }
+
+        // 3. Tenta fundamentos em cache do app
         try {
             const cached = localStorage.getItem(`vesto_fund_${ticker}`);
             if (cached) {
                 const parsed = JSON.parse(cached);
-                if (parsed.segmento && parsed.segmento !== '-') return parsed.segmento;
+                if (parsed.segmento && parsed.segmento !== '-') {
+                    _salvarSegmentoCache(ticker, parsed.segmento);
+                    return parsed.segmento;
+                }
             }
         } catch(e) {}
+
         return 'Outros';
     }
 
@@ -3147,79 +3197,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
 
-    // ═══════════════════════════════════════════════════
-    // METAS DE ALOCAÇÃO (Persistência + Renderização)
-    // ═══════════════════════════════════════════════════
-    function getMetasAlocacao() {
-        try {
-            const raw = localStorage.getItem('vesto_alocacao_metas');
-            return raw ? JSON.parse(raw) : {};
-        } catch(e) { return {}; }
-    }
-
-    function salvarMetasAlocacao(metas) {
-        localStorage.setItem('vesto_alocacao_metas', JSON.stringify(metas));
-    }
-
-    function renderizarMetasAlocacao(dadosAtivos, totalGeral) {
-        const container = document.getElementById('alocacao-metas-container');
-        const section = document.getElementById('alocacao-metas-section');
-        if (!container || !section) return;
-
-        const metas = getMetasAlocacao();
-        const hasMetas = Object.keys(metas).length > 0;
-
-        if (!hasMetas) {
-            container.innerHTML = `
-                <div class="text-center py-4">
-                    <p class="text-xs text-gray-600">Nenhuma meta definida ainda.</p>
-                    <p class="text-[10px] text-gray-700 mt-1">Clique em "Definir" para configurar sua alocação ideal.</p>
-                </div>
-            `;
-            return;
-        }
-
-        container.innerHTML = '';
-        dadosAtivos.forEach(item => {
-            const pctAtual = totalGeral > 0 ? ((item.value / totalGeral) * 100) : 0;
-            const pctMeta = metas[item.label] || 0;
-            if (pctMeta === 0) return;
-
-            const diff = pctAtual - pctMeta;
-            const diffColor = Math.abs(diff) < 2 ? '#22c55e' : (diff > 0 ? '#f59e0b' : '#ef4444');
-            const diffSign = diff >= 0 ? '+' : '';
-
-            const div = document.createElement('div');
-            div.className = 'bg-[#151515] rounded-xl p-3 mb-2';
-            div.innerHTML = `
-                <div class="flex items-center justify-between mb-2">
-                    <span class="text-sm font-bold text-white">${item.label}</span>
-                    <span style="font-size: 11px; color: ${diffColor}; font-weight: 600;">${diffSign}${diff.toFixed(1)}%</span>
-                </div>
-                <div class="flex items-center gap-2">
-                    <span class="text-[10px] text-gray-500 w-10">Atual</span>
-                    <div style="flex: 1; height: 4px; background: #1C1C1E; border-radius: 4px; overflow: hidden;">
-                        <div style="width: ${Math.min(100, pctAtual / Math.max(pctMeta, pctAtual) * 100)}%; height: 100%; background: ${item.color}; border-radius: 4px;"></div>
-                    </div>
-                    <span class="text-[10px] text-gray-400 w-10 text-right">${pctAtual.toFixed(1)}%</span>
-                </div>
-                <div class="flex items-center gap-2 mt-1">
-                    <span class="text-[10px] text-gray-500 w-10">Meta</span>
-                    <div style="flex: 1; height: 4px; background: #1C1C1E; border-radius: 4px; overflow: hidden;">
-                        <div style="width: ${Math.min(100, pctMeta / Math.max(pctMeta, pctAtual) * 100)}%; height: 100%; background: #71717a; border-radius: 4px;"></div>
-                    </div>
-                    <span class="text-[10px] text-gray-400 w-10 text-right">${pctMeta.toFixed(1)}%</span>
-                </div>
-            `;
-            container.appendChild(div);
-        });
-    }
-
     // Event listeners para filtros de alocação
     document.getElementById('alocacao-filter-ativo')?.addEventListener('click', () => {
         if (alocacaoFilterMode === 'ativo') return;
         alocacaoFilterMode = 'ativo';
-        // Toggle visual dos botões
         const btnAtivo = document.getElementById('alocacao-filter-ativo');
         const btnSeg = document.getElementById('alocacao-filter-segmento');
         btnAtivo.className = 'text-xs font-bold px-4 py-1.5 rounded-full transition-all duration-200 bg-white text-black';
@@ -3235,70 +3216,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         btnSeg.className = 'text-xs font-bold px-4 py-1.5 rounded-full transition-all duration-200 bg-white text-black';
         btnAtivo.className = 'text-xs font-bold px-4 py-1.5 rounded-full transition-all duration-200 bg-[#1C1C1E] text-gray-400 hover:text-white';
         renderizarGraficoAlocacaoPorSegmento();
-    });
-
-    // Editor de Metas
-    document.getElementById('alocacao-editar-metas-btn')?.addEventListener('click', () => {
-        const metas = getMetasAlocacao();
-        const tickers = Array.isArray(carteiraCalculada) ? carteiraCalculada.map(a => (a.symbol || a.ticker).toUpperCase().trim()) : [];
-        if (tickers.length === 0) { showToast('Adicione ativos à carteira primeiro.'); return; }
-
-        let html = '<div style="max-height: 300px; overflow-y: auto; padding: 8px 0;">';
-        tickers.forEach(t => {
-            const val = metas[t] || '';
-            html += `
-                <div style="display: flex; align-items: center; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #1C1C1E;">
-                    <span style="font-weight: 700; font-size: 14px; color: #e5e5e5;">${t}</span>
-                    <div style="display: flex; align-items: center; gap: 4px;">
-                        <input type="number" data-meta-ticker="${t}" value="${val}" placeholder="0" min="0" max="100" step="0.5"
-                            style="width: 60px; background: #1C1C1E; border: 1px solid #2C2C2E; border-radius: 8px; padding: 4px 8px; color: white; font-size: 13px; text-align: right;" />
-                        <span style="font-size: 12px; color: #71717a;">%</span>
-                    </div>
-                </div>
-            `;
-        });
-        html += '</div>';
-
-        const modal = document.getElementById('custom-modal');
-        const title = document.getElementById('custom-modal-title');
-        const msg = document.getElementById('custom-modal-message');
-        const btnCancel = document.getElementById('custom-modal-cancel');
-        const btnOk = document.getElementById('custom-modal-ok');
-
-        if (!modal || !title || !msg) return;
-
-        title.textContent = 'Metas de Alocação';
-        msg.innerHTML = html;
-        btnCancel.textContent = 'Cancelar';
-        btnCancel.classList.remove('hidden');
-        btnOk.textContent = 'Salvar';
-
-        modal.classList.remove('hidden');
-        setTimeout(() => modal.classList.add('show'), 10);
-
-        const handleSave = () => {
-            const newMetas = {};
-            modal.querySelectorAll('[data-meta-ticker]').forEach(input => {
-                const ticker = input.getAttribute('data-meta-ticker');
-                const val = parseFloat(input.value);
-                if (!isNaN(val) && val > 0) newMetas[ticker] = val;
-            });
-            salvarMetasAlocacao(newMetas);
-            modal.classList.remove('show');
-            setTimeout(() => modal.classList.add('hidden'), 200);
-            renderizarGraficoAlocacao();
-            showToast('Metas de alocação salvas!', 'success');
-            btnOk.removeEventListener('click', handleSave);
-        };
-
-        const handleCancel = () => {
-            modal.classList.remove('show');
-            setTimeout(() => modal.classList.add('hidden'), 200);
-            btnOk.removeEventListener('click', handleSave);
-        };
-
-        btnOk.addEventListener('click', handleSave);
-        btnCancel.addEventListener('click', handleCancel, { once: true });
     });
 
     function exibirDetalhesProventos(anoMes, labelAmigavel) {

@@ -3156,9 +3156,17 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     // Event listeners para filtros de alocação
+    function _resetCenterOpacity() {
+        const centerEl = document.getElementById('alocacao-total-center');
+        const centerLabel = centerEl?.previousElementSibling;
+        if (centerEl) centerEl.style.opacity = '1';
+        if (centerLabel) centerLabel.style.opacity = '1';
+    }
+
     document.getElementById('alocacao-filter-ativo')?.addEventListener('click', () => {
         if (alocacaoFilterMode === 'ativo') return;
         alocacaoFilterMode = 'ativo';
+        _resetCenterOpacity();
         const btnAtivo = document.getElementById('alocacao-filter-ativo');
         const btnSeg = document.getElementById('alocacao-filter-segmento');
         btnAtivo.className = 'text-xs font-bold px-4 py-1.5 rounded-full transition-all duration-200 bg-white text-black';
@@ -3169,6 +3177,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('alocacao-filter-segmento')?.addEventListener('click', () => {
         if (alocacaoFilterMode === 'segmento') return;
         alocacaoFilterMode = 'segmento';
+        _resetCenterOpacity();
         const btnAtivo = document.getElementById('alocacao-filter-ativo');
         const btnSeg = document.getElementById('alocacao-filter-segmento');
         btnSeg.className = 'text-xs font-bold px-4 py-1.5 rounded-full transition-all duration-200 bg-white text-black';

@@ -8550,7 +8550,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; border-bottom: 1px solid #2C2C2E; padding-bottom: 16px;">
                     <div style="display: flex; align-items: center; gap: 8px;">
                         <img src="icons/icon-192x192.png" style="width: 28px; height: 28px; border-radius: 6px; display: block;" />
-                        <span style="font-weight: 700; font-size: 16px; letter-spacing: -0.5px; line-height: 28px;">Vesto</span>
+                        <span style="font-weight: 700; font-size: 16px; letter-spacing: -0.5px; position: relative; top: 1px;">Vesto</span>
                     </div>
                     <div style="text-align: right;">
                         <div style="font-size: 10px; color: #71717a; text-transform: uppercase; letter-spacing: 1px; font-weight: 700;">${titleText}</div>

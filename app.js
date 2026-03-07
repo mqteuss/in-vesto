@@ -3946,11 +3946,57 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         }
 
+        // ═══════════════════════════════════════════════════
+        // SUMMARY CARDS (Rentabilidade, ATH, Min/Max)
+        // ═══════════════════════════════════════════════════
+        const ultimoValor = dataValor.length > 0 ? dataValor[dataValor.length - 1] : 0;
+        const ultimoCusto = dataCusto.length > 0 ? dataCusto[dataCusto.length - 1] : 0;
+
+        const elRent = document.getElementById('modal-patrimonio-rentabilidade');
+        if (elRent && ultimoCusto > 0) {
+            const rentPct = ((ultimoValor - ultimoCusto) / ultimoCusto * 100).toFixed(2);
+            const cor = rentPct >= 0 ? '#4ade80' : '#f87171';
+            const sinal = rentPct >= 0 ? '+' : '';
+            elRent.innerHTML = `<span style="color: ${cor}">${sinal}${rentPct}%</span>`;
+        } else if (elRent) { elRent.textContent = '--'; }
+
+        const elATH = document.getElementById('modal-patrimonio-ath');
+        if (elATH) {
+            const todosValores = patrimonio.map(p => parseFloat(p.value));
+            const ath = todosValores.length > 0 ? Math.max(...todosValores) : 0;
+            elATH.textContent = ath.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+        }
+
+        const elMinMax = document.getElementById('modal-patrimonio-minmax');
+        if (elMinMax && dataValor.length > 0) {
+            const minVal = Math.min(...dataValor);
+            const maxVal = Math.max(...dataValor);
+            const fmtMin = minVal >= 1000 ? (minVal / 1000).toFixed(1) + 'k' : minVal.toFixed(0);
+            const fmtMax = maxVal >= 1000 ? (maxVal / 1000).toFixed(1) + 'k' : maxVal.toFixed(0);
+            elMinMax.innerHTML = `<span class="text-[#f87171]">${fmtMin}</span> <span class="text-gray-600">/</span> <span class="text-[#4ade80]">${fmtMax}</span>`;
+        } else if (elMinMax) { elMinMax.textContent = '--'; }
+
+        // ═══════════════════════════════════════════════════
+        // CDI BENCHMARK LINE (Selic ~13.15% ao ano)
+        // ═══════════════════════════════════════════════════
+        const taxaDiaCDI = Math.pow(1 + 0.1315, 1 / 252) - 1;
+        const dataCDI = [];
+        if (dataCusto.length > 0 && dataCusto[0] > 0) {
+            let acumuladoCDI = dataCusto[0];
+            dataCDI.push(parseFloat(acumuladoCDI.toFixed(2)));
+            for (let i = 1; i < dataCusto.length; i++) {
+                const aporteDiff = dataCusto[i] - dataCusto[i - 1];
+                acumuladoCDI = acumuladoCDI * (1 + taxaDiaCDI) + aporteDiff;
+                dataCDI.push(parseFloat(acumuladoCDI.toFixed(2)));
+            }
+        }
+
         const ctx = canvas.getContext('2d');
         const isLight = document.body.classList.contains('light-mode');
 
         const colorLinePatrimonio = '#c084fc';
         const colorLineInvestido = isLight ? '#9ca3af' : '#525252';
+        const colorLineCDI = '#eab308';
         const colorBadgeBg = isLight ? '#f3f4f6' : '#1f2937';
         const colorBadgeText = isLight ? '#1f2937' : '#f9fafb';
         const colorCrosshair = isLight ? '#d1d5db' : '#404040';
@@ -4042,68 +4088,50 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         };
 
+        // Monta datasets dinamicamente
+        const chartDatasets = [
+            {
+                label: 'Patrimônio', data: dataValor, fill: true,
+                backgroundColor: gradientFill, borderColor: colorLinePatrimonio,
+                borderWidth: 1.5, tension: 0.4, pointRadius: 0,
+                pointHitRadius: 20, pointHoverRadius: 4,
+                pointHoverBackgroundColor: colorLinePatrimonio,
+                pointHoverBorderWidth: 0, order: 1
+            },
+            {
+                label: 'Investido', data: dataCusto, fill: false,
+                borderColor: colorLineInvestido, borderWidth: 1.2,
+                borderDash: [4, 4], tension: 0.4, pointRadius: 0,
+                pointHitRadius: 10, pointHoverRadius: 0, order: 2
+            },
+            {
+                label: 'Evolucao', data: dataValor, fill: false,
+                borderColor: 'transparent', borderWidth: 0,
+                pointRadius: 0, pointHitRadius: 0, pointHoverRadius: 0, order: 4
+            }
+        ];
+        if (dataCDI.length > 0) {
+            chartDatasets.push({
+                label: 'CDI', data: dataCDI, fill: false,
+                borderColor: colorLineCDI, borderWidth: 1, borderDash: [2, 3],
+                tension: 0.4, pointRadius: 0, pointHitRadius: 0, pointHoverRadius: 0, order: 3
+            });
+        }
+
         if (patrimonioChartInstance) {
             patrimonioChartInstance.data.labels = labels;
-            patrimonioChartInstance.data.datasets[0].data = dataValor;
-            patrimonioChartInstance.data.datasets[1].data = dataCusto;
-            if (patrimonioChartInstance.data.datasets[2]) {
-                patrimonioChartInstance.data.datasets[2].data = dataValor;
-            }
-            patrimonioChartInstance.data.datasets[0].backgroundColor = gradientFill;
-            patrimonioChartInstance.data.datasets[0].borderColor = colorLinePatrimonio;
-            patrimonioChartInstance.data.datasets[1].borderColor = colorLineInvestido;
+            patrimonioChartInstance.data.datasets = chartDatasets;
             patrimonioChartInstance.update();
         } else {
             patrimonioChartInstance = new Chart(ctx, {
                 type: 'line',
                 data: {
                     labels: labels,
-                    datasets: [
-                        {
-                            label: 'Patrimônio',
-                            data: dataValor,
-                            fill: true,
-                            backgroundColor: gradientFill,
-                            borderColor: colorLinePatrimonio,
-                            borderWidth: 1.5,
-                            tension: 0.4,
-                            pointRadius: 0,
-                            pointHitRadius: 20,
-                            pointHoverRadius: 4,
-                            pointHoverBackgroundColor: colorLinePatrimonio,
-                            pointHoverBorderWidth: 0,
-                            order: 1
-                        },
-                        {
-                            label: 'Investido',
-                            data: dataCusto,
-                            fill: false,
-                            borderColor: colorLineInvestido,
-                            borderWidth: 1.2,
-                            borderDash: [4, 4],
-                            tension: 0.4,
-                            pointRadius: 0,
-                            pointHitRadius: 10,
-                            pointHoverRadius: 0,
-                            order: 2
-                        },
-                        {
-                            label: 'Evolucao',
-                            data: dataValor,
-                            fill: false,
-                            borderColor: 'transparent',
-                            borderWidth: 0,
-                            pointRadius: 0,
-                            pointHitRadius: 0,
-                            pointHoverRadius: 0,
-                            order: 3
-                        }
-                    ]
+                    datasets: chartDatasets
                 },
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
-                    // Layout "Zero Margem" (Full Bleed)
                     layout: { padding: { left: 16, right: 16, top: 20, bottom: 20 } },
                     interaction: { mode: 'index', intersect: false },
                     plugins: {
@@ -4121,46 +4149,45 @@ document.addEventListener('DOMContentLoaded', async () => {
                             cornerRadius: 6,
                             displayColors: false,
                             callbacks: {
-                                title: function () {
-                                    return ''; // Remove o título (data)
-                                },
+                                title: function () { return ''; },
                                 label: function (context) {
                                     const currentIndex = context.dataIndex;
+                                    const fmtBRL = (v) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
                                     if (context.datasetIndex === 0) {
-                                        const valPatrimonio = context.parsed.y;
-                                        return `Patrimônio: ${valPatrimonio.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}`;
+                                        return `Patrimônio: ${fmtBRL(context.parsed.y)}`;
                                     } else if (context.datasetIndex === 1) {
-                                        const valInvestido = context.parsed.y;
-                                        return `Investido: ${valInvestido.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}`;
-                                    } else if (context.datasetIndex === 2) {
+                                        return `Investido: ${fmtBRL(context.parsed.y)}`;
+                                    } else if (context.dataset.label === 'Evolucao') {
+                                        const valP = dataValor[currentIndex];
+                                        const valI = dataCusto[currentIndex];
+                                        const lucro = valP - valI;
+                                        const sL = lucro >= 0 ? '+' : '';
+                                        const lines = [`L/P: ${sL}${fmtBRL(lucro)}`];
+
                                         if (currentIndex > 0) {
                                             const atual = context.parsed.y;
                                             const anterior = context.dataset.data[currentIndex - 1];
                                             if (anterior > 0) {
-                                                const percent = ((atual - anterior) / anterior) * 100;
-                                                const signal = percent > 0 ? '+' : '';
-                                                return `${signal}${percent.toFixed(2)}%`;
+                                                const pct = ((atual - anterior) / anterior) * 100;
+                                                const diffR = atual - anterior;
+                                                const s = pct > 0 ? '+' : '';
+                                                lines.push(`Var: ${s}${pct.toFixed(2)}% (${s}${fmtBRL(diffR)})`);
                                             }
                                         }
-                                        return null; // Não mostra a linha de porcentagem se for o primeiro ponto
+                                        return lines;
+                                    } else if (context.dataset.label === 'CDI') {
+                                        return `CDI: ${fmtBRL(context.parsed.y)}`;
                                     }
                                     return null;
                                 },
                                 labelTextColor: function (context) {
                                     if (context.datasetIndex === 0) return '#FFF';
                                     if (context.datasetIndex === 1) return '#9ca3af';
-
-                                    if (context.datasetIndex === 2) {
-                                        const currentIndex = context.dataIndex;
-                                        if (currentIndex > 0) {
-                                            const atual = context.parsed.y;
-                                            const anterior = context.dataset.data[currentIndex - 1];
-                                            if (anterior > 0) {
-                                                const percent = ((atual - anterior) / anterior) * 100;
-                                                return percent >= 0 ? '#4ade80' : '#f87171'; // Tailwind green-400 / red-400
-                                            }
-                                        }
+                                    if (context.dataset.label === 'CDI') return '#eab308';
+                                    if (context.dataset.label === 'Evolucao') {
+                                        const lucro = dataValor[context.dataIndex] - dataCusto[context.dataIndex];
+                                        return lucro >= 0 ? '#4ade80' : '#f87171';
                                     }
                                     return '#FFF';
                                 }

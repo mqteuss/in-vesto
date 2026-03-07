@@ -1753,12 +1753,16 @@
                             <div class="text-[10px] text-gray-500 font-bold uppercase tracking-wider">Melhor Mês</div>
                             <div id="prov-melhor-mes" class="text-sm font-bold text-white mt-1">...</div>
                         </div>
-                        <div class="bg-[#151515] rounded-xl p-3">
-                            <div class="flex items-center gap-1">
+                        <div class="bg-[#151515] rounded-xl p-3 relative">
+                            <div class="flex items-center gap-1.5">
                                 <div class="text-[10px] text-gray-500 font-bold uppercase tracking-wider">Yield on Cost</div>
-                                <button id="yoc-info-btn" class="text-[10px] text-gray-600 hover:text-gray-300 transition-colors" style="line-height: 1;">ⓘ</button>
+                                <button id="yoc-info-btn" class="w-4 h-4 rounded-full bg-[#2C2C2E] text-[9px] text-gray-400 hover:text-white hover:bg-[#3C3C3E] transition-all flex items-center justify-center font-bold" style="line-height: 1;">?</button>
                             </div>
                             <div id="prov-yoc" class="text-sm font-bold text-white mt-1">...</div>
+                            <!-- Popover -->
+                            <div id="yoc-popover" class="absolute left-0 right-0 top-full mt-2 bg-[#1C1C1E] border border-[#2C2C2E] rounded-xl p-3 shadow-xl z-50 transition-all duration-200" style="display: none; opacity: 0;">
+                                <p class="text-[11px] text-gray-300 leading-relaxed">Mede quanto seus proventos dos últimos 12 meses representam em relação ao custo total que você pagou. Quanto maior, melhor o retorno sobre seu investimento original.</p>
+                            </div>
                         </div>
                     </div>
 

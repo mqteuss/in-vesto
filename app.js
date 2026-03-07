@@ -3978,36 +3978,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         }
 
-        // ═══════════════════════════════════════════════════
-        // SUMMARY CARDS (Rentabilidade, ATH, Min/Max)
-        // ═══════════════════════════════════════════════════
-        const primeiroValor = dataValor.length > 0 ? dataValor[0] : 0;
-        const ultimoValor = dataValor.length > 0 ? dataValor[dataValor.length - 1] : 0;
-
-        // Rentabilidade DO PERÍODO (variação do primeiro ao último ponto)
-        const elRent = document.getElementById('modal-patrimonio-rentabilidade');
-        if (elRent && primeiroValor > 0) {
-            const rentPct = ((ultimoValor - primeiroValor) / primeiroValor * 100).toFixed(2);
-            const cor = rentPct >= 0 ? '#4ade80' : '#f87171';
-            const sinal = rentPct >= 0 ? '+' : '';
-            elRent.innerHTML = `<span style="color: ${cor}">${sinal}${rentPct}%</span>`;
-        } else if (elRent) { elRent.textContent = '--'; }
-
-        const elATH = document.getElementById('modal-patrimonio-ath');
-        if (elATH) {
-            const todosValores = patrimonio.map(p => parseFloat(p.value));
-            const ath = todosValores.length > 0 ? Math.max(...todosValores) : 0;
-            elATH.textContent = ath.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-        }
-
-        // Min/Max com valores completos em R$
-        const elMinMax = document.getElementById('modal-patrimonio-minmax');
-        if (elMinMax && dataValor.length > 0) {
-            const minVal = Math.min(...dataValor);
-            const maxVal = Math.max(...dataValor);
-            const fmtCurto = (v) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 });
-            elMinMax.innerHTML = `<span class="text-[#f87171]">${fmtCurto(minVal)}</span> <span class="text-gray-600">/</span> <span class="text-[#4ade80]">${fmtCurto(maxVal)}</span>`;
-        } else if (elMinMax) { elMinMax.textContent = '--'; }
 
         // ═══════════════════════════════════════════════════
         // CDI BENCHMARK LINE (Selic ~13.15% ao ano)

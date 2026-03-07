@@ -2875,6 +2875,12 @@ document.addEventListener('DOMContentLoaded', async () => {
                         details.style.opacity = '1';
                         activeIndex = index;
 
+                        // Esconde o total do centro
+                        const centerEl = document.getElementById('alocacao-total-center');
+                        const centerLabel = centerEl?.previousElementSibling;
+                        if (centerEl) centerEl.style.opacity = '0';
+                        if (centerLabel) centerLabel.style.opacity = '0';
+
                         // Destaca a fatia no gráfico
                         if (alocacaoChartInstance) {
                             alocacaoChartInstance.setActiveElements([{
@@ -2890,6 +2896,13 @@ document.addEventListener('DOMContentLoaded', async () => {
                     } else {
                         // Fecha e remove destaque
                         activeIndex = -1;
+
+                        // Mostra o total do centro de volta
+                        const centerEl = document.getElementById('alocacao-total-center');
+                        const centerLabel = centerEl?.previousElementSibling;
+                        if (centerEl) centerEl.style.opacity = '1';
+                        if (centerLabel) centerLabel.style.opacity = '1';
+
                         if (alocacaoChartInstance) {
                             alocacaoChartInstance.setActiveElements([]);
                             alocacaoChartInstance.tooltip.setActiveElements([], { x: 0, y: 0 });

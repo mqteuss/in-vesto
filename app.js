@@ -8547,16 +8547,18 @@ document.addEventListener('DOMContentLoaded', async () => {
             let totalMes = 0;
 
             const logoHtml = `
-                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; border-bottom: 1px solid #2C2C2E; padding-bottom: 16px;">
-                    <div style="display: flex; align-items: center; gap: 8px;">
-                        <img src="icons/icon-192x192.png" style="width: 28px; height: 28px; border-radius: 6px; display: block;" />
-                        <span style="font-weight: 700; font-size: 16px; letter-spacing: -0.5px; position: relative; top: 1px;">Vesto</span>
-                    </div>
-                    <div style="text-align: right;">
-                        <div style="font-size: 10px; color: #71717a; text-transform: uppercase; letter-spacing: 1px; font-weight: 700;">${titleText}</div>
-                        <div style="font-size: 12px; font-weight: 500; color: #a1a1aa;">${targetMonth}</div>
-                    </div>
-                </div>
+                <table style="width: 100%; margin-bottom: 24px; border-bottom: 1px solid #2C2C2E; padding-bottom: 16px; border-collapse: collapse;">
+                    <tr>
+                        <td style="vertical-align: middle; padding: 0 0 16px 0;">
+                            <img src="icons/icon-192x192.png" style="width: 28px; height: 28px; border-radius: 6px; vertical-align: middle;" />
+                            <span style="font-weight: 700; font-size: 16px; letter-spacing: -0.5px; vertical-align: middle; margin-left: 8px;">Vesto</span>
+                        </td>
+                        <td style="vertical-align: middle; text-align: right; padding: 0 0 16px 0;">
+                            <div style="font-size: 10px; color: #71717a; text-transform: uppercase; letter-spacing: 1px; font-weight: 700;">${titleText}</div>
+                            <div style="font-size: 12px; font-weight: 500; color: #a1a1aa;">${targetMonth}</div>
+                        </td>
+                    </tr>
+                </table>
             `;
 
             const listContainer = document.createElement('div');

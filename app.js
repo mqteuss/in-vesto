@@ -3560,11 +3560,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         } else {
             popover.style.display = 'block';
             requestAnimationFrame(() => { popover.style.opacity = '1'; });
-            // Auto-fecha após 5s
+            // Auto-fecha após 8s
             setTimeout(() => {
                 popover.style.opacity = '0';
                 setTimeout(() => { popover.style.display = 'none'; }, 200);
-            }, 5000);
+            }, 8000);
         }
     });
     function renderizarListaProventosMes(anoMes, labelAmigavel) {

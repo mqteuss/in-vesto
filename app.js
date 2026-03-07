@@ -8550,7 +8550,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 <table style="width: 100%; margin-bottom: 24px; border-bottom: 1px solid #2C2C2E; padding-bottom: 16px; border-collapse: collapse;">
                     <tr>
                         <td style="vertical-align: middle; padding: 0 0 16px 0; white-space: nowrap;">
-                            <img src="icons/icon-192x192.png" style="width: 24px; height: 24px; border-radius: 6px; vertical-align: middle; display: inline; position: relative; top: 10px;" />
+                            <img src="icons/icon-192x192.png" style="width: 24px; height: 24px; border-radius: 6px; vertical-align: middle; display: inline; position: relative; top: 9px;" />
                             <span style="font-weight: 700; font-size: 16px; letter-spacing: -0.5px; vertical-align: middle; margin-left: 8px; display: inline;">Vesto</span>
                         </td>
                         <td style="vertical-align: middle; text-align: right; padding: 0 0 16px 0;">

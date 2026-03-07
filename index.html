@@ -1739,9 +1739,35 @@
 
                 <div class="overflow-y-auto h-[calc(85vh-90px)] p-4 pt-0 custom-scroll">
 
+                    <!-- Summary Cards -->
+                    <div id="proventos-summary-cards" class="grid grid-cols-2 gap-2 mt-4 mb-4">
+                        <div class="bg-[#151515] rounded-xl p-3">
+                            <div class="text-[10px] text-gray-500 font-bold uppercase tracking-wider">Total Recebido</div>
+                            <div id="prov-total-recebido" class="text-sm font-bold text-white mt-1">...</div>
+                        </div>
+                        <div class="bg-[#151515] rounded-xl p-3">
+                            <div class="text-[10px] text-gray-500 font-bold uppercase tracking-wider">Média Mensal</div>
+                            <div id="prov-media-mensal" class="text-sm font-bold text-white mt-1">...</div>
+                        </div>
+                        <div class="bg-[#151515] rounded-xl p-3">
+                            <div class="text-[10px] text-gray-500 font-bold uppercase tracking-wider">Melhor Mês</div>
+                            <div id="prov-melhor-mes" class="text-sm font-bold text-white mt-1">...</div>
+                        </div>
+                        <div class="bg-[#151515] rounded-xl p-3">
+                            <div class="text-[10px] text-gray-500 font-bold uppercase tracking-wider">Yield on Cost</div>
+                            <div id="prov-yoc" class="text-sm font-bold text-white mt-1">...</div>
+                        </div>
+                    </div>
+
+                    <!-- Period Filter -->
+                    <div class="flex items-center gap-2 mb-3">
+                        <button data-prov-period="6" class="text-xs font-bold px-4 py-1.5 rounded-full transition-all duration-200 bg-[#1C1C1E] text-gray-400 hover:text-white">6M</button>
+                        <button data-prov-period="12" class="text-xs font-bold px-4 py-1.5 rounded-full transition-all duration-200 bg-white text-black">12M</button>
+                        <button data-prov-period="0" class="text-xs font-bold px-4 py-1.5 rounded-full transition-all duration-200 bg-[#1C1C1E] text-gray-400 hover:text-white">Tudo</button>
+                    </div>
 
                     <div
-                        class="relative w-full h-64 bg-[#151515] rounded-xl p-4 border-0 mb-6 mt-4 shadow-xl flex flex-col justify-end">
+                        class="relative w-full h-64 bg-[#151515] rounded-xl p-4 border-0 mb-6 shadow-xl flex flex-col justify-end">
                         <canvas id="historico-proventos-chart"></canvas>
                     </div>
 

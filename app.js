@@ -3269,6 +3269,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         modal.classList.add('visible');
     }
 
+    let proventosPeriodoAtual = 12; // 6, 12, ou 0 (tudo)
+
     function renderizarGraficoHistorico(dadosExternos = null) {
         const canvas = document.getElementById('historico-proventos-chart');
         if (!canvas) return;
@@ -3284,6 +3286,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         // Dados Locais (Padrão)
         const grupos = {};
         const hoje = new Date(); hoje.setHours(0, 0, 0, 0);
+        const mesAtualKey = `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}`;
 
         proventosConhecidos.forEach(p => {
             if (!p.paymentDate || p.value <= 0) return;
@@ -3320,10 +3323,52 @@ document.addEventListener('DOMContentLoaded', async () => {
             keysRaw.push(mesIso);
         });
 
-        labelsFiltrados = labelsRaw.slice(-12);
-        dataRecebidoFiltrados = dataR.slice(-12);
-        dataAReceberFiltrados = dataA.slice(-12);
-        keysFiltrados = keysRaw.slice(-12);
+        // Filtro de período
+        const sliceCount = proventosPeriodoAtual > 0 ? proventosPeriodoAtual : labelsRaw.length;
+        labelsFiltrados = labelsRaw.slice(-sliceCount);
+        dataRecebidoFiltrados = dataR.slice(-sliceCount);
+        dataAReceberFiltrados = dataA.slice(-sliceCount);
+        keysFiltrados = keysRaw.slice(-sliceCount);
+
+        // ═══════════════════════════════════════════════════
+        // SUMMARY CARDS
+        // ═══════════════════════════════════════════════════
+        const totalRecebido = dataRecebidoFiltrados.reduce((a, b) => a + b, 0);
+        const mesesComDados = dataRecebidoFiltrados.filter(v => v > 0).length;
+        const mediaMensal = mesesComDados > 0 ? totalRecebido / mesesComDados : 0;
+
+        // Melhor mês
+        let melhorMesLabel = '-';
+        let melhorMesValor = 0;
+        dataRecebidoFiltrados.forEach((v, i) => {
+            const total = v + dataAReceberFiltrados[i];
+            if (total > melhorMesValor) {
+                melhorMesValor = total;
+                melhorMesLabel = labelsFiltrados[i];
+            }
+        });
+
+        // YoC médio (proventos últimos 12m / custo total da carteira)
+        let custoTotal = 0;
+        if (Array.isArray(carteiraCalculada)) {
+            carteiraCalculada.forEach(a => {
+                const qtd = parseFloat(a.quantity || a.quantidade || 0);
+                const pm = parseFloat(a.precoMedio || a.averagePrice || 0);
+                custoTotal += qtd * pm;
+            });
+        }
+        const proventos12m = dataR.slice(-12).reduce((a, b) => a + b, 0);
+        const yoc = custoTotal > 0 ? ((proventos12m / custoTotal) * 100).toFixed(2) : '0.00';
+
+        // Atualiza os cards
+        const elTotal = document.getElementById('prov-total-recebido');
+        const elMedia = document.getElementById('prov-media-mensal');
+        const elMelhor = document.getElementById('prov-melhor-mes');
+        const elYoc = document.getElementById('prov-yoc');
+        if (elTotal) elTotal.textContent = formatBRL(totalRecebido);
+        if (elMedia) elMedia.textContent = formatBRL(mediaMensal);
+        if (elMelhor) elMelhor.innerHTML = `${formatBRL(melhorMesValor)} <span class="text-[10px] text-gray-500 font-medium">${melhorMesLabel}</span>`;
+        if (elYoc) elYoc.textContent = yoc + '% a.a.';
 
         if (historicoChartInstance) {
             historicoChartInstance.destroy();
@@ -3332,22 +3377,30 @@ document.addEventListener('DOMContentLoaded', async () => {
         const ctx = canvas.getContext('2d');
         const isLight = document.body.classList.contains('light-mode');
 
-        // Cores das Barras
-        const colorRecebido = '#8B5CF6';
+        // Gradiente nas barras Recebido
+        const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+        gradient.addColorStop(0, '#a78bfa');
+        gradient.addColorStop(1, '#7c3aed');
+
         const colorAReceber = isLight ? '#e5e7eb' : '#333333';
         const linhaCrescimentoColor = isLight ? '#d1d5db' : '#F3F4F6';
+
+        // Destaque do mês atual — borda diferente na barra
+        const currentMonthIdx = keysFiltrados.indexOf(mesAtualKey);
+        const borderColors = keysFiltrados.map((k, i) => i === currentMonthIdx ? '#a78bfa' : 'transparent');
+        const borderWidths = keysFiltrados.map((k, i) => i === currentMonthIdx ? 2 : 0);
 
         // Total usado para traçar a linha de crescimento
         const dataTotal = dataRecebidoFiltrados.map((recebido, index) => recebido + dataAReceberFiltrados[index]);
 
         historicoChartInstance = new Chart(ctx, {
             type: 'bar',
-            plugins: [crosshairPlugin], // <-- PLUGIN DA LINHA VERTICAL PONTILHADA AQUI
+            plugins: [crosshairPlugin],
             data: {
                 labels: labelsFiltrados,
                 datasets: [
                     {
-                        type: 'line', // <-- LINHA DE CRESCIMENTO (Curva e Translúcido)
+                        type: 'line',
                         label: 'Crescimento',
                         data: dataTotal,
                         borderColor: linhaCrescimentoColor,
@@ -3372,7 +3425,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                     {
                         label: 'Recebido',
                         data: dataRecebidoFiltrados,
-                        backgroundColor: colorRecebido,
+                        backgroundColor: gradient,
+                        borderColor: borderColors,
+                        borderWidth: borderWidths,
                         borderRadius: 4,
                         barPercentage: 0.6,
                         stack: 'Stack 0',
@@ -3386,7 +3441,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 maintainAspectRatio: false,
                 animation: { duration: 600 },
                 layout: { padding: { top: 10, bottom: 0 } },
-                interaction: { mode: 'index', axis: 'x', intersect: false }, // <-- MODO INDEX PARA A LINHA VERTICAL FUNCIONAR
+                interaction: { mode: 'index', axis: 'x', intersect: false },
 
                 onClick: (e, elements) => {
                     if (!elements || elements.length === 0) return;
@@ -3433,7 +3488,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                                 let label = context.dataset.label || '';
                                 if (label) label += ': ';
 
-                                // Lógica inteligente: Porcentagem para a Linha, Dinheiro para as Barras
                                 if (context.dataset.type === 'line') {
                                     const currentIndex = context.dataIndex;
                                     if (currentIndex === 0) return label + '---';
@@ -3450,6 +3504,18 @@ document.addEventListener('DOMContentLoaded', async () => {
                                     if (context.parsed.y === 0) return null;
                                     return label + formatBRL(context.parsed.y);
                                 }
+                            },
+                            afterBody: function(context) {
+                                // Variação MoM
+                                const idx = context[0].dataIndex;
+                                if (idx === 0) return '';
+                                const totalAtual = dataRecebidoFiltrados[idx] + dataAReceberFiltrados[idx];
+                                const totalAnterior = dataRecebidoFiltrados[idx - 1] + dataAReceberFiltrados[idx - 1];
+                                if (totalAnterior === 0) return '';
+                                const varMoM = ((totalAtual - totalAnterior) / totalAnterior * 100).toFixed(1);
+                                const seta = varMoM >= 0 ? '↑' : '↓';
+                                const sinal = varMoM >= 0 ? '+' : '';
+                                return `${seta} MoM: ${sinal}${varMoM}%`;
                             }
                         }
                     }
@@ -3477,6 +3543,22 @@ document.addEventListener('DOMContentLoaded', async () => {
             renderizarListaProventosMes(keysFiltrados[lastIdx], labelsFiltrados[lastIdx]);
         }
     }
+
+    // Period filter event listeners
+    document.querySelectorAll('[data-prov-period]').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const period = parseInt(btn.getAttribute('data-prov-period'));
+            proventosPeriodoAtual = period;
+
+            // Toggle visual
+            document.querySelectorAll('[data-prov-period]').forEach(b => {
+                b.className = 'text-xs font-bold px-4 py-1.5 rounded-full transition-all duration-200 bg-[#1C1C1E] text-gray-400 hover:text-white';
+            });
+            btn.className = 'text-xs font-bold px-4 py-1.5 rounded-full transition-all duration-200 bg-white text-black';
+
+            renderizarGraficoHistorico();
+        });
+    });
 
     function renderizarListaProventosMes(anoMes, labelAmigavel) {
         const container = document.getElementById('proventos-lista-container');

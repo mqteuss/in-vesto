@@ -3504,18 +3504,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                                     if (context.parsed.y === 0) return null;
                                     return label + formatBRL(context.parsed.y);
                                 }
-                            },
-                            afterBody: function(context) {
-                                // Variação MoM
-                                const idx = context[0].dataIndex;
-                                if (idx === 0) return '';
-                                const totalAtual = dataRecebidoFiltrados[idx] + dataAReceberFiltrados[idx];
-                                const totalAnterior = dataRecebidoFiltrados[idx - 1] + dataAReceberFiltrados[idx - 1];
-                                if (totalAnterior === 0) return '';
-                                const varMoM = ((totalAtual - totalAnterior) / totalAnterior * 100).toFixed(1);
-                                const seta = varMoM >= 0 ? '↑' : '↓';
-                                const sinal = varMoM >= 0 ? '+' : '';
-                                return `${seta} MoM: ${sinal}${varMoM}%`;
                             }
                         }
                     }

@@ -8534,12 +8534,12 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             const tempContainer = document.createElement('div');
             tempContainer.style.width = '420px';
-            tempContainer.style.backgroundColor = '#111111'; // Dark receipt background
+            tempContainer.style.backgroundColor = '#000000'; // Solicitado: Fundo totalmente preto
             tempContainer.style.padding = '32px 24px';
             tempContainer.style.boxSizing = 'border-box';
             tempContainer.style.fontFamily = 'Inter, ui-sans-serif, system-ui, sans-serif';
             tempContainer.style.color = '#e5e5e5';
-            tempContainer.style.borderTop = '8px solid #8b5cf6'; // Purple accent line like a real document
+            // Removida a barra roxa superior
 
             // 1. Cabecalho Oficial (Comprovante)
             const titleText = isProventos ? 'Comprovante de Rendimentos' : 'Relatório de Transações';
@@ -8550,7 +8550,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; border-bottom: 1px solid #2C2C2E; padding-bottom: 16px;">
                     <div style="display: flex; align-items: center; gap: 8px;">
                         <img src="icons/icon-192x192.png" style="width: 28px; height: 28px; border-radius: 6px; display: block;" />
-                        <span style="font-weight: 700; font-size: 16px; letter-spacing: -0.5px; display: inline-flex; align-items: center; line-height: 1; height: 28px; margin-top: 2px;">Vesto</span>
+                        <span style="font-weight: 700; font-size: 16px; letter-spacing: -0.5px; line-height: 28px;">Vesto</span>
                     </div>
                     <div style="text-align: right;">
                         <div style="font-size: 10px; color: #71717a; text-transform: uppercase; letter-spacing: 1px; font-weight: 700;">${titleText}</div>
@@ -8677,7 +8677,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (formato === 'pdf') await loadJsPDF();
 
             const canvas = await html2canvas(tempContainer, {
-                backgroundColor: '#111111',
+                backgroundColor: '#000000',
                 scale: 2,
                 logging: false,
                 windowWidth: 400

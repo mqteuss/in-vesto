@@ -3548,6 +3548,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     });
 
+    // YoC info button
+    document.getElementById('yoc-info-btn')?.addEventListener('click', (e) => {
+        e.stopPropagation();
+        showToast('Yield on Cost (YoC) mede quanto seus proventos dos últimos 12 meses representam em relação ao custo total que você pagou pelos seus ativos. Quanto maior, melhor o retorno sobre seu investimento original.', 'info', 6000);
+    });
     function renderizarListaProventosMes(anoMes, labelAmigavel) {
         const container = document.getElementById('proventos-lista-container');
         const labelMes = document.getElementById('proventos-mes-selecionado');

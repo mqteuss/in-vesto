@@ -3567,6 +3567,38 @@ document.addEventListener('DOMContentLoaded', async () => {
             }, 8000);
         }
     });
+
+    // Generic popover toggle for all data-info-toggle buttons
+    document.querySelectorAll('[data-info-toggle]').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const popoverId = btn.getAttribute('data-info-toggle');
+            const popover = document.getElementById(popoverId);
+            if (!popover) return;
+            const isVisible = popover.style.display === 'block';
+            // Close all other popovers first
+            document.querySelectorAll('[data-info-toggle]').forEach(b => {
+                const otherId = b.getAttribute('data-info-toggle');
+                const other = document.getElementById(otherId);
+                if (other && other !== popover) {
+                    other.style.opacity = '0';
+                    setTimeout(() => { other.style.display = 'none'; }, 150);
+                }
+            });
+            if (isVisible) {
+                popover.style.opacity = '0';
+                setTimeout(() => { popover.style.display = 'none'; }, 200);
+            } else {
+                popover.style.display = 'block';
+                requestAnimationFrame(() => { popover.style.opacity = '1'; });
+                setTimeout(() => {
+                    popover.style.opacity = '0';
+                    setTimeout(() => { popover.style.display = 'none'; }, 200);
+                }, 8000);
+            }
+        });
+    });
+
     function renderizarListaProventosMes(anoMes, labelAmigavel) {
         const container = document.getElementById('proventos-lista-container');
         const labelMes = document.getElementById('proventos-mes-selecionado');
@@ -3949,12 +3981,13 @@ document.addEventListener('DOMContentLoaded', async () => {
         // ═══════════════════════════════════════════════════
         // SUMMARY CARDS (Rentabilidade, ATH, Min/Max)
         // ═══════════════════════════════════════════════════
+        const primeiroValor = dataValor.length > 0 ? dataValor[0] : 0;
         const ultimoValor = dataValor.length > 0 ? dataValor[dataValor.length - 1] : 0;
-        const ultimoCusto = dataCusto.length > 0 ? dataCusto[dataCusto.length - 1] : 0;
 
+        // Rentabilidade DO PERÍODO (variação do primeiro ao último ponto)
         const elRent = document.getElementById('modal-patrimonio-rentabilidade');
-        if (elRent && ultimoCusto > 0) {
-            const rentPct = ((ultimoValor - ultimoCusto) / ultimoCusto * 100).toFixed(2);
+        if (elRent && primeiroValor > 0) {
+            const rentPct = ((ultimoValor - primeiroValor) / primeiroValor * 100).toFixed(2);
             const cor = rentPct >= 0 ? '#4ade80' : '#f87171';
             const sinal = rentPct >= 0 ? '+' : '';
             elRent.innerHTML = `<span style="color: ${cor}">${sinal}${rentPct}%</span>`;
@@ -3967,13 +4000,13 @@ document.addEventListener('DOMContentLoaded', async () => {
             elATH.textContent = ath.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
         }
 
+        // Min/Max com valores completos em R$
         const elMinMax = document.getElementById('modal-patrimonio-minmax');
         if (elMinMax && dataValor.length > 0) {
             const minVal = Math.min(...dataValor);
             const maxVal = Math.max(...dataValor);
-            const fmtMin = minVal >= 1000 ? (minVal / 1000).toFixed(1) + 'k' : minVal.toFixed(0);
-            const fmtMax = maxVal >= 1000 ? (maxVal / 1000).toFixed(1) + 'k' : maxVal.toFixed(0);
-            elMinMax.innerHTML = `<span class="text-[#f87171]">${fmtMin}</span> <span class="text-gray-600">/</span> <span class="text-[#4ade80]">${fmtMax}</span>`;
+            const fmtCurto = (v) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 });
+            elMinMax.innerHTML = `<span class="text-[#f87171]">${fmtCurto(minVal)}</span> <span class="text-gray-600">/</span> <span class="text-[#4ade80]">${fmtCurto(maxVal)}</span>`;
         } else if (elMinMax) { elMinMax.textContent = '--'; }
 
         // ═══════════════════════════════════════════════════
@@ -3981,10 +4014,14 @@ document.addEventListener('DOMContentLoaded', async () => {
         // ═══════════════════════════════════════════════════
         const taxaDiaCDI = Math.pow(1 + 0.1315, 1 / 252) - 1;
         const dataCDI = [];
-        if (dataCusto.length > 0 && dataCusto[0] > 0) {
-            let acumuladoCDI = dataCusto[0];
+        // Encontra o primeiro ponto com custo > 0
+        let cdiStartIdx = dataCusto.findIndex(c => c > 0);
+        if (cdiStartIdx >= 0) {
+            // Preenche zeros antes do início
+            for (let i = 0; i < cdiStartIdx; i++) dataCDI.push(0);
+            let acumuladoCDI = dataCusto[cdiStartIdx];
             dataCDI.push(parseFloat(acumuladoCDI.toFixed(2)));
-            for (let i = 1; i < dataCusto.length; i++) {
+            for (let i = cdiStartIdx + 1; i < dataCusto.length; i++) {
                 const aporteDiff = dataCusto[i] - dataCusto[i - 1];
                 acumuladoCDI = acumuladoCDI * (1 + taxaDiaCDI) + aporteDiff;
                 dataCDI.push(parseFloat(acumuladoCDI.toFixed(2)));

@@ -1813,6 +1813,12 @@
                         </div>
                     </div>
 
+                    <!-- Filtros: Por Ativo | Por Segmento -->
+                    <div class="flex items-center gap-2 px-2 mb-4">
+                        <button id="alocacao-filter-ativo" class="text-xs font-bold px-4 py-1.5 rounded-full transition-all duration-200 bg-white text-black">Por Ativo</button>
+                        <button id="alocacao-filter-segmento" class="text-xs font-bold px-4 py-1.5 rounded-full transition-all duration-200 bg-[#1C1C1E] text-gray-400 hover:text-white">Por Segmento</button>
+                    </div>
+
                     <div class="flex items-center justify-between px-2 mb-3">
                         <h3 class="text-xs font-bold text-gray-400 uppercase tracking-wider">Detalhamento</h3>
                         <span
@@ -1820,7 +1826,16 @@
                             por Valor</span>
                     </div>
 
-                    <div id="alocacao-legend-container" class="space-y-3 pb-10">
+                    <div id="alocacao-legend-container" class="space-y-3 pb-4">
+                    </div>
+
+                    <!-- Seção de Metas de Alocação -->
+                    <div id="alocacao-metas-section" class="pb-10">
+                        <div class="flex items-center justify-between px-2 mb-3 mt-4">
+                            <h3 class="text-xs font-bold text-gray-400 uppercase tracking-wider">Metas de Alocação</h3>
+                            <button id="alocacao-editar-metas-btn" class="text-[10px] font-bold text-purple-400 bg-[#1C1C1E] px-3 py-1 rounded-full border border-[#2C2C2E] hover:bg-purple-500/20 transition-colors">Definir</button>
+                        </div>
+                        <div id="alocacao-metas-container"></div>
                     </div>
 
                 </div>

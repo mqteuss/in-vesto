@@ -2669,7 +2669,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const qtd = parseFloat(ativo.quantity || ativo.quantidade || 0);
                 const precoMedio = parseFloat(ativo.precoMedio || ativo.averagePrice || 0);
 
-                // Tenta pegar o preço na ordem: Ao Vivo Global -> Do Ativo (Cache) -> Preço Médio (Fallback)
                 let precoLive = mapPrecos.get(ticker);
                 if (!precoLive) precoLive = parseFloat(ativo.regularMarketPrice || ativo.price || 0);
                 if (!precoLive || isNaN(precoLive) || precoLive === 0) precoLive = precoMedio;
@@ -2682,13 +2681,14 @@ document.addEventListener('DOMContentLoaded', async () => {
                         label: ticker,
                         value: valorTotal,
                         qtd: qtd,
-                        color: '' // Será preenchido depois
+                        precoMedio: precoMedio,
+                        precoLive: precoLive,
+                        color: ''
                     });
                 }
             });
         }
 
-        // Ordenar do maior para o menor valor
         dadosAtivos.sort((a, b) => b.value - a.value);
 
         const paletaCores = [
@@ -2736,7 +2736,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     backgroundColor: sortedColors,
                     borderWidth: 2,
                     borderColor: borderColor,
-                    hoverOffset: 10,
+                    hoverOffset: 14,
                     borderRadius: 5
                 }]
             },
@@ -2747,20 +2747,336 @@ document.addEventListener('DOMContentLoaded', async () => {
                 plugins: {
                     legend: { display: false },
                     tooltip: {
-                        backgroundColor: isLight ? 'rgba(255,255,255,0.95)' : 'rgba(20, 20, 20, 0.95)',
+                        backgroundColor: isLight ? 'rgba(255,255,255,0.97)' : 'rgba(18, 18, 18, 0.97)',
                         titleColor: isLight ? '#333' : '#fff',
-                        bodyColor: isLight ? '#555' : '#ccc',
-                        borderColor: isLight ? '#ddd' : '#333',
+                        bodyColor: isLight ? '#555' : '#a1a1aa',
+                        borderColor: isLight ? '#ddd' : '#2C2C2E',
                         borderWidth: 1,
-                        padding: 12,
+                        padding: 14,
                         cornerRadius: 12,
-                        bodyFont: { family: "'Inter', sans-serif" },
-                        titleFont: { family: "'Inter', sans-serif" },
+                        bodyFont: { family: "'Inter', sans-serif", size: 12 },
+                        titleFont: { family: "'Inter', sans-serif", weight: 'bold', size: 13 },
+                        displayColors: true,
+                        boxWidth: 8,
+                        boxHeight: 8,
+                        boxPadding: 6,
                         callbacks: {
+                            title: function(items) {
+                                return items[0].label;
+                            },
                             label: function (context) {
-                                const val = context.raw;
-                                const pct = totalGeral > 0 ? ((val / totalGeral) * 100).toFixed(1) + '%' : '0%';
-                                return ` ${pct} (${val.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })})`;
+                                const idx = context.dataIndex;
+                                const item = dadosAtivos[idx];
+                                const pct = totalGeral > 0 ? ((item.value / totalGeral) * 100).toFixed(1) : '0';
+                                return `${pct}% • ${item.value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}`;
+                            },
+                            afterLabel: function(context) {
+                                const idx = context.dataIndex;
+                                const item = dadosAtivos[idx];
+                                const lines = [];
+                                lines.push(`${item.qtd} cotas`);
+                                if (item.precoMedio > 0) lines.push(`PM: ${formatBRL(item.precoMedio)}`);
+                                if (item.precoLive > 0) lines.push(`Atual: ${formatBRL(item.precoLive)}`);
+                                return lines;
+                            }
+                        }
+                    }
+                },
+                animation: { animateScale: true, animateRotate: true },
+                onHover: (event, elements) => {
+                    canvas.style.cursor = elements.length > 0 ? 'pointer' : 'default';
+                }
+            }
+        });
+
+        // ═══════════════════════════════════════════════════
+        // INDICADOR DE CONCENTRAÇÃO (HHI - Herfindahl)
+        // ═══════════════════════════════════════════════════
+        let concentracaoContainer = document.getElementById('alocacao-concentracao');
+        if (!concentracaoContainer) {
+            // Cria o container se não existir no HTML
+            const chartCard = canvas.closest('.bg-\\[\\#151515\\]') || canvas.closest('.relative');
+            if (chartCard) {
+                concentracaoContainer = document.createElement('div');
+                concentracaoContainer.id = 'alocacao-concentracao';
+                concentracaoContainer.className = 'w-full mt-4';
+                chartCard.appendChild(concentracaoContainer);
+            }
+        }
+
+        if (concentracaoContainer && dadosAtivos.length > 1) {
+            // Calcula HHI: soma dos quadrados das participações em %
+            let hhi = 0;
+            dadosAtivos.forEach(d => {
+                const share = (d.value / totalGeral) * 100;
+                hhi += share * share;
+            });
+
+            // Normaliza HHI para posição de 0 a 100 na barra
+            // HHI range: mínimo ≈ 10000/N (diversificado perfeito), máximo = 10000 (1 ativo)
+            const hhiMin = 10000 / dadosAtivos.length;
+            const hhiNorm = Math.min(100, Math.max(0, ((hhi - hhiMin) / (10000 - hhiMin)) * 100));
+
+            let statusText, statusColor;
+            if (hhi < 1500) {
+                statusText = 'Diversificada';
+                statusColor = '#22c55e';
+            } else if (hhi < 2500) {
+                statusText = 'Moderada';
+                statusColor = '#f59e0b';
+            } else {
+                statusText = 'Concentrada';
+                statusColor = '#ef4444';
+            }
+
+            concentracaoContainer.innerHTML = `
+                <div style="padding: 0 8px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                        <span style="font-size: 10px; color: #71717a; font-weight: 700; text-transform: uppercase; letter-spacing: 1px;">Concentração</span>
+                        <span style="font-size: 12px; font-weight: 700; color: ${statusColor};">${statusText}</span>
+                    </div>
+                    <div style="width: 100%; height: 6px; background: linear-gradient(to right, #22c55e, #f59e0b, #ef4444); border-radius: 6px; position: relative;">
+                        <div style="position: absolute; top: -3px; left: ${hhiNorm}%; width: 12px; height: 12px; background: white; border-radius: 50%; border: 2px solid ${statusColor}; transform: translateX(-50%); box-shadow: 0 2px 6px rgba(0,0,0,0.4);"></div>
+                    </div>
+                </div>
+            `;
+        } else if (concentracaoContainer) {
+            concentracaoContainer.innerHTML = '';
+        }
+
+        // ═══════════════════════════════════════════════════
+        // LEGENDA INTERATIVA
+        // ═══════════════════════════════════════════════════
+        const legendContainer = document.getElementById('alocacao-legend-container');
+        if (legendContainer) {
+            legendContainer.innerHTML = '';
+            let activeIndex = -1; // Rastreia qual item está expandido
+
+            dadosAtivos.forEach((item, index) => {
+                const percent = totalGeral > 0 ? ((item.value / totalGeral) * 100).toFixed(1) : 0;
+                const valorFormatado = item.value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+
+                const div = document.createElement('div');
+                div.className = 'flex flex-col bg-[#151515] rounded-2xl mb-2 cursor-pointer transition-all duration-200 hover:bg-[#1a1a1a]';
+                div.style.overflow = 'hidden';
+
+                // Variação Preço Médio → Atual
+                let variacaoHtml = '';
+                if (item.precoMedio > 0 && item.precoLive > 0) {
+                    const variacao = ((item.precoLive - item.precoMedio) / item.precoMedio * 100).toFixed(1);
+                    const varColor = variacao >= 0 ? '#22c55e' : '#ef4444';
+                    const varSign = variacao >= 0 ? '+' : '';
+                    variacaoHtml = `<span style="font-size: 11px; color: ${varColor}; font-weight: 600;">${varSign}${variacao}%</span>`;
+                }
+
+                div.innerHTML = `
+                    <div class="flex items-center justify-between p-3" data-legend-index="${index}">
+                        <div class="flex items-center gap-3">
+                            <div class="w-1.5 h-8 rounded-full" style="background-color: ${item.color}"></div>
+                            <div class="flex flex-col gap-1">
+                                <span class="text-sm font-bold text-white tracking-tight leading-none">${item.label}</span>
+                                <span class="text-xs text-gray-500 font-medium">${percent}%</span>
+                            </div>
+                        </div>
+                        <div class="text-right flex items-center gap-3">
+                            ${variacaoHtml}
+                            <span class="text-sm font-bold text-white tracking-tight">${valorFormatado}</span>
+                        </div>
+                    </div>
+                    <div class="legend-details" style="max-height: 0; opacity: 0; transition: max-height 0.3s ease, opacity 0.2s ease, padding 0.3s ease; padding: 0 12px; overflow: hidden;">
+                        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; padding: 8px 4px 14px 4px;">
+                            <div style="text-align: center; background: #1C1C1E; border-radius: 10px; padding: 10px 8px;">
+                                <div style="font-size: 10px; color: #71717a; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px;">Cotas</div>
+                                <div style="font-size: 14px; font-weight: 700; color: #e5e5e5;">${item.qtd}</div>
+                            </div>
+                            <div style="text-align: center; background: #1C1C1E; border-radius: 10px; padding: 10px 8px;">
+                                <div style="font-size: 10px; color: #71717a; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px;">PM</div>
+                                <div style="font-size: 14px; font-weight: 700; color: #e5e5e5;">${formatBRL(item.precoMedio)}</div>
+                            </div>
+                            <div style="text-align: center; background: #1C1C1E; border-radius: 10px; padding: 10px 8px;">
+                                <div style="font-size: 10px; color: #71717a; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px;">Atual</div>
+                                <div style="font-size: 14px; font-weight: 700; color: #e5e5e5;">${formatBRL(item.precoLive)}</div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+
+                // Click handler
+                div.addEventListener('click', () => {
+                    const details = div.querySelector('.legend-details');
+                    const isExpanded = details.style.maxHeight !== '0px' && details.style.maxHeight !== '';
+
+                    // Fecha todos os outros
+                    legendContainer.querySelectorAll('.legend-details').forEach(el => {
+                        el.style.maxHeight = '0px';
+                        el.style.opacity = '0';
+                        el.style.paddingTop = '0';
+                        el.style.paddingBottom = '0';
+                    });
+
+                    if (!isExpanded) {
+                        // Abre este
+                        details.style.maxHeight = '120px';
+                        details.style.opacity = '1';
+                        activeIndex = index;
+
+                        // Destaca a fatia no gráfico
+                        if (alocacaoChartInstance) {
+                            alocacaoChartInstance.setActiveElements([{
+                                datasetIndex: 0,
+                                index: index
+                            }]);
+                            alocacaoChartInstance.tooltip.setActiveElements([{
+                                datasetIndex: 0,
+                                index: index
+                            }], { x: 0, y: 0 });
+                            alocacaoChartInstance.update();
+                        }
+                    } else {
+                        // Fecha e remove destaque
+                        activeIndex = -1;
+                        if (alocacaoChartInstance) {
+                            alocacaoChartInstance.setActiveElements([]);
+                            alocacaoChartInstance.tooltip.setActiveElements([], { x: 0, y: 0 });
+                            alocacaoChartInstance.update();
+                        }
+                    }
+                });
+
+                legendContainer.appendChild(div);
+            });
+        }
+
+        // ═══════════════════════════════════════════════════
+        // METAS DE ALOCAÇÃO (Atual vs Meta)
+        // ═══════════════════════════════════════════════════
+        renderizarMetasAlocacao(dadosAtivos, totalGeral);
+    }
+
+    // Estado do filtro de alocação
+    let alocacaoFilterMode = 'ativo'; // 'ativo' ou 'segmento'
+
+    // Mapa de segmentos conhecidos dos FIIs
+    const SEGMENTOS_FII = {
+        'BTCI11': 'Recebíveis', 'KNCR11': 'Recebíveis', 'MXRF11': 'Híbrido',
+        'HGLG11': 'Logística', 'XPLG11': 'Logística', 'VILG11': 'Logística',
+        'VISC11': 'Shopping', 'XPML11': 'Shopping', 'HSML11': 'Shopping',
+        'HGRE11': 'Escritório', 'BRCR11': 'Escritório', 'PVBI11': 'Escritório',
+        'GARE11': 'Renda Urbana', 'TRXF11': 'Renda Urbana', 'GGRC11': 'Logística',
+        'KNRI11': 'Híbrido', 'BCFF11': 'Fundo de Fundos', 'RZAT11': 'Agro',
+        'XPCA11': 'Agro', 'VGIR11': 'Recebíveis', 'CPTS11': 'Recebíveis'
+    };
+
+    function getSegmento(ticker) {
+        // Tenta pegar do mapa estático primeiro, depois dos fundamentos em cache
+        if (SEGMENTOS_FII[ticker]) return SEGMENTOS_FII[ticker];
+        // Tenta buscar dos dados de fundamentos se existirem em cache
+        try {
+            const cached = localStorage.getItem(`vesto_fund_${ticker}`);
+            if (cached) {
+                const parsed = JSON.parse(cached);
+                if (parsed.segmento && parsed.segmento !== '-') return parsed.segmento;
+            }
+        } catch(e) {}
+        return 'Outros';
+    }
+
+    function renderizarGraficoAlocacaoPorSegmento() {
+        const canvas = document.getElementById('alocacao-chart');
+        if (!canvas) return;
+
+        const temPrecos = Array.isArray(precosAtuais) && precosAtuais.length > 0;
+        const mapPrecos = new Map();
+        if (temPrecos) {
+            precosAtuais.forEach(p => {
+                const sym = p.symbol || p.ticker || p.codigo;
+                const val = p.regularMarketPrice || p.price || p.cotacao || p.valor;
+                if (sym && val) mapPrecos.set(sym.toUpperCase().trim(), parseFloat(val));
+            });
+        }
+
+        // Agrupa por segmento
+        const segmentoMap = new Map();
+        let totalGeral = 0;
+
+        if (Array.isArray(carteiraCalculada)) {
+            carteiraCalculada.forEach(ativo => {
+                const ticker = (ativo.symbol || ativo.ticker).toUpperCase().trim();
+                const qtd = parseFloat(ativo.quantity || ativo.quantidade || 0);
+                const precoMedio = parseFloat(ativo.precoMedio || ativo.averagePrice || 0);
+                let precoLive = mapPrecos.get(ticker);
+                if (!precoLive) precoLive = parseFloat(ativo.regularMarketPrice || ativo.price || 0);
+                if (!precoLive || isNaN(precoLive) || precoLive === 0) precoLive = precoMedio;
+                const valorTotal = precoLive * qtd;
+
+                if (valorTotal > 0.01) {
+                    totalGeral += valorTotal;
+                    const seg = getSegmento(ticker);
+                    if (!segmentoMap.has(seg)) {
+                        segmentoMap.set(seg, { label: seg, value: 0, tickers: [], color: '' });
+                    }
+                    const entry = segmentoMap.get(seg);
+                    entry.value += valorTotal;
+                    entry.tickers.push({ ticker, valor: valorTotal, qtd });
+                }
+            });
+        }
+
+        const dadosSegmentos = Array.from(segmentoMap.values()).sort((a, b) => b.value - a.value);
+
+        const paletaCores = [
+            '#8B5CF6', '#10B981', '#3B82F6', '#F59E0B',
+            '#EC4899', '#6366F1', '#EF4444', '#14B8A6'
+        ];
+        dadosSegmentos.forEach((d, i) => { d.color = paletaCores[i % paletaCores.length]; });
+
+        const elTotalCenter = document.getElementById('alocacao-total-center');
+        if (elTotalCenter) {
+            elTotalCenter.textContent = totalGeral.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+        }
+
+        if (alocacaoChartInstance) alocacaoChartInstance.destroy();
+
+        const ctx = canvas.getContext('2d');
+        const isLight = document.body.classList.contains('light-mode');
+        const borderColor = isLight ? '#ffffff' : '#151515';
+
+        alocacaoChartInstance = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: dadosSegmentos.map(d => d.label),
+                datasets: [{
+                    data: dadosSegmentos.map(d => d.value),
+                    backgroundColor: dadosSegmentos.map(d => d.color),
+                    borderWidth: 2,
+                    borderColor: borderColor,
+                    hoverOffset: 14,
+                    borderRadius: 5
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                cutout: '75%',
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        backgroundColor: isLight ? 'rgba(255,255,255,0.97)' : 'rgba(18, 18, 18, 0.97)',
+                        titleColor: isLight ? '#333' : '#fff',
+                        bodyColor: isLight ? '#555' : '#a1a1aa',
+                        borderColor: isLight ? '#ddd' : '#2C2C2E',
+                        borderWidth: 1,
+                        padding: 14,
+                        cornerRadius: 12,
+                        callbacks: {
+                            label: function(ctx) {
+                                const item = dadosSegmentos[ctx.dataIndex];
+                                const pct = totalGeral > 0 ? ((item.value / totalGeral) * 100).toFixed(1) : '0';
+                                return `${pct}% • ${item.value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}`;
+                            },
+                            afterLabel: function(ctx) {
+                                const item = dadosSegmentos[ctx.dataIndex];
+                                return item.tickers.map(t => `  ${t.ticker}`);
                             }
                         }
                     }
@@ -2769,36 +3085,221 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         });
 
+        // Legenda por segmento
         const legendContainer = document.getElementById('alocacao-legend-container');
         if (legendContainer) {
             legendContainer.innerHTML = '';
-
-            dadosAtivos.forEach(item => {
-                const percent = totalGeral > 0 ? ((item.value / totalGeral) * 100).toFixed(1) : 0;
-                const valorFormatado = item.value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+            dadosSegmentos.forEach((seg, index) => {
+                const percent = totalGeral > 0 ? ((seg.value / totalGeral) * 100).toFixed(1) : 0;
+                const valorFormatado = seg.value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+                const tickersStr = seg.tickers.map(t => t.ticker).join(', ');
 
                 const div = document.createElement('div');
-                // Container flex para separar Esquerda e Direita
-                div.className = 'flex items-center justify-between p-3 bg-[#151515] rounded-2xl mb-2';
+                div.className = 'flex flex-col bg-[#151515] rounded-2xl mb-2 cursor-pointer transition-all duration-200 hover:bg-[#1a1a1a]';
+                div.style.overflow = 'hidden';
 
                 div.innerHTML = `
-                <div class="flex items-center gap-3">
-                    <div class="w-1.5 h-8 rounded-full" style="background-color: ${item.color}"></div>
-
-                    <div class="flex flex-col gap-1"> <span class="text-sm font-bold text-white tracking-tight leading-none">${item.label}</span>
-                        <span class="text-xs text-gray-500 font-medium">${percent}%</span>
+                    <div class="flex items-center justify-between p-3">
+                        <div class="flex items-center gap-3">
+                            <div class="w-1.5 h-8 rounded-full" style="background-color: ${seg.color}"></div>
+                            <div class="flex flex-col gap-1">
+                                <span class="text-sm font-bold text-white tracking-tight leading-none">${seg.label}</span>
+                                <span class="text-xs text-gray-500 font-medium">${percent}% • ${seg.tickers.length} ativo${seg.tickers.length > 1 ? 's' : ''}</span>
+                            </div>
+                        </div>
+                        <div class="text-right">
+                            <span class="text-sm font-bold text-white tracking-tight">${valorFormatado}</span>
+                        </div>
                     </div>
-                </div>
+                    <div class="legend-details" style="max-height: 0; opacity: 0; transition: max-height 0.3s ease, opacity 0.2s ease; overflow: hidden; padding: 0 12px;">
+                        <div style="padding: 4px 4px 14px 4px;">
+                            <div style="font-size: 11px; color: #a1a1aa; line-height: 1.8;">${tickersStr}</div>
+                        </div>
+                    </div>
+                `;
 
-                <div class="text-right">
-                    <span class="text-sm font-bold text-white tracking-tight">${valorFormatado}</span>
-                </div>
-            `;
+                div.addEventListener('click', () => {
+                    const details = div.querySelector('.legend-details');
+                    const isExpanded = details.style.maxHeight !== '0px' && details.style.maxHeight !== '';
+
+                    legendContainer.querySelectorAll('.legend-details').forEach(el => {
+                        el.style.maxHeight = '0px';
+                        el.style.opacity = '0';
+                    });
+
+                    if (!isExpanded) {
+                        details.style.maxHeight = '80px';
+                        details.style.opacity = '1';
+                        if (alocacaoChartInstance) {
+                            alocacaoChartInstance.setActiveElements([{ datasetIndex: 0, index }]);
+                            alocacaoChartInstance.update();
+                        }
+                    } else {
+                        if (alocacaoChartInstance) {
+                            alocacaoChartInstance.setActiveElements([]);
+                            alocacaoChartInstance.update();
+                        }
+                    }
+                });
+
                 legendContainer.appendChild(div);
             });
         }
     }
 
+    // ═══════════════════════════════════════════════════
+    // METAS DE ALOCAÇÃO (Persistência + Renderização)
+    // ═══════════════════════════════════════════════════
+    function getMetasAlocacao() {
+        try {
+            const raw = localStorage.getItem('vesto_alocacao_metas');
+            return raw ? JSON.parse(raw) : {};
+        } catch(e) { return {}; }
+    }
+
+    function salvarMetasAlocacao(metas) {
+        localStorage.setItem('vesto_alocacao_metas', JSON.stringify(metas));
+    }
+
+    function renderizarMetasAlocacao(dadosAtivos, totalGeral) {
+        const container = document.getElementById('alocacao-metas-container');
+        const section = document.getElementById('alocacao-metas-section');
+        if (!container || !section) return;
+
+        const metas = getMetasAlocacao();
+        const hasMetas = Object.keys(metas).length > 0;
+
+        if (!hasMetas) {
+            container.innerHTML = `
+                <div class="text-center py-4">
+                    <p class="text-xs text-gray-600">Nenhuma meta definida ainda.</p>
+                    <p class="text-[10px] text-gray-700 mt-1">Clique em "Definir" para configurar sua alocação ideal.</p>
+                </div>
+            `;
+            return;
+        }
+
+        container.innerHTML = '';
+        dadosAtivos.forEach(item => {
+            const pctAtual = totalGeral > 0 ? ((item.value / totalGeral) * 100) : 0;
+            const pctMeta = metas[item.label] || 0;
+            if (pctMeta === 0) return;
+
+            const diff = pctAtual - pctMeta;
+            const diffColor = Math.abs(diff) < 2 ? '#22c55e' : (diff > 0 ? '#f59e0b' : '#ef4444');
+            const diffSign = diff >= 0 ? '+' : '';
+
+            const div = document.createElement('div');
+            div.className = 'bg-[#151515] rounded-xl p-3 mb-2';
+            div.innerHTML = `
+                <div class="flex items-center justify-between mb-2">
+                    <span class="text-sm font-bold text-white">${item.label}</span>
+                    <span style="font-size: 11px; color: ${diffColor}; font-weight: 600;">${diffSign}${diff.toFixed(1)}%</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <span class="text-[10px] text-gray-500 w-10">Atual</span>
+                    <div style="flex: 1; height: 4px; background: #1C1C1E; border-radius: 4px; overflow: hidden;">
+                        <div style="width: ${Math.min(100, pctAtual / Math.max(pctMeta, pctAtual) * 100)}%; height: 100%; background: ${item.color}; border-radius: 4px;"></div>
+                    </div>
+                    <span class="text-[10px] text-gray-400 w-10 text-right">${pctAtual.toFixed(1)}%</span>
+                </div>
+                <div class="flex items-center gap-2 mt-1">
+                    <span class="text-[10px] text-gray-500 w-10">Meta</span>
+                    <div style="flex: 1; height: 4px; background: #1C1C1E; border-radius: 4px; overflow: hidden;">
+                        <div style="width: ${Math.min(100, pctMeta / Math.max(pctMeta, pctAtual) * 100)}%; height: 100%; background: #71717a; border-radius: 4px;"></div>
+                    </div>
+                    <span class="text-[10px] text-gray-400 w-10 text-right">${pctMeta.toFixed(1)}%</span>
+                </div>
+            `;
+            container.appendChild(div);
+        });
+    }
+
+    // Event listeners para filtros de alocação
+    document.getElementById('alocacao-filter-ativo')?.addEventListener('click', () => {
+        if (alocacaoFilterMode === 'ativo') return;
+        alocacaoFilterMode = 'ativo';
+        // Toggle visual dos botões
+        const btnAtivo = document.getElementById('alocacao-filter-ativo');
+        const btnSeg = document.getElementById('alocacao-filter-segmento');
+        btnAtivo.className = 'text-xs font-bold px-4 py-1.5 rounded-full transition-all duration-200 bg-white text-black';
+        btnSeg.className = 'text-xs font-bold px-4 py-1.5 rounded-full transition-all duration-200 bg-[#1C1C1E] text-gray-400 hover:text-white';
+        renderizarGraficoAlocacao();
+    });
+
+    document.getElementById('alocacao-filter-segmento')?.addEventListener('click', () => {
+        if (alocacaoFilterMode === 'segmento') return;
+        alocacaoFilterMode = 'segmento';
+        const btnAtivo = document.getElementById('alocacao-filter-ativo');
+        const btnSeg = document.getElementById('alocacao-filter-segmento');
+        btnSeg.className = 'text-xs font-bold px-4 py-1.5 rounded-full transition-all duration-200 bg-white text-black';
+        btnAtivo.className = 'text-xs font-bold px-4 py-1.5 rounded-full transition-all duration-200 bg-[#1C1C1E] text-gray-400 hover:text-white';
+        renderizarGraficoAlocacaoPorSegmento();
+    });
+
+    // Editor de Metas
+    document.getElementById('alocacao-editar-metas-btn')?.addEventListener('click', () => {
+        const metas = getMetasAlocacao();
+        const tickers = Array.isArray(carteiraCalculada) ? carteiraCalculada.map(a => (a.symbol || a.ticker).toUpperCase().trim()) : [];
+        if (tickers.length === 0) { showToast('Adicione ativos à carteira primeiro.'); return; }
+
+        let html = '<div style="max-height: 300px; overflow-y: auto; padding: 8px 0;">';
+        tickers.forEach(t => {
+            const val = metas[t] || '';
+            html += `
+                <div style="display: flex; align-items: center; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #1C1C1E;">
+                    <span style="font-weight: 700; font-size: 14px; color: #e5e5e5;">${t}</span>
+                    <div style="display: flex; align-items: center; gap: 4px;">
+                        <input type="number" data-meta-ticker="${t}" value="${val}" placeholder="0" min="0" max="100" step="0.5"
+                            style="width: 60px; background: #1C1C1E; border: 1px solid #2C2C2E; border-radius: 8px; padding: 4px 8px; color: white; font-size: 13px; text-align: right;" />
+                        <span style="font-size: 12px; color: #71717a;">%</span>
+                    </div>
+                </div>
+            `;
+        });
+        html += '</div>';
+
+        const modal = document.getElementById('custom-modal');
+        const title = document.getElementById('custom-modal-title');
+        const msg = document.getElementById('custom-modal-message');
+        const btnCancel = document.getElementById('custom-modal-cancel');
+        const btnOk = document.getElementById('custom-modal-ok');
+
+        if (!modal || !title || !msg) return;
+
+        title.textContent = 'Metas de Alocação';
+        msg.innerHTML = html;
+        btnCancel.textContent = 'Cancelar';
+        btnCancel.classList.remove('hidden');
+        btnOk.textContent = 'Salvar';
+
+        modal.classList.remove('hidden');
+        setTimeout(() => modal.classList.add('show'), 10);
+
+        const handleSave = () => {
+            const newMetas = {};
+            modal.querySelectorAll('[data-meta-ticker]').forEach(input => {
+                const ticker = input.getAttribute('data-meta-ticker');
+                const val = parseFloat(input.value);
+                if (!isNaN(val) && val > 0) newMetas[ticker] = val;
+            });
+            salvarMetasAlocacao(newMetas);
+            modal.classList.remove('show');
+            setTimeout(() => modal.classList.add('hidden'), 200);
+            renderizarGraficoAlocacao();
+            showToast('Metas de alocação salvas!', 'success');
+            btnOk.removeEventListener('click', handleSave);
+        };
+
+        const handleCancel = () => {
+            modal.classList.remove('show');
+            setTimeout(() => modal.classList.add('hidden'), 200);
+            btnOk.removeEventListener('click', handleSave);
+        };
+
+        btnOk.addEventListener('click', handleSave);
+        btnCancel.addEventListener('click', handleCancel, { once: true });
+    });
 
     function exibirDetalhesProventos(anoMes, labelAmigavel) {
         // 1. Filtrar e Agrupar

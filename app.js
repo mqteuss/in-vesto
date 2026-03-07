@@ -2083,7 +2083,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             <div class="flex items-center justify-between w-full">
                 <h3 class="text-[11px] font-bold text-gray-500 uppercase tracking-widest">${mes}</h3>
                 <div class="flex items-center gap-2">
-                    <span class="text-[11px] font-medium text-gray-400">
+                    <span class="text-[12px] font-bold text-gray-100">
                         Total: ${formatBRL(totalMes)}
                     </span>
                     <button class="share-month-btn text-gray-500 hover:text-white transition-colors" data-mes="${mes}" title="Compartilhar ${mes}">
@@ -2843,8 +2843,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         html += `</div>
         <div class="mt-4 pt-3 border-t border-[#2C2C2E] flex justify-between items-center">
-            <span class="text-xs font-bold text-gray-500 uppercase tracking-widest">Total do Mês</span>
-            <span class="text-lg font-bold text-purple-400">${formatBRL(totalMes)}</span>
+            <span class="text-xs font-bold text-gray-400 uppercase tracking-widest">Total do Mês</span>
+            <span class="text-lg font-bold text-gray-100">${formatBRL(totalMes)}</span>
         </div>`;
 
         // 3. Configurar Modal

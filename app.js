@@ -2800,61 +2800,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
 
         // ═══════════════════════════════════════════════════
-        // INDICADOR DE CONCENTRAÇÃO (HHI - Herfindahl)
-        // ═══════════════════════════════════════════════════
-        let concentracaoContainer = document.getElementById('alocacao-concentracao');
-        if (!concentracaoContainer) {
-            // Cria o container se não existir no HTML
-            const chartCard = canvas.closest('.bg-\\[\\#151515\\]') || canvas.closest('.relative');
-            if (chartCard) {
-                concentracaoContainer = document.createElement('div');
-                concentracaoContainer.id = 'alocacao-concentracao';
-                concentracaoContainer.className = 'w-full mt-4';
-                chartCard.appendChild(concentracaoContainer);
-            }
-        }
-
-        if (concentracaoContainer && dadosAtivos.length > 1) {
-            // Calcula HHI: soma dos quadrados das participações em %
-            let hhi = 0;
-            dadosAtivos.forEach(d => {
-                const share = (d.value / totalGeral) * 100;
-                hhi += share * share;
-            });
-
-            // Normaliza HHI para posição de 0 a 100 na barra
-            // HHI range: mínimo ≈ 10000/N (diversificado perfeito), máximo = 10000 (1 ativo)
-            const hhiMin = 10000 / dadosAtivos.length;
-            const hhiNorm = Math.min(100, Math.max(0, ((hhi - hhiMin) / (10000 - hhiMin)) * 100));
-
-            let statusText, statusColor;
-            if (hhi < 1500) {
-                statusText = 'Diversificada';
-                statusColor = '#22c55e';
-            } else if (hhi < 2500) {
-                statusText = 'Moderada';
-                statusColor = '#f59e0b';
-            } else {
-                statusText = 'Concentrada';
-                statusColor = '#ef4444';
-            }
-
-            concentracaoContainer.innerHTML = `
-                <div style="padding: 0 8px;">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                        <span style="font-size: 10px; color: #71717a; font-weight: 700; text-transform: uppercase; letter-spacing: 1px;">Concentração</span>
-                        <span style="font-size: 12px; font-weight: 700; color: ${statusColor};">${statusText}</span>
-                    </div>
-                    <div style="width: 100%; height: 6px; background: linear-gradient(to right, #22c55e, #f59e0b, #ef4444); border-radius: 6px; position: relative;">
-                        <div style="position: absolute; top: -3px; left: ${hhiNorm}%; width: 12px; height: 12px; background: white; border-radius: 50%; border: 2px solid ${statusColor}; transform: translateX(-50%); box-shadow: 0 2px 6px rgba(0,0,0,0.4);"></div>
-                    </div>
-                </div>
-            `;
-        } else if (concentracaoContainer) {
-            concentracaoContainer.innerHTML = '';
-        }
-
-        // ═══════════════════════════════════════════════════
         // LEGENDA INTERATIVA
         // ═══════════════════════════════════════════════════
         const legendContainer = document.getElementById('alocacao-legend-container');

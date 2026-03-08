@@ -778,26 +778,27 @@ input:-webkit-autofill:active {
 
 /* Drawers & Setas */
 .card-drawer {
-    max-height: 0;
-    overflow: hidden;
-    transition: max-height 0.35s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease;
-    will-change: max-height;
-    transform: translateZ(0);
+    display: grid;
+    grid-template-rows: 0fr;
+    transition: grid-template-rows 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.25s ease;
     opacity: 0;
+    contain: content;
+}
+
+.card-drawer > .drawer-content {
+    overflow: hidden;
+    min-height: 0;
+    opacity: 0;
+    transform: translateY(-5px);
+    transition: opacity 0.25s ease 0.05s, transform 0.25s ease 0.05s;
 }
 
 .card-drawer.open {
-    max-height: 500px;
+    grid-template-rows: 1fr;
     opacity: 1;
 }
 
-.card-drawer .drawer-content {
-    opacity: 0;
-    transform: translateY(-5px);
-    transition: opacity 0.3s ease-in-out 0.1s, transform 0.3s ease-in-out 0.1s;
-}
-
-.card-drawer.open .drawer-content {
+.card-drawer.open > .drawer-content {
     opacity: 1;
     transform: translateY(0);
 }

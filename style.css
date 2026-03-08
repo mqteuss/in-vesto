@@ -1534,12 +1534,18 @@ input:-webkit-autofill:active {
 .market-status-pill {
     display: inline-flex;
     align-items: center;
-    gap: 6px;
-    padding: 5px 12px;
-    border-radius: 9999px;
-    background-color: #151515;
-    border: 1px solid #2C2C2E;
-    transition: all 0.3s ease;
+    gap: 7px;
+    padding: 6px 14px;
+    border-radius: 10px;
+    background-color: rgba(239, 68, 68, 0.08);
+    border: 1px solid rgba(239, 68, 68, 0.15);
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.market-status-pill.open {
+    background-color: rgba(34, 197, 94, 0.08);
+    border-color: rgba(34, 197, 94, 0.2);
+    box-shadow: 0 0 12px rgba(34, 197, 94, 0.08);
 }
 
 .market-status-dot {
@@ -1547,24 +1553,24 @@ input:-webkit-autofill:active {
     height: 7px;
     border-radius: 50%;
     flex-shrink: 0;
-    transition: background-color 0.3s ease;
+    transition: all 0.4s ease;
 }
 
 .market-status-dot.open {
     background-color: #22c55e;
-    box-shadow: 0 0 6px rgba(34, 197, 94, 0.6);
-    animation: statusPulse 2s ease-in-out infinite;
+    box-shadow: 0 0 6px rgba(34, 197, 94, 0.5);
+    animation: statusPulse 2.5s ease-in-out infinite;
 }
 
 .market-status-dot.closed {
     background-color: #ef4444;
-    box-shadow: none;
+    box-shadow: 0 0 4px rgba(239, 68, 68, 0.3);
     animation: none;
 }
 
 @keyframes statusPulse {
     0%, 100% { opacity: 1; box-shadow: 0 0 4px rgba(34, 197, 94, 0.4); }
-    50% { opacity: 0.6; box-shadow: 0 0 10px rgba(34, 197, 94, 0.8); }
+    50% { opacity: 0.7; box-shadow: 0 0 10px rgba(34, 197, 94, 0.7); }
 }
 
 .market-status-pill .text-green { color: #22c55e; }
@@ -1572,8 +1578,14 @@ input:-webkit-autofill:active {
 
 /* Light mode */
 body.light-mode .market-status-pill {
-    background-color: #f3f4f6;
-    border-color: #e5e7eb;
+    background-color: rgba(239, 68, 68, 0.05);
+    border-color: rgba(239, 68, 68, 0.12);
+}
+
+body.light-mode .market-status-pill.open {
+    background-color: rgba(34, 197, 94, 0.06);
+    border-color: rgba(34, 197, 94, 0.15);
+    box-shadow: none;
 }
 
 

@@ -2690,10 +2690,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     // ── Status do Mercado (B3 Aberta/Fechada) ──
     function atualizarStatusMercado() {
         const open = isB3Open();
+        const pill = document.getElementById('market-status-pill');
         if (marketStatusDot && marketStatusText) {
             marketStatusDot.className = `market-status-dot ${open ? 'open' : 'closed'}`;
             marketStatusText.textContent = open ? 'B3 Aberta' : 'B3 Fechada';
             marketStatusText.className = `text-[11px] font-bold uppercase tracking-wider ${open ? 'text-green' : 'text-red'}`;
+            if (pill) pill.classList.toggle('open', open);
         }
     }
 

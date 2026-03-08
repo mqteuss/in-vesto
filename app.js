@@ -2572,7 +2572,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 if (foundTickers.length > 0) {
                     foundTickers.forEach(ticker => {
                         const rx = new RegExp(`\\b${ticker}\\b`, 'g');
-                        displayTitle = displayTitle.replace(rx, `<span class="news-ticker-tag text-white/90 hover:text-white hover:underline cursor-pointer transition-colors" data-action="view-ticker" data-symbol="${ticker}">${ticker}</span>`);
+                        displayTitle = displayTitle.replace(rx, `<span class="news-ticker-tag hover:underline cursor-pointer transition-colors" style="color:#8ab4f8" data-action="view-ticker" data-symbol="${ticker}">${ticker}</span>`);
                     });
                 }
 

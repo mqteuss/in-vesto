@@ -8935,18 +8935,61 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     if (carteiraSearchInput) {
-        carteiraSearchInput.addEventListener('input', (e) => {
-            const term = e.target.value.trim().toUpperCase();
+        const clearBtn = document.getElementById('carteira-search-clear');
+        const countBadge = document.getElementById('carteira-search-count');
+
+        function filterCards(term) {
             const cards = listaCarteira.querySelectorAll('.wallet-card');
+            let visible = 0;
+            const total = cards.length;
 
             cards.forEach(card => {
                 const symbol = card.dataset.symbol;
-                if (symbol && symbol.includes(term)) {
+                if (!term || (symbol && symbol.includes(term))) {
                     card.classList.remove('hidden');
+                    visible++;
                 } else {
                     card.classList.add('hidden');
                 }
             });
+
+            // Atualiza o badge de contagem
+            if (countBadge) {
+                if (term) {
+                    countBadge.textContent = `${visible}/${total}`;
+                    countBadge.classList.add('visible');
+                } else {
+                    countBadge.classList.remove('visible');
+                }
+            }
+
+            // Mostra/esconde o botão limpar
+            if (clearBtn) {
+                clearBtn.classList.toggle('visible', !!term);
+            }
+        }
+
+        carteiraSearchInput.addEventListener('input', (e) => {
+            const term = e.target.value.trim().toUpperCase();
+            filterCards(term);
+        });
+
+        // Botão limpar
+        if (clearBtn) {
+            clearBtn.addEventListener('click', () => {
+                carteiraSearchInput.value = '';
+                filterCards('');
+                carteiraSearchInput.focus();
+            });
+        }
+
+        // Escape para limpar e sair
+        carteiraSearchInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                carteiraSearchInput.value = '';
+                filterCards('');
+                carteiraSearchInput.blur();
+            }
         });
 
         carteiraSearchInput.addEventListener('keyup', (e) => {
@@ -8962,7 +9005,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 showDetalhesModal(term);
 
                 carteiraSearchInput.value = '';
-                carteiraSearchInput.dispatchEvent(new Event('input'));
+                filterCards('');
             }
         });
     }

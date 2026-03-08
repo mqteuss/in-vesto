@@ -1087,33 +1087,35 @@ input:-webkit-autofill:active {
 .compact-search-wrapper {
     position: relative;
     flex: 1;
+    display: flex;
+    align-items: center;
 }
 
 .compact-search-input {
     width: 100%;
-    height: 48px;
+    height: 44px;
     padding-left: 44px;
-    padding-right: 16px;
-    border-radius: 9999px;
+    padding-right: 80px;
+    border-radius: 12px;
     color: #f3f4f6;
-    font-size: 15px;
+    font-size: 14px;
     font-weight: 500;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    background-color: #121212 !important;
+    letter-spacing: -0.01em;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    background-color: #151515 !important;
     border: none !important;
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    box-shadow: none;
 }
 
 .compact-search-input::placeholder {
-    color: #6b7280;
+    color: #525252;
     font-weight: 400;
 }
 
 .compact-search-input:focus {
     background-color: #1a1a1c !important;
-    border-color: #4B5563 !important;
     outline: none;
-    box-shadow: 0 0 0 4px rgba(75, 85, 99, 0.1);
+    box-shadow: none;
 }
 
 .compact-search-icon {
@@ -1121,16 +1123,71 @@ input:-webkit-autofill:active {
     left: 16px;
     top: 50%;
     transform: translateY(-50%);
-    width: 18px;
-    height: 18px;
-    color: #6b7280;
-    transition: color 0.3s ease;
+    width: 17px;
+    height: 17px;
+    color: #525252;
+    transition: color 0.25s ease;
+    cursor: pointer;
+    z-index: 2;
 }
 
-.compact-search-input:focus~.compact-search-icon,
-.compact-search-input:focus+.compact-search-icon,
 .compact-search-wrapper:focus-within .compact-search-icon {
-    color: #9ca3af;
+    color: #a1a1aa;
+}
+
+/* Botão limpar (X) */
+.search-clear-btn {
+    position: absolute;
+    right: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #525252;
+    padding: 4px;
+    border-radius: 50%;
+    transition: all 0.2s ease;
+    opacity: 0;
+    pointer-events: none;
+    z-index: 2;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.search-clear-btn.visible {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.search-clear-btn:hover {
+    color: #e5e5e5;
+    background-color: rgba(255, 255, 255, 0.06);
+}
+
+.search-clear-btn:active {
+    transform: translateY(-50%) scale(0.9);
+}
+
+/* Badge de contagem de resultados */
+.search-result-count {
+    position: absolute;
+    right: 40px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 11px;
+    font-weight: 600;
+    color: #71717a;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+    pointer-events: none;
+    z-index: 2;
+    white-space: nowrap;
+}
+
+.search-result-count.visible {
+    opacity: 1;
 }
 
 .filter-funnel-btn {

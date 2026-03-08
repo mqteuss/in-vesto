@@ -2571,9 +2571,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                 let displayTitle = article.title || 'Título indisponível';
                 if (foundTickers.length > 0) {
                     foundTickers.forEach(ticker => {
-                        // Regex específica para substituir apenas a palavra inteira do ticker no título
                         const rx = new RegExp(`\\b${ticker}\\b`, 'g');
-                        displayTitle = displayTitle.replace(rx, `<span class="news-ticker-tag text-purple-400 font-bold hover:underline cursor-pointer transition-colors" data-action="view-ticker" data-symbol="${ticker}">${ticker}</span>`);
+                        displayTitle = displayTitle.replace(rx, `<span class="news-ticker-tag text-white/90 hover:text-white hover:underline cursor-pointer transition-colors" data-action="view-ticker" data-symbol="${ticker}">${ticker}</span>`);
                     });
                 }
 
@@ -2581,13 +2580,13 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const hasImage = article.imageUrl;
                 let coverHtml = '';
                 if (hasImage) {
-                    coverHtml = `<img src="${article.imageUrl}" alt="" class="news-cover-img" loading="lazy" decoding="async" onload="this.classList.add('loaded')" onerror="this.style.display='none'" />`;
+                    coverHtml = `<img src="${article.imageUrl}" alt="" class="news-cover-img" loading="lazy" decoding="async" onload="this.classList.add('loaded')" onerror="this.parentElement.style.display='none'" />`;
                 }
 
                 const item = document.createElement('div');
 
                 let itemWrapperClass = 'group relative transition-all news-card-interactive px-4 ';
-                let titleClass = 'font-bold text-gray-100 leading-snug mb-2 group-hover:text-white transition-colors ';
+                let titleClass = 'font-bold text-gray-100 leading-snug group-hover:text-white transition-colors ';
                 let badgeDestaque = '';
 
                 if (isGlobalFirstItem) {
@@ -2606,54 +2605,68 @@ document.addEventListener('DOMContentLoaded', async () => {
 
                 // Escapa quotes no título e url para jogar nos atributos
                 const safeShareTitle = (article.title || '').replace(/"/g, '&quot;');
-                const shareBtnHtml = `
-                    <button class="share-news-btn flex items-center gap-1.5 text-[11px] font-bold text-gray-500 hover:text-white transition-colors py-1 px-2 rounded-md hover:bg-white/5 active:scale-95 border border-transparent hover:border-white/10"
-                            data-action="share-news" 
-                            data-title="${safeShareTitle}" 
-                            data-link="${article.link || ''}">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
-                        </svg>
-                        Compartilhar
-                    </button>
-                `;
+
+                // Calcula tempo relativo
+                let tempoRelativo = '';
+                try {
+                    const pubDate = new Date(article.publicationDate);
+                    const agora = new Date();
+                    const diffMs = agora - pubDate;
+                    const diffMin = Math.floor(diffMs / 60000);
+                    const diffH = Math.floor(diffMin / 60);
+                    if (diffMin < 60) {
+                        tempoRelativo = `${diffMin} min atrás`;
+                    } else if (diffH < 24) {
+                        tempoRelativo = `${diffH} hora${diffH > 1 ? 's' : ''} atrás`;
+                    } else {
+                        const diffD = Math.floor(diffH / 24);
+                        tempoRelativo = `${diffD} dia${diffD > 1 ? 's' : ''} atrás`;
+                    }
+                } catch (e) {
+                    tempoRelativo = horaPub;
+                }
 
                 item.innerHTML = `
-                <div class="flex items-start gap-3 py-1 cursor-pointer">
-                    <div class="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5 overflow-hidden relative">
-                        <img src="${faviconUrl}" alt="${sourceName}" 
-                             class="w-full h-full object-contain rounded-lg relative z-10"
-                             loading="lazy" decoding="async"
-                             onerror="this.src='https://www.google.com/s2/favicons?domain=google.com&sz=64';" 
-                        />
+                <div class="cursor-pointer py-1">
+                    ${badgeDestaque}
+                    <!-- Linha 1: Favicon + Nome da Fonte -->
+                    <div class="flex items-center gap-2 mb-2">
+                        <div class="w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 overflow-hidden">
+                            <img src="${faviconUrl}" alt="${sourceName}" 
+                                 class="w-full h-full object-contain rounded-full"
+                                 loading="lazy" decoding="async"
+                                 onerror="this.src='https://www.google.com/s2/favicons?domain=google.com&sz=64';" 
+                            />
+                        </div>
+                        <span class="text-[11px] font-bold text-gray-400">${sourceName}</span>
                     </div>
 
-                    <div class="flex-1 min-w-0 pointer-events-none">
-                        ${badgeDestaque}
-                        <div class="flex items-center gap-2 mb-1.5">
-                            <span class="text-[9px] font-bold uppercase tracking-wider text-gray-400">${sourceName}</span>
-                            <span class="text-[9px] text-gray-600">•</span>
-                            <span class="text-[9px] text-gray-500">${horaPub}</span>
+                    <!-- Linha 2: Título + Imagem de Capa -->
+                    <div class="flex items-start gap-3">
+                        <div class="flex-1 min-w-0">
+                            <h4 class="${titleClass} pointer-events-auto">
+                                ${displayTitle}
+                            </h4>
                         </div>
-
-                        <h4 class="${titleClass} pointer-events-auto">
-                            ${displayTitle}
-                        </h4>
-
-                        <div class="pointer-events-auto mt-1 -ml-2">
-                            ${shareBtnHtml}
-                        </div>
+                        ${hasImage ? `<div class="w-[72px] h-[72px] rounded-xl overflow-hidden flex-shrink-0 bg-[#1a1a1a]">${coverHtml}</div>` : ''}
                     </div>
 
-                    ${coverHtml || `<div class="text-gray-600 group-hover:text-gray-400 mt-1 transition-colors">
-                         <svg class="card-arrow-icon w-4 h-4 transition-transform duration-300" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
-                        </svg>
-                    </div>`}
+                    <!-- Linha 3: Tempo + Botão Compartilhar -->
+                    <div class="flex items-center justify-between mt-2 pointer-events-auto">
+                        <span class="text-[11px] text-gray-500">${tempoRelativo}</span>
+                        <button class="share-news-btn text-gray-600 hover:text-white transition-colors p-1.5 rounded-full hover:bg-white/5 active:scale-90"
+                                data-action="share-news" 
+                                data-title="${safeShareTitle}" 
+                                data-link="${article.link || ''}">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+                            </svg>
+                        </button>
+                    </div>
                 </div>
 
                 <div id="${drawerId}" class="card-drawer">
-                    <div class="drawer-content pb-4 pl-9 pr-2">
+                    <div class="drawer-content pb-4 px-2">
                         <div class="text-[13px] text-gray-400 leading-relaxed border-l-2 border-[#2C2C2E] pl-3">
                             ${article.summary ? article.summary : 'Resumo não disponível.'}
                         </div>

@@ -2671,7 +2671,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                             ${article.summary ? article.summary : 'Resumo não disponível.'}
                         </div>
                         <div class="mt-4 pl-3">
-                            <a href="${article.link}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1.5 text-xs font-bold text-white transition-colors bg-[#1C1C1E] border border-[#2C2C2E] px-3 py-1.5 rounded-lg active:scale-95">
+                            <a href="${article.link}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1.5 text-xs font-bold transition-colors hover:underline active:scale-95" style="color:#8ab4f8">
                                 Ler notícia completa
                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
                             </a>

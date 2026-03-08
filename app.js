@@ -1472,6 +1472,13 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     if (btnSairLock) {
         btnSairLock.addEventListener('click', async () => {
+            try {
+                await vestoDB.clear('apiCache');
+                sessionStorage.clear();
+            } catch (e) {
+                console.error("Erro ao limpar dados locais:", e);
+            }
+            sessionStorage.setItem('vesto_just_logged_out', 'true');
             await supabaseDB.signOut();
             window.location.reload();
         });

@@ -571,6 +571,15 @@ document.addEventListener('DOMContentLoaded', async () => {
     let lastNewsSignature = '';
     let lastProventosCalcSignature = '';
     let cachedSaldoCaixa = 0;
+    let currentNewsCategory = 'geral';
+    let newsSearchTerm = '';
+    let newsSearchDebounceTimer = null;
+    const NEWS_CATEGORY_QUERIES = {
+        geral: 'FII OR "Fundos Imobiliários" OR IFIX OR "Dividendos FII"',
+        fiis: 'FII OR "Fundos Imobiliários" OR IFIX OR "fundo imobiliário"',
+        acoes: 'Ações OR Ibovespa OR "Bolsa de Valores" OR B3 OR "mercado de ações"',
+        economia: 'Economia OR Selic OR IPCA OR "Taxa de juros" OR Inflação OR PIB'
+    };
     const btnOpenPatrimonio = document.getElementById('btn-open-patrimonio');
     const patrimonioPageModal = document.getElementById('patrimonio-page-modal');
     const patrimonioPageContent = document.getElementById('tab-patrimonio-content');
@@ -737,6 +746,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     const fiiNewsList = document.getElementById('fii-news-list');
     const fiiNewsSkeleton = document.getElementById('fii-news-skeleton');
     const fiiNewsMensagem = document.getElementById('fii-news-mensagem');
+    const newsSearchInput = document.getElementById('news-search-input');
+    const marketStatusDot = document.getElementById('market-status-dot');
+    const marketStatusText = document.getElementById('market-status-text');
+    const newsCatBtns = document.querySelectorAll('.news-cat-btn');
     const dashboardStatus = document.getElementById('dashboard-status');
     const dashboardLoading = document.getElementById('dashboard-loading');
     const dashboardMensagem = document.getElementById('dashboard-mensagem');
@@ -2495,7 +2508,23 @@ document.addEventListener('DOMContentLoaded', async () => {
     function renderizarNoticias(articles) {
         fiiNewsSkeleton.classList.add('hidden');
 
-        const newSignature = JSON.stringify(articles);
+        // Aplica filtro de busca client-side
+        let articlesToRender = articles;
+        if (newsSearchTerm) {
+            const term = newsSearchTerm.toLowerCase();
+            articlesToRender = articles.filter(a => {
+                const titleMatch = (a.title || '').toLowerCase().includes(term);
+                const sourceMatch = (a.sourceName || '').toLowerCase().includes(term);
+                const summaryMatch = (a.summary || '').toLowerCase().includes(term);
+                // Também busca por tickers no título
+                const tickerRegex = /[A-Z]{4}(3|4|5|6|11)/g;
+                const tickers = (a.title || '').match(tickerRegex) || [];
+                const tickerMatch = tickers.some(t => t.toLowerCase().includes(term));
+                return titleMatch || sourceMatch || summaryMatch || tickerMatch;
+            });
+        }
+
+        const newSignature = JSON.stringify(articlesToRender) + newsSearchTerm;
         if (newSignature === lastNewsSignature && fiiNewsList.children.length > 0) {
             return;
         }
@@ -2504,26 +2533,26 @@ document.addEventListener('DOMContentLoaded', async () => {
         fiiNewsList.innerHTML = '';
         fiiNewsMensagem.classList.add('hidden');
 
-        if (!articles || articles.length === 0) {
-            fiiNewsMensagem.textContent = 'Nenhuma notícia recente encontrada.';
+        if (!articlesToRender || articlesToRender.length === 0) {
+            fiiNewsMensagem.textContent = newsSearchTerm
+                ? `Nenhuma notícia encontrada para "${newsSearchTerm}".`
+                : 'Nenhuma notícia recente encontrada.';
             fiiNewsMensagem.classList.remove('hidden');
             return;
         }
 
-        const sortedArticles = [...articles].sort((a, b) => new Date(b.publicationDate) - new Date(a.publicationDate));
+        const sortedArticles = [...articlesToRender].sort((a, b) => new Date(b.publicationDate) - new Date(a.publicationDate));
         const grupos = agruparNoticiasPorData(sortedArticles);
 
         const fragment = document.createDocumentFragment();
         let isGlobalFirstItem = true;
 
         Object.keys(grupos).forEach(dataLabel => {
-            // Header de data — estilo unificado com Extrato (inline, não sticky)
             const header = document.createElement('div');
             header.className = 'z-10 bg-black py-3 px-5 mb-0 -mx-4 border-b border-[#1F1F1F]';
             header.innerHTML = `<h3 class="text-[11px] font-bold text-neutral-500 uppercase tracking-widest">${dataLabel}</h3>`;
             fragment.appendChild(header);
 
-            // Lista (Margem negativa total para borda ponta a ponta)
             const listaGrupo = document.createElement('div');
             listaGrupo.className = 'mb-6 -mx-4';
 
@@ -2535,7 +2564,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const safeLabel = dataLabel.replace(/[^a-zA-Z0-9]/g, '');
                 const drawerId = `news-drawer-${safeLabel}-${index}`;
 
-                // Tickers (Badges mais finos e discretos)
                 const tickerRegex = /[A-Z]{4}(3|4|5|6|11)/g;
                 const foundTickers = [...new Set(article.title.match(tickerRegex) || [])];
                 let tickersHtml = '';
@@ -2545,6 +2573,13 @@ document.addEventListener('DOMContentLoaded', async () => {
                     });
                 }
 
+                // Imagem de capa
+                const hasImage = article.imageUrl;
+                let coverHtml = '';
+                if (hasImage) {
+                    coverHtml = `<img src="${article.imageUrl}" alt="" class="news-cover-img" loading="lazy" decoding="async" onload="this.classList.add('loaded')" onerror="this.style.display='none'" />`;
+                }
+
                 const item = document.createElement('div');
 
                 let itemWrapperClass = 'group relative transition-all news-card-interactive px-4 ';
@@ -2552,13 +2587,11 @@ document.addEventListener('DOMContentLoaded', async () => {
                 let badgeDestaque = '';
 
                 if (isGlobalFirstItem) {
-                    // DESTAQUE
                     itemWrapperClass += 'bg-gradient-to-r from-blue-900/20 to-transparent border-l-[3px] border-blue-500 py-3 my-2 rounded-r-lg';
                     titleClass += 'text-[15px]';
                     badgeDestaque = '<span class="inline-block bg-blue-600/20 text-blue-400 border border-blue-500/30 text-[9px] font-bold uppercase tracking-wider px-1.5 py-[2px] rounded-sm mb-2">Destaque</span>';
                     isGlobalFirstItem = false;
                 } else {
-                    // NORMAL (Divisória ponta a ponta mudando a cor da borda para #1F1F1F)
                     itemWrapperClass += 'border-b border-[#1F1F1F] last:border-0 hover:bg-white/[0.02] py-3';
                     titleClass += 'text-sm';
                 }
@@ -2567,7 +2600,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                 item.setAttribute('data-action', 'toggle-news');
                 item.setAttribute('data-target', drawerId);
 
-                // Ícone ajustado de w-10 h-10 para w-6 h-6 para ficar menos "pesado" visualmente
                 item.innerHTML = `
                 <div class="flex items-start gap-3 py-1 cursor-pointer">
                     <div class="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5 overflow-hidden relative">
@@ -2595,11 +2627,11 @@ document.addEventListener('DOMContentLoaded', async () => {
                         </div>
                     </div>
 
-                    <div class="text-gray-600 group-hover:text-gray-400 mt-1 transition-colors">
+                    ${coverHtml || `<div class="text-gray-600 group-hover:text-gray-400 mt-1 transition-colors">
                          <svg class="card-arrow-icon w-4 h-4 transition-transform duration-300" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
                         </svg>
-                    </div>
+                    </div>`}
                 </div>
 
                 <div id="${drawerId}" class="card-drawer">
@@ -2622,6 +2654,16 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
 
         fiiNewsList.appendChild(fragment);
+    }
+
+    // ── Status do Mercado (B3 Aberta/Fechada) ──
+    function atualizarStatusMercado() {
+        const open = isB3Open();
+        if (marketStatusDot && marketStatusText) {
+            marketStatusDot.className = `market-status-dot ${open ? 'open' : 'closed'}`;
+            marketStatusText.textContent = open ? 'B3 Aberta' : 'B3 Fechada';
+            marketStatusText.className = `text-[11px] font-bold uppercase tracking-wider ${open ? 'text-green' : 'text-red'}`;
+        }
     }
 
     function renderizarGraficoAlocacao(isRetry = false) {
@@ -4647,8 +4689,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         totalProventosEl.textContent = formatBRL(totalEstimado);
     }
 
-    async function handleAtualizarNoticias(force = false) {
-        const cacheKey = 'noticias_json_v5_filtered';
+    async function handleAtualizarNoticias(force = false, category = null) {
+        const cat = category || currentNewsCategory;
+        const cacheKey = `noticias_json_v5_${cat}`;
 
         if (!force) {
             const cache = await getCache(cacheKey);
@@ -4658,6 +4701,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                 return;
             }
         }
+
+        // Reseta signature para forçar re-render ao mudar de categoria
+        lastNewsSignature = '';
 
         fiiNewsSkeleton.classList.remove('hidden');
         fiiNewsList.innerHTML = '';
@@ -4669,7 +4715,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
 
         try {
-            const articles = await fetchAndCacheNoticiasBFF_NetworkOnly(cacheKey);
+            const query = NEWS_CATEGORY_QUERIES[cat] || NEWS_CATEGORY_QUERIES.geral;
+            const articles = await fetchAndCacheNoticiasBFF_NetworkOnly(cacheKey, query);
             window.noticiasCache = articles;
             renderizarNoticias(articles);
         } catch (e) {
@@ -4682,11 +4729,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
 
-    async function fetchAndCacheNoticiasBFF_NetworkOnly(cacheKey) {
+    async function fetchAndCacheNoticiasBFF_NetworkOnly(cacheKey, query = '') {
         await vestoDB.delete('apiCache', cacheKey);
 
         try {
-            const url = `/api/news?t=${Date.now()}`;
+            const qParam = query ? `&q=${encodeURIComponent(query)}` : '';
+            const url = `/api/news?t=${Date.now()}${qParam}`;
             const response = await fetchBFF(url, {
                 method: 'GET',
                 headers: { 'Content-Type': 'application/json' }
@@ -8616,6 +8664,42 @@ document.addEventListener('DOMContentLoaded', async () => {
     refreshNoticiasButton.addEventListener('click', async () => {
         await handleAtualizarNoticias(true);
     });
+
+    // ── Abas de Categoria (Notícias) ──
+    newsCatBtns.forEach(btn => {
+        btn.addEventListener('click', async () => {
+            const cat = btn.dataset.category;
+            if (cat === currentNewsCategory) return;
+
+            currentNewsCategory = cat;
+            newsSearchTerm = '';
+            if (newsSearchInput) newsSearchInput.value = '';
+            lastNewsSignature = '';
+
+            newsCatBtns.forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+
+            await handleAtualizarNoticias(false, cat);
+        });
+    });
+
+    // ── Busca de Notícias (Debounced) ──
+    if (newsSearchInput) {
+        newsSearchInput.addEventListener('input', (e) => {
+            clearTimeout(newsSearchDebounceTimer);
+            newsSearchDebounceTimer = setTimeout(() => {
+                newsSearchTerm = e.target.value.trim();
+                lastNewsSignature = '';
+                if (window.noticiasCache) {
+                    renderizarNoticias(window.noticiasCache);
+                }
+            }, 300);
+        });
+    }
+
+    // ── Status do Mercado (Atualização periódica) ──
+    atualizarStatusMercado();
+    setInterval(atualizarStatusMercado, 60000);
 
     showAddModalBtn.addEventListener('click', showAddModal);
     emptyStateAddBtn.addEventListener('click', showAddModal);

@@ -2566,10 +2566,14 @@ document.addEventListener('DOMContentLoaded', async () => {
 
                 const tickerRegex = /[A-Z]{4}(3|4|5|6|11)/g;
                 const foundTickers = [...new Set(article.title.match(tickerRegex) || [])];
-                let tickersHtml = '';
+                
+                // Realça os tickers direto no título e os torna clicáveis
+                let displayTitle = article.title || 'Título indisponível';
                 if (foundTickers.length > 0) {
                     foundTickers.forEach(ticker => {
-                        tickersHtml += `<span class="news-ticker-tag font-bold bg-[#1C1C1E] text-gray-400 rounded-[4px] border border-[#2C2C2E] mr-1 mb-1 inline-block transition-colors text-[10px] px-2 py-0.5" data-action="view-ticker" data-symbol="${ticker}">${ticker}</span>`;
+                        // Regex específica para substituir apenas a palavra inteira do ticker no título
+                        const rx = new RegExp(`\\b${ticker}\\b`, 'g');
+                        displayTitle = displayTitle.replace(rx, `<span class="news-ticker-tag text-purple-400 font-bold hover:underline cursor-pointer transition-colors" data-action="view-ticker" data-symbol="${ticker}">${ticker}</span>`);
                     });
                 }
 
@@ -2600,6 +2604,20 @@ document.addEventListener('DOMContentLoaded', async () => {
                 item.setAttribute('data-action', 'toggle-news');
                 item.setAttribute('data-target', drawerId);
 
+                // Escapa quotes no título e url para jogar nos atributos
+                const safeShareTitle = (article.title || '').replace(/"/g, '&quot;');
+                const shareBtnHtml = `
+                    <button class="share-news-btn flex items-center gap-1.5 text-[11px] font-bold text-gray-500 hover:text-white transition-colors py-1 px-2 rounded-md hover:bg-white/5 active:scale-95 border border-transparent hover:border-white/10"
+                            data-action="share-news" 
+                            data-title="${safeShareTitle}" 
+                            data-link="${article.link || ''}">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+                        </svg>
+                        Compartilhar
+                    </button>
+                `;
+
                 item.innerHTML = `
                 <div class="flex items-start gap-3 py-1 cursor-pointer">
                     <div class="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5 overflow-hidden relative">
@@ -2618,12 +2636,12 @@ document.addEventListener('DOMContentLoaded', async () => {
                             <span class="text-[9px] text-gray-500">${horaPub}</span>
                         </div>
 
-                        <h4 class="${titleClass}">
-                            ${article.title || 'Título indisponível'}
+                        <h4 class="${titleClass} pointer-events-auto">
+                            ${displayTitle}
                         </h4>
 
-                        <div class="pointer-events-auto mt-2">
-                            ${tickersHtml ? `<div class="flex flex-wrap">${tickersHtml}</div>` : ''}
+                        <div class="pointer-events-auto mt-1 -ml-2">
+                            ${shareBtnHtml}
                         </div>
                     </div>
 
@@ -8840,13 +8858,35 @@ document.addEventListener('DOMContentLoaded', async () => {
             return;
         }
 
-        // 2. Verifica se clicou no LINK externo
+        // 2. Verifica se clicou no botão de COMPARTILHAR
+        const shareBtn = e.target.closest('[data-action="share-news"]');
+        if (shareBtn) {
+            e.stopPropagation();
+            const title = shareBtn.dataset.title;
+            const link = shareBtn.dataset.link;
+            
+            if (navigator.share) {
+                navigator.share({
+                    title: title,
+                    text: title,
+                    url: link,
+                }).catch((error) => console.log('Erro ao compartilhar', error));
+            } else {
+                // Fallback para desktop
+                navigator.clipboard.writeText(`${title} - ${link}`).then(() => {
+                    showToast('Link copiado para a área de transferência!', 'success');
+                });
+            }
+            return;
+        }
+
+        // 3. Verifica se clicou no LINK externo
         if (e.target.closest('a')) {
             e.stopPropagation();
             return;
         }
 
-        // 3. Verifica se clicou no CARD da notícia (para abrir o drawer)
+        // 4. Verifica se clicou no CARD da notícia (para abrir o drawer)
         // Agora procura por 'data-action="toggle-news"' OU a classe antiga 'news-card-interactive'
         const card = e.target.closest('[data-action="toggle-news"]') || e.target.closest('.news-card-interactive');
 

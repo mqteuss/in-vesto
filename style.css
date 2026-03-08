@@ -1576,59 +1576,7 @@ body.light-mode .market-status-pill {
     border-color: #e5e7eb;
 }
 
-/* ── Abas de Categoria (Notícias) ── */
-.news-category-bar {
-    display: flex;
-    gap: 8px;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-    padding: 2px 0;
-}
 
-.news-cat-btn {
-    flex-shrink: 0;
-    padding: 6px 16px;
-    border-radius: 9999px;
-    font-size: 12px;
-    font-weight: 700;
-    color: #9ca3af;
-    background-color: #151515;
-    border: 1px solid #2C2C2E;
-    cursor: pointer;
-    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-    letter-spacing: 0.02em;
-    text-transform: uppercase;
-    white-space: nowrap;
-}
-
-.news-cat-btn:hover {
-    color: #e5e5e5;
-    border-color: #4B5563;
-}
-
-.news-cat-btn:active {
-    transform: scale(0.95);
-}
-
-.news-cat-btn.active {
-    background-color: #fff;
-    color: #000;
-    border-color: transparent;
-    box-shadow: 0 0 12px rgba(255, 255, 255, 0.1);
-}
-
-/* Light mode */
-body.light-mode .news-cat-btn {
-    background-color: #f3f4f6;
-    border-color: #e5e7eb;
-    color: #6b7280;
-}
-
-body.light-mode .news-cat-btn.active {
-    background-color: #1f2937;
-    color: #ffffff;
-    border-color: transparent;
-}
 
 /* ── Imagem de capa (News) ── */
 .news-cover-img {

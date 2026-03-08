@@ -8666,7 +8666,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
 
     // ── Abas de Categoria (Notícias) ──
-    newsCatBtns.forEach(btn => {
+    const newsTabIndicator = document.getElementById('news-tab-indicator');
+    
+    newsCatBtns.forEach((btn, index) => {
         btn.addEventListener('click', async () => {
             const cat = btn.dataset.category;
             if (cat === currentNewsCategory) return;
@@ -8678,6 +8680,10 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             newsCatBtns.forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
+
+            if (newsTabIndicator) {
+                newsTabIndicator.style.transform = `translateX(${index * 100}%)`;
+            }
 
             await handleAtualizarNoticias(false, cat);
         });

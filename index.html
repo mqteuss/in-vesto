@@ -2003,7 +2003,7 @@
                 <div class="overflow-y-auto h-[calc(85vh-90px)] p-4 pt-4 custom-scroll">
                     <div class="grid grid-cols-2 gap-3 mb-4">
                         <div
-                            class="bg-[#151515] rounded-xl p-4 flex flex-col items-center justify-center border border-[#2C2C2E] shadow-sm">
+                            class="bg-[#151515] rounded-xl p-4 flex flex-col items-center justify-center">
                             <div class="flex items-center gap-1.5 mb-1.5">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-gray-600" fill="none"
                                     viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
@@ -2017,7 +2017,7 @@
                         </div>
 
                         <div
-                            class="bg-[#151515] rounded-xl p-4 flex flex-col items-center justify-center border border-[#2C2C2E] shadow-sm">
+                            class="bg-[#151515] rounded-xl p-4 flex flex-col items-center justify-center">
                             <div class="flex items-center gap-1.5 mb-1.5">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-gray-600" fill="none"
                                     viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
@@ -2033,20 +2033,12 @@
                         </div>
                     </div>
 
-                    <div class="flex overflow-x-auto gap-2 pb-2 mb-4 hide-scrollbar snap-x"
-                        style="touch-action: pan-x;">
-                        <button
-                            class="objetivo-filter-btn active snap-start flex-shrink-0 px-4 py-2 rounded-full text-xs font-bold transition-colors bg-white text-black border border-white"
-                            data-target="cota_gratis">Cota Grátis</button>
-                        <button
-                            class="objetivo-filter-btn snap-start flex-shrink-0 px-4 py-2 rounded-full text-xs font-bold transition-colors bg-[#151515] text-gray-400 border border-[#2C2C2E] hover:text-white"
-                            data-target="100">R$ 100/mês</button>
-                        <button
-                            class="objetivo-filter-btn snap-start flex-shrink-0 px-4 py-2 rounded-full text-xs font-bold transition-colors bg-[#151515] text-gray-400 border border-[#2C2C2E] hover:text-white"
-                            data-target="500">R$ 500/mês</button>
-                        <button
-                            class="objetivo-filter-btn snap-start flex-shrink-0 px-4 py-2 rounded-full text-xs font-bold transition-colors bg-[#151515] text-gray-400 border border-[#2C2C2E] hover:text-white"
-                            data-target="1000">R$ 1.000/mês</button>
+                    <div class="hist-tabs-container relative mb-4">
+                        <button class="hist-tab-btn objetivo-filter-btn active" style="font-size: 12px;" data-target="cota_gratis">Cota Grátis</button>
+                        <button class="hist-tab-btn objetivo-filter-btn" style="font-size: 12px;" data-target="100">R$ 100/mês</button>
+                        <button class="hist-tab-btn objetivo-filter-btn" style="font-size: 12px;" data-target="500">R$ 500/mês</button>
+                        <button class="hist-tab-btn objetivo-filter-btn" style="font-size: 12px;" data-target="1000">R$ 1.000/mês</button>
+                        <div id="objetivos-tab-indicator" class="active-tab-indicator" style="width: 25%;"></div>
                     </div>
 
                     <div id="objetivos-lista" class="space-y-3 pb-10">

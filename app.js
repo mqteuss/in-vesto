@@ -11758,22 +11758,16 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // Escutadores dos Botões de Filtro de Meta 
     const objetivoFilterBtns = document.querySelectorAll('.objetivo-filter-btn');
+    const objetivosTabIndicator = document.getElementById('objetivos-tab-indicator');
     if (objetivoFilterBtns.length > 0) {
-        objetivoFilterBtns.forEach(btn => {
+        objetivoFilterBtns.forEach((btn, index) => {
             btn.addEventListener('click', (e) => {
-                // Atualiza o estado visual das pills de filtro
-                objetivoFilterBtns.forEach(b => {
-                    b.classList.remove('bg-white', 'text-black', 'border-white', 'active');
-                    b.classList.add('bg-[#151515]', 'text-gray-400', 'border-[#2C2C2E]');
-                    // Aplica estilo light mode se necessario (simplificado)
-                    if (document.body.classList.contains('light-mode')) {
-                        b.classList.replace('bg-[#151515]', 'bg-gray-100');
-                        b.classList.replace('border-[#2C2C2E]', 'border-gray-200');
-                    }
-                });
+                objetivoFilterBtns.forEach(b => b.classList.remove('active'));
+                e.target.classList.add('active');
 
-                e.target.classList.add('active', 'bg-white', 'text-black', 'border-white');
-                e.target.classList.remove('bg-[#151515]', 'text-gray-400', 'border-[#2C2C2E]', 'bg-gray-100', 'border-gray-200');
+                if (objetivosTabIndicator) {
+                    objetivosTabIndicator.style.transform = `translateX(${index * 100}%)`;
+                }
 
                 // Atualiza o Global Target e re-renderiza a aba
                 currentObjetivoTarget = e.target.getAttribute('data-target');

@@ -9,7 +9,7 @@ const CONFIG = {
     timeoutMs:      10000,
     maxQueryLength: 200,
     defaultQuery:   'FII OR "Fundos Imobiliários" OR IFIX OR "Dividendos FII"',
-    windowDays:     30,     // when:Nd no Google News
+    windowDays:     14,     // when:Nd no Google News
 };
 
 // ---------------------------------------------------------
@@ -35,7 +35,12 @@ const rssParser = new Parser({
     },
     timeout: CONFIG.timeoutMs,
     customFields: {
-        item: [['source', 'sourceObj']],
+        item: [
+            ['source', 'sourceObj'],
+            ['media:content', 'mediaContent'],
+            ['media:thumbnail', 'mediaThumbnail'],
+            ['enclosure', 'enclosure'],
+        ],
     },
 });
 
@@ -112,6 +117,34 @@ function sanitizeQuery(q) {
 // EXTRAÇÃO DE ARTIGOS
 // Isolada do handler para ser testável independentemente.
 // ---------------------------------------------------------
+// Extrai URL de imagem das diversas fontes possíveis do RSS
+function extractImageUrl(item) {
+    // 1. media:content
+    if (item.mediaContent) {
+        const mc = item.mediaContent;
+        const url = mc.$ ? mc.$.url : (mc.url || mc);
+        if (typeof url === 'string' && url.startsWith('http')) return url;
+    }
+    // 2. media:thumbnail
+    if (item.mediaThumbnail) {
+        const mt = item.mediaThumbnail;
+        const url = mt.$ ? mt.$.url : (mt.url || mt);
+        if (typeof url === 'string' && url.startsWith('http')) return url;
+    }
+    // 3. enclosure
+    if (item.enclosure) {
+        const enc = item.enclosure;
+        const url = enc.url || (enc.$ ? enc.$.url : null);
+        const type = enc.type || (enc.$ ? enc.$.type : '');
+        if (url && (type.startsWith('image') || /\.(jpg|jpeg|png|webp|gif)/i.test(url))) return url;
+    }
+    // 4. img tag inside content
+    const content = item.content || item['content:encoded'] || '';
+    const imgMatch = content.match(/<img[^>]+src=["']([^"']+)["']/i);
+    if (imgMatch && imgMatch[1].startsWith('http')) return imgMatch[1];
+    return null;
+}
+
 function extractArticles(feedItems) {
     const seenTitles = new Set();
     const SOURCE_SUFFIX = /(?: - | \| )([^-|]+)$/;
@@ -155,6 +188,7 @@ function extractArticles(feedItems) {
                 sourceHostname:  known.domain,
                 favicon:         `https://www.google.com/s2/favicons?domain=${known.domain}&sz=64`,
                 summary:         item.contentSnippet || '',
+                imageUrl:        extractImageUrl(item),
             };
         })
         .filter(Boolean)

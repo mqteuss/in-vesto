@@ -1783,22 +1783,8 @@ body.privacy-mode [data-field="pl-valor"] {
     animation: spin 1s linear infinite;
 }
 
-@keyframes finance-bars {
-    0% {
-        transform: scaleY(1);
-        opacity: 1;
-    }
 
-    50% {
-        transform: scaleY(0.4);
-        opacity: 0.5;
-    }
 
-    100% {
-        transform: scaleY(1);
-        opacity: 1;
-    }
-}
 
 @keyframes modalIn {
     from {
@@ -1916,13 +1902,11 @@ button:not(#show-add-modal-btn):active,
 }
 
 /* Loaders */
+/* ── Loader Principal (Orbital Spinner Roxo) ── */
 .loader {
     position: relative;
-    width: 10px;
-    height: 40px;
-    background: #c084fc;
-    animation: finance-bars 0.5s infinite linear;
-    animation-delay: 0.25s;
+    width: 36px;
+    height: 36px;
     margin: 0 auto;
 }
 
@@ -1930,29 +1914,33 @@ button:not(#show-add-modal-btn):active,
 .loader::after {
     content: '';
     position: absolute;
-    width: 10px;
-    height: 40px;
-    background: #c084fc;
-    animation: finance-bars 0.5s infinite linear;
+    inset: 0;
+    border-radius: 50%;
+    border: 2.5px solid transparent;
 }
 
 .loader::before {
-    left: -15px;
-    animation-delay: 0s;
+    border-top-color: #a855f7;
+    border-right-color: rgba(168, 85, 247, 0.3);
+    animation: loaderSpin 0.8s cubic-bezier(0.45, 0.05, 0.55, 0.95) infinite;
 }
 
 .loader::after {
-    right: -15px;
-    animation-delay: 0.5s;
+    inset: 5px;
+    border-bottom-color: #c084fc;
+    border-left-color: rgba(192, 132, 252, 0.2);
+    animation: loaderSpin 1.2s cubic-bezier(0.45, 0.05, 0.55, 0.95) infinite reverse;
 }
 
+@keyframes loaderSpin {
+    to { transform: rotate(360deg); }
+}
+
+/* ── Loader Pequeno (para botões) ── */
 .loader-sm {
     position: relative;
-    width: 4px;
+    width: 16px;
     height: 16px;
-    background: #ffffff;
-    animation: finance-bars 0.5s infinite linear;
-    animation-delay: 0.25s;
     display: inline-block;
     margin: 0 6px;
     vertical-align: middle;
@@ -1962,20 +1950,21 @@ button:not(#show-add-modal-btn):active,
 .loader-sm::after {
     content: '';
     position: absolute;
-    width: 4px;
-    height: 16px;
-    background: #ffffff;
-    animation: finance-bars 0.5s infinite linear;
+    inset: 0;
+    border-radius: 50%;
+    border: 2px solid transparent;
 }
 
 .loader-sm::before {
-    left: -6px;
-    animation-delay: 0s;
+    border-top-color: #ffffff;
+    border-right-color: rgba(255, 255, 255, 0.3);
+    animation: loaderSpin 0.7s cubic-bezier(0.45, 0.05, 0.55, 0.95) infinite;
 }
 
 .loader-sm::after {
-    right: -6px;
-    animation-delay: 0.5s;
+    inset: 3px;
+    border-bottom-color: rgba(255, 255, 255, 0.6);
+    animation: loaderSpin 1s cubic-bezier(0.45, 0.05, 0.55, 0.95) infinite reverse;
 }
 
 #login-form:active,

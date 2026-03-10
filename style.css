@@ -19,6 +19,8 @@ body {
     scrollbar-width: none;
     margin: 0;
     padding: 0;
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
 }
 
 html::-webkit-scrollbar,

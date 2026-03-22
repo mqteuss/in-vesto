@@ -386,11 +386,11 @@ function criarCardElemento(ativo, dados) {
     const textDrawerVal = isLight ? 'text-gray-700' : 'text-gray-300';
 
     card.innerHTML = `
-        <div class="p-3 pb-2"> 
+        <div class="px-3 py-2">
             <div class="flex justify-between items-center">
 
                 <div class="flex items-center gap-3">
-                    <div class="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 relative overflow-hidden">
+                    <div class="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 relative overflow-hidden">
                         ${iconHtml}
                     </div>
 
@@ -417,8 +417,8 @@ function criarCardElemento(ativo, dados) {
                 </div>
             </div>
 
-            <div class="flex justify-center mt-1 mb-0.5">
-                <svg xmlns="http://www.w3.org/2000/svg" class="drawer-arrow h-3.5 w-3.5 text-gray-600 transition-transform duration-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <div class="flex justify-center -mb-0.5">
+                <svg xmlns="http://www.w3.org/2000/svg" class="drawer-arrow h-3 w-3 text-gray-600 transition-transform duration-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
                 </svg>
             </div>

@@ -407,19 +407,20 @@ function criarCardElemento(ativo, dados) {
                     </div>
                 </div>
 
-                <div class="flex items-center gap-2">
-                    <div class="text-right">
-                        <p data-field="posicao-valor" class="text-base font-bold text-white tracking-tight money-value">
-                            ${dadoPreco ? formatBRL(totalPosicao) : '...'}
-                        </p>
-                        <p data-field="variacao-valor" class="text-xs font-medium ${corVariacao} mt-0.5">
-                            ${dadoPreco ? variacaoFormatada : '0.00%'}
-                        </p>
-                    </div>
-                    <svg xmlns="http://www.w3.org/2000/svg" class="drawer-arrow h-3.5 w-3.5 text-gray-600 transition-transform duration-300 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-                    </svg>
+                <div class="text-right">
+                    <p data-field="posicao-valor" class="text-base font-bold text-white tracking-tight money-value">
+                        ${dadoPreco ? formatBRL(totalPosicao) : '...'}
+                    </p>
+                    <p data-field="variacao-valor" class="text-xs font-medium ${corVariacao} mt-0.5">
+                        ${dadoPreco ? variacaoFormatada : '0.00%'}
+                    </p>
                 </div>
+            </div>
+
+            <div class="flex justify-center mt-1 mb-0.5">
+                <svg xmlns="http://www.w3.org/2000/svg" class="drawer-arrow h-3.5 w-3.5 text-gray-600 transition-transform duration-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                </svg>
             </div>
         </div>
 
@@ -8710,11 +8711,19 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     refreshButton.addEventListener('click', async () => {
+        refreshButton.classList.add('animate-spin');
+        refreshButton.disabled = true;
         await atualizarTodosDados(true);
+        refreshButton.classList.remove('animate-spin');
+        refreshButton.disabled = false;
     });
 
     refreshNoticiasButton.addEventListener('click', async () => {
+        refreshNoticiasButton.classList.add('animate-spin');
+        refreshNoticiasButton.disabled = true;
         await handleAtualizarNoticias(true);
+        refreshNoticiasButton.classList.remove('animate-spin');
+        refreshNoticiasButton.disabled = false;
     });
 
     // ── Abas de Categoria (Notícias) ──

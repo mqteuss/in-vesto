@@ -10472,7 +10472,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Compartilhar ativo direto da gaveta do card
     window.compartilharAtivoDireto = async function(symbol) {
         const ativo = carteiraCalculada.find(a => a.symbol === symbol);
-        const dadoPreco = allPriceData[symbol];
+        const dadoPreco = precosAtuais.find(p => p.symbol === symbol);
         const preco = dadoPreco ? formatBRL(dadoPreco.regularMarketPrice) : 'N/A';
         const posicao = (ativo && dadoPreco) ? formatBRL(ativo.quantity * dadoPreco.regularMarketPrice) : 'N/A';
         const baseUrl = window.location.origin + window.location.pathname;

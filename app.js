@@ -1578,6 +1578,21 @@ document.addEventListener('DOMContentLoaded', async () => {
         await vestoDB.clear('apiCache');
     }
 
+    // Stale-While-Revalidate: retorna dados mesmo expirados + flag
+    async function getCacheSWR(key) {
+        try {
+            const cacheItem = await vestoDB.get('apiCache', key);
+            if (!cacheItem) return { data: null, isStale: false };
+
+            if (cacheItem.duration === -1) return { data: cacheItem.data, isStale: false };
+
+            const isExpired = (Date.now() - cacheItem.timestamp) > cacheItem.duration;
+            return { data: cacheItem.data, isStale: isExpired };
+        } catch (e) {
+            return { data: null, isStale: false };
+        }
+    }
+
     const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
     const PALETA_CORES = [
@@ -2518,124 +2533,78 @@ document.addEventListener('DOMContentLoaded', async () => {
         return grupos;
     }
 
-    function renderizarNoticias(articles) {
-        fiiNewsSkeleton.classList.add('hidden');
+    const NEWS_BATCH_SIZE = 10;
+    let _newsObserver = null;
+    let _newsPendingArticles = [];
+    let _newsCurrentIndex = 0;
+    let _newsIsFirstItem = true;
 
-        // Aplica filtro de busca client-side
-        let articlesToRender = articles;
-        if (newsSearchTerm) {
-            const term = newsSearchTerm.toLowerCase();
-            articlesToRender = articles.filter(a => {
-                const titleMatch = (a.title || '').toLowerCase().includes(term);
-                const sourceMatch = (a.sourceName || '').toLowerCase().includes(term);
-                const summaryMatch = (a.summary || '').toLowerCase().includes(term);
-                // Também busca por tickers no título
-                const tickerRegex = /[A-Z]{4}(3|4|5|6|11)/g;
-                const tickers = (a.title || '').match(tickerRegex) || [];
-                const tickerMatch = tickers.some(t => t.toLowerCase().includes(term));
-                return titleMatch || sourceMatch || summaryMatch || tickerMatch;
+    function _criarNoticiaElemento(article, dataLabel, index, isFirstItem) {
+        const sourceName = article.sourceName || 'Fonte';
+        const faviconUrl = article.favicon || `https://www.google.com/s2/favicons?domain=${article.sourceHostname || 'google.com'}&sz=64`;
+        let horaPub = '';
+        try { horaPub = new Date(article.publicationDate).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }); } catch (e) { horaPub = '--:--'; }
+        const safeLabel = dataLabel.replace(/[^a-zA-Z0-9]/g, '');
+        const drawerId = `news-drawer-${safeLabel}-${index}`;
+
+        const tickerRegex = /[A-Z]{4}(3|4|5|6|11)/g;
+        const foundTickers = [...new Set(article.title.match(tickerRegex) || [])];
+        
+        let displayTitle = article.title || 'Título indisponível';
+        if (foundTickers.length > 0) {
+            foundTickers.forEach(ticker => {
+                const rx = new RegExp(`\\b${ticker}\\b`, 'g');
+                displayTitle = displayTitle.replace(rx, `<span class="news-ticker-tag hover:underline cursor-pointer transition-colors" style="color:#8ab4f8" data-action="view-ticker" data-symbol="${ticker}">${ticker}</span>`);
             });
         }
 
-        const newSignature = JSON.stringify(articlesToRender) + newsSearchTerm;
-        if (newSignature === lastNewsSignature && fiiNewsList.children.length > 0) {
-            return;
-        }
-        lastNewsSignature = newSignature;
-
-        fiiNewsList.innerHTML = '';
-        fiiNewsMensagem.classList.add('hidden');
-
-        if (!articlesToRender || articlesToRender.length === 0) {
-            fiiNewsMensagem.textContent = newsSearchTerm
-                ? `Nenhuma notícia encontrada para "${newsSearchTerm}".`
-                : 'Nenhuma notícia recente encontrada.';
-            fiiNewsMensagem.classList.remove('hidden');
-            return;
+        const hasImage = article.imageUrl;
+        let coverHtml = '';
+        if (hasImage) {
+            coverHtml = `<img src="${article.imageUrl}" alt="" class="news-cover-img" loading="lazy" decoding="async" onload="this.classList.add('loaded')" onerror="this.parentElement.style.display='none'" />`;
         }
 
-        const sortedArticles = [...articlesToRender].sort((a, b) => new Date(b.publicationDate) - new Date(a.publicationDate));
-        const grupos = agruparNoticiasPorData(sortedArticles);
+        const item = document.createElement('div');
 
-        const fragment = document.createDocumentFragment();
-        let isGlobalFirstItem = true;
+        let itemWrapperClass = 'group relative transition-all news-card-interactive px-4 ';
+        let titleClass = 'font-bold text-gray-100 leading-snug group-hover:text-white transition-colors ';
+        let badgeDestaque = '';
 
-        Object.keys(grupos).forEach(dataLabel => {
+        if (isFirstItem) {
+            itemWrapperClass += 'bg-gradient-to-r from-blue-900/20 to-transparent border-l-[3px] border-blue-500 py-3 my-2 rounded-r-lg';
+            titleClass += 'text-[15px]';
+            badgeDestaque = '<span class="inline-block bg-blue-600/20 text-blue-400 border border-blue-500/30 text-[9px] font-bold uppercase tracking-wider px-1.5 py-[2px] rounded-sm mb-2">Destaque</span>';
+        } else {
+            itemWrapperClass += 'border-b border-[#1F1F1F] last:border-0 hover:bg-white/[0.02] py-3';
+            titleClass += 'text-sm';
+        }
 
-            const listaGrupo = document.createElement('div');
-            listaGrupo.className = 'mb-6 -mx-4';
+        item.className = itemWrapperClass;
+        item.setAttribute('data-action', 'toggle-news');
+        item.setAttribute('data-target', drawerId);
 
-            grupos[dataLabel].forEach((article, index) => {
-                const sourceName = article.sourceName || 'Fonte';
-                const faviconUrl = article.favicon || `https://www.google.com/s2/favicons?domain=${article.sourceHostname || 'google.com'}&sz=64`;
-                let horaPub = '';
-                try { horaPub = new Date(article.publicationDate).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }); } catch (e) { horaPub = '--:--'; }
-                const safeLabel = dataLabel.replace(/[^a-zA-Z0-9]/g, '');
-                const drawerId = `news-drawer-${safeLabel}-${index}`;
+        const safeShareTitle = (article.title || '').replace(/"/g, '&quot;');
 
-                const tickerRegex = /[A-Z]{4}(3|4|5|6|11)/g;
-                const foundTickers = [...new Set(article.title.match(tickerRegex) || [])];
-                
-                // Realça os tickers direto no título e os torna clicáveis
-                let displayTitle = article.title || 'Título indisponível';
-                if (foundTickers.length > 0) {
-                    foundTickers.forEach(ticker => {
-                        const rx = new RegExp(`\\b${ticker}\\b`, 'g');
-                        displayTitle = displayTitle.replace(rx, `<span class="news-ticker-tag hover:underline cursor-pointer transition-colors" style="color:#8ab4f8" data-action="view-ticker" data-symbol="${ticker}">${ticker}</span>`);
-                    });
-                }
+        let tempoRelativo = '';
+        try {
+            const pubDate = new Date(article.publicationDate);
+            const agora = new Date();
+            const diffMs = agora - pubDate;
+            const diffMin = Math.floor(diffMs / 60000);
+            const diffH = Math.floor(diffMin / 60);
+            if (diffMin < 60) {
+                tempoRelativo = `${diffMin} min atrás`;
+            } else if (diffH < 24) {
+                tempoRelativo = `${diffH} hora${diffH > 1 ? 's' : ''} atrás`;
+            } else {
+                const diffD = Math.floor(diffH / 24);
+                tempoRelativo = `${diffD} dia${diffD > 1 ? 's' : ''} atrás`;
+            }
+        } catch (e) {
+            tempoRelativo = horaPub;
+        }
 
-                // Imagem de capa
-                const hasImage = article.imageUrl;
-                let coverHtml = '';
-                if (hasImage) {
-                    coverHtml = `<img src="${article.imageUrl}" alt="" class="news-cover-img" loading="lazy" decoding="async" onload="this.classList.add('loaded')" onerror="this.parentElement.style.display='none'" />`;
-                }
-
-                const item = document.createElement('div');
-
-                let itemWrapperClass = 'group relative transition-all news-card-interactive px-4 ';
-                let titleClass = 'font-bold text-gray-100 leading-snug group-hover:text-white transition-colors ';
-                let badgeDestaque = '';
-
-                if (isGlobalFirstItem) {
-                    itemWrapperClass += 'bg-gradient-to-r from-blue-900/20 to-transparent border-l-[3px] border-blue-500 py-3 my-2 rounded-r-lg';
-                    titleClass += 'text-[15px]';
-                    badgeDestaque = '<span class="inline-block bg-blue-600/20 text-blue-400 border border-blue-500/30 text-[9px] font-bold uppercase tracking-wider px-1.5 py-[2px] rounded-sm mb-2">Destaque</span>';
-                    isGlobalFirstItem = false;
-                } else {
-                    itemWrapperClass += 'border-b border-[#1F1F1F] last:border-0 hover:bg-white/[0.02] py-3';
-                    titleClass += 'text-sm';
-                }
-
-                item.className = itemWrapperClass;
-                item.setAttribute('data-action', 'toggle-news');
-                item.setAttribute('data-target', drawerId);
-
-                // Escapa quotes no título e url para jogar nos atributos
-                const safeShareTitle = (article.title || '').replace(/"/g, '&quot;');
-
-                // Calcula tempo relativo
-                let tempoRelativo = '';
-                try {
-                    const pubDate = new Date(article.publicationDate);
-                    const agora = new Date();
-                    const diffMs = agora - pubDate;
-                    const diffMin = Math.floor(diffMs / 60000);
-                    const diffH = Math.floor(diffMin / 60);
-                    if (diffMin < 60) {
-                        tempoRelativo = `${diffMin} min atrás`;
-                    } else if (diffH < 24) {
-                        tempoRelativo = `${diffH} hora${diffH > 1 ? 's' : ''} atrás`;
-                    } else {
-                        const diffD = Math.floor(diffH / 24);
-                        tempoRelativo = `${diffD} dia${diffD > 1 ? 's' : ''} atrás`;
-                    }
-                } catch (e) {
-                    tempoRelativo = horaPub;
-                }
-
-                item.innerHTML = `
+        item.innerHTML = `
                 <div class="cursor-pointer py-1">
                     ${badgeDestaque}
                     <!-- Linha 1: Favicon + Nome da Fonte -->
@@ -2688,12 +2657,104 @@ document.addEventListener('DOMContentLoaded', async () => {
                     </div>
                 </div>
             `;
-                listaGrupo.appendChild(item);
-            });
-            fragment.appendChild(listaGrupo);
-        });
+        return item;
+    }
+
+    function _renderizarProximoLoteNoticias() {
+        if (_newsCurrentIndex >= _newsPendingArticles.length) {
+            // Remove sentinela quando não há mais artigos
+            const sentinel = fiiNewsList.querySelector('.news-sentinel');
+            if (sentinel) sentinel.remove();
+            if (_newsObserver) _newsObserver.disconnect();
+            return;
+        }
+
+        const end = Math.min(_newsCurrentIndex + NEWS_BATCH_SIZE, _newsPendingArticles.length);
+        const fragment = document.createDocumentFragment();
+
+        for (let i = _newsCurrentIndex; i < end; i++) {
+            const { article, dataLabel } = _newsPendingArticles[i];
+            const isFirst = _newsIsFirstItem;
+            if (_newsIsFirstItem) _newsIsFirstItem = false;
+            const item = _criarNoticiaElemento(article, dataLabel, i, isFirst);
+            fragment.appendChild(item);
+        }
+
+        // Remove sentinela antiga antes de adicionar novos itens
+        const oldSentinel = fiiNewsList.querySelector('.news-sentinel');
+        if (oldSentinel) oldSentinel.remove();
 
         fiiNewsList.appendChild(fragment);
+        _newsCurrentIndex = end;
+
+        // Adiciona nova sentinela se ainda há mais artigos
+        if (_newsCurrentIndex < _newsPendingArticles.length) {
+            const sentinel = document.createElement('div');
+            sentinel.className = 'news-sentinel h-4';
+            fiiNewsList.appendChild(sentinel);
+
+            if (_newsObserver) _newsObserver.disconnect();
+            _newsObserver = new IntersectionObserver((entries) => {
+                if (entries[0].isIntersecting) {
+                    _renderizarProximoLoteNoticias();
+                }
+            }, { root: fiiNewsList.closest('.tab-content'), rootMargin: '200px' });
+            _newsObserver.observe(sentinel);
+        }
+    }
+
+    function renderizarNoticias(articles) {
+        fiiNewsSkeleton.classList.add('hidden');
+
+        // Aplica filtro de busca client-side
+        let articlesToRender = articles;
+        if (newsSearchTerm) {
+            const term = newsSearchTerm.toLowerCase();
+            articlesToRender = articles.filter(a => {
+                const titleMatch = (a.title || '').toLowerCase().includes(term);
+                const sourceMatch = (a.sourceName || '').toLowerCase().includes(term);
+                const summaryMatch = (a.summary || '').toLowerCase().includes(term);
+                const tickerRegex = /[A-Z]{4}(3|4|5|6|11)/g;
+                const tickers = (a.title || '').match(tickerRegex) || [];
+                const tickerMatch = tickers.some(t => t.toLowerCase().includes(term));
+                return titleMatch || sourceMatch || summaryMatch || tickerMatch;
+            });
+        }
+
+        const newSignature = JSON.stringify(articlesToRender) + newsSearchTerm;
+        if (newSignature === lastNewsSignature && fiiNewsList.children.length > 0) {
+            return;
+        }
+        lastNewsSignature = newSignature;
+
+        fiiNewsList.innerHTML = '';
+        fiiNewsMensagem.classList.add('hidden');
+        if (_newsObserver) _newsObserver.disconnect();
+
+        if (!articlesToRender || articlesToRender.length === 0) {
+            fiiNewsMensagem.textContent = newsSearchTerm
+                ? `Nenhuma notícia encontrada para "${newsSearchTerm}".`
+                : 'Nenhuma notícia recente encontrada.';
+            fiiNewsMensagem.classList.remove('hidden');
+            return;
+        }
+
+        const sortedArticles = [...articlesToRender].sort((a, b) => new Date(b.publicationDate) - new Date(a.publicationDate));
+        const grupos = agruparNoticiasPorData(sortedArticles);
+
+        // Achata em lista plana com labels para renderização incremental
+        _newsPendingArticles = [];
+        _newsCurrentIndex = 0;
+        _newsIsFirstItem = true;
+
+        Object.keys(grupos).forEach(dataLabel => {
+            grupos[dataLabel].forEach(article => {
+                _newsPendingArticles.push({ article, dataLabel });
+            });
+        });
+
+        // Renderiza apenas o primeiro lote
+        _renderizarProximoLoteNoticias();
     }
 
     // ── Status do Mercado (B3 Aberta/Fechada) ──
@@ -4821,35 +4882,89 @@ document.addEventListener('DOMContentLoaded', async () => {
         const mercadoAberto = isB3Open();
         const duracaoCachePreco = mercadoAberto ? CACHE_PRECO_MERCADO_ABERTO : CACHE_PRECO_MERCADO_FECHADO;
 
-        const promessas = carteiraCalculada.map(async (ativo) => {
-            const cacheKey = `preco_${ativo.symbol}`;
-            if (force) {
-                await vestoDB.delete('apiCache', cacheKey);
+        // SWR: coleta dados stale para exibição imediata
+        let staleResults = [];
+        let needsFetch = [];
+
+        if (!force) {
+            for (const ativo of carteiraCalculada) {
+                const cacheKey = `preco_${ativo.symbol}`;
+                const { data, isStale } = await getCacheSWR(cacheKey);
+                if (data && !isStale) {
+                    staleResults.push(data); // fresh — não precisa refetch
+                } else if (data && isStale) {
+                    staleResults.push(data); // stale — exibe mas marca para refetch
+                    needsFetch.push(ativo);
+                } else {
+                    needsFetch.push(ativo); // sem cache
+                }
             }
 
-            if (!force) {
-                const precoCache = await getCache(cacheKey);
-                if (precoCache) return precoCache;
+            // Se todos os dados estão frescos, retorna direto
+            if (needsFetch.length === 0) return staleResults;
+
+            // Se temos dados stale, renderiza imediato e refetch em background
+            if (staleResults.length > 0 && needsFetch.length < carteiraCalculada.length) {
+                // Renderiza stale imediato
+                precosAtuais = staleResults;
+                renderizarCarteiraDebounced();
+
+                // Refetch apenas os que precisam em background
+                const bgPromises = needsFetch.map(async (ativo) => {
+                    try {
+                        const tickerParaApi = isFII(ativo.symbol) ? `${ativo.symbol}.SA` : ativo.symbol;
+                        const data = await fetchBFF(`/api/brapi?path=/quote/${tickerParaApi}?range=1d&interval=1d`);
+                        const result = data.results?.[0];
+                        if (result && !result.error) {
+                            if (result.symbol.endsWith('.SA')) result.symbol = result.symbol.replace('.SA', '');
+                            await setCache(`preco_${ativo.symbol}`, result, duracaoCachePreco);
+                            return result;
+                        }
+                    } catch (err) {
+                        console.error(`SWR: Erro ao atualizar ${ativo.symbol}:`, err);
+                    }
+                    return null;
+                });
+
+                // Quando background terminar, atualiza preços
+                Promise.all(bgPromises).then(freshResults => {
+                    const freshMap = new Map();
+                    freshResults.filter(Boolean).forEach(r => freshMap.set(r.symbol, r));
+                    if (freshMap.size > 0) {
+                        precosAtuais = precosAtuais.map(p => freshMap.get(p.symbol) || p);
+                        renderizarCarteiraDebounced();
+                    }
+                });
+
+                return staleResults;
             }
+        } else {
+            needsFetch = [...carteiraCalculada];
+            // Limpa cache quando force=true
+            for (const ativo of needsFetch) {
+                await vestoDB.delete('apiCache', `preco_${ativo.symbol}`);
+            }
+        }
+
+        // Fetch normal para ativos sem cache
+        const promessas = needsFetch.map(async (ativo) => {
             try {
                 const tickerParaApi = isFII(ativo.symbol) ? `${ativo.symbol}.SA` : ativo.symbol;
                 const data = await fetchBFF(`/api/brapi?path=/quote/${tickerParaApi}?range=1d&interval=1d`);
                 const result = data.results?.[0];
-
                 if (result && !result.error) {
                     if (result.symbol.endsWith('.SA')) result.symbol = result.symbol.replace('.SA', '');
-                    await setCache(cacheKey, result, duracaoCachePreco);
+                    await setCache(`preco_${ativo.symbol}`, result, duracaoCachePreco);
                     return result;
-                } else {
-                    return null;
                 }
             } catch (err) {
                 console.error(`Erro ao buscar preço para ${ativo.symbol}:`, err);
-                return null;
             }
+            return null;
         });
-        const resultados = await Promise.all(promessas);
-        return resultados.filter(p => p !== null);
+
+        const freshResults = await Promise.all(promessas);
+        return [...staleResults, ...freshResults.filter(Boolean)];
     }
 
     function processarProventosScraper(proventosScraper = []) {

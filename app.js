@@ -386,7 +386,7 @@ function criarCardElemento(ativo, dados) {
     const textDrawerVal = isLight ? 'text-gray-700' : 'text-gray-300';
 
     card.innerHTML = `
-        <div class="p-3 pb-1"> 
+        <div class="p-3 pb-2"> 
             <div class="flex justify-between items-center">
 
                 <div class="flex items-center gap-3">
@@ -407,19 +407,16 @@ function criarCardElemento(ativo, dados) {
                     </div>
                 </div>
 
-                <div class="text-right">
-                    <p data-field="posicao-valor" class="text-base font-bold text-white tracking-tight money-value">
-                        ${dadoPreco ? formatBRL(totalPosicao) : '...'}
-                    </p>
-                    <p data-field="variacao-valor" class="text-xs font-medium ${corVariacao} mt-0.5">
-                        ${dadoPreco ? variacaoFormatada : '0.00%'}
-                    </p>
-                </div>
-            </div>
-
-            <div class="flex justify-center mt-2 mb-1">
-                <div class="${bgPill} border ${borderPill} rounded-full px-3 py-0.5 flex items-center justify-center ${hoverBgPill} ${hoverBorderPill} transition-colors duration-300">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="drawer-arrow h-3 w-3 text-gray-500 transition-transform duration-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <div class="flex items-center gap-2">
+                    <div class="text-right">
+                        <p data-field="posicao-valor" class="text-base font-bold text-white tracking-tight money-value">
+                            ${dadoPreco ? formatBRL(totalPosicao) : '...'}
+                        </p>
+                        <p data-field="variacao-valor" class="text-xs font-medium ${corVariacao} mt-0.5">
+                            ${dadoPreco ? variacaoFormatada : '0.00%'}
+                        </p>
+                    </div>
+                    <svg xmlns="http://www.w3.org/2000/svg" class="drawer-arrow h-3.5 w-3.5 text-gray-600 transition-transform duration-300 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
                     </svg>
                 </div>
@@ -568,6 +565,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     let currentDetalhesSymbol = null;
     let currentDetalhesMeses = 3;
     let currentDetalhesHistoricoJSON = null;
+    let currentDetalhesFundamentos = null;
     let lastNewsSignature = '';
     let lastProventosCalcSignature = '';
     let cachedSaldoCaixa = 0;
@@ -1635,8 +1633,12 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             transacaoEmEdicao = null;
             tickerInput.disabled = false;
-            addModalTitle.textContent = 'Nova Transação'; // Texto genérico melhor
+            addModalTitle.textContent = 'Nova Transação';
             addButton.textContent = 'Salvar';
+
+            // Esconde botão de excluir
+            const btnExcluir = document.getElementById('btn-excluir-transacao');
+            if (btnExcluir) btnExcluir.classList.add('hidden');
 
             // Remove erros visuais
             tickerInput.parentElement.classList.remove('ring-2', 'ring-red-500');
@@ -2555,10 +2557,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         let isGlobalFirstItem = true;
 
         Object.keys(grupos).forEach(dataLabel => {
-            const header = document.createElement('div');
-            header.className = 'z-10 bg-black py-3 px-5 mb-0 -mx-4 border-b border-[#1F1F1F]';
-            header.innerHTML = `<h3 class="text-[11px] font-bold text-neutral-500 uppercase tracking-widest">${dataLabel}</h3>`;
-            fragment.appendChild(header);
 
             const listaGrupo = document.createElement('div');
             listaGrupo.className = 'mb-6 -mx-4';
@@ -5643,24 +5641,30 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (!currentDetalhesSymbol) return;
 
         let precoTexto = document.querySelector('#detalhes-preco h2')?.textContent || '';
-        let dyTexto = 'N/A';
-        let pvpTexto = 'N/A';
 
-        const cards = document.querySelectorAll('#detalhes-preco span');
-        cards.forEach(span => {
-            if (span.textContent.includes('DY')) {
-                dyTexto = span.nextElementSibling?.textContent || 'N/A';
-            }
-            if (span.textContent.includes('P/VP')) {
-                pvpTexto = span.nextElementSibling?.textContent || 'N/A';
-            }
-        });
+        // Usa fundamentos armazenados ao invés de scraping do DOM
+        const f = currentDetalhesFundamentos || {};
+        const dyTexto = f.dy || 'N/A';
+        const pvpTexto = f.pvp || 'N/A';
+        const liquidezTexto = f.liquidez || 'N/A';
+        const vacanciaTexto = f.vacancia || 'N/A';
+        const vpCotaTexto = f.vp_cota || 'N/A';
+        const variacao12mTexto = f.variacao_12m || 'N/A';
 
         const baseUrl = window.location.origin + window.location.pathname;
         const deepLink = `${baseUrl}?ativo=${currentDetalhesSymbol}`;
 
-        const textoBase = `Confira ${currentDetalhesSymbol} no Vesto!\nPreço: ${precoTexto}\nDY (12m): ${dyTexto}\nP/VP: ${pvpTexto}`;
+        const ehFiiShare = isFII(currentDetalhesSymbol);
 
+        let linhas = [`Confira ${currentDetalhesSymbol} no Vesto!`, `Preço: ${precoTexto}`];
+        linhas.push(`DY (12m): ${dyTexto}`);
+        linhas.push(`P/VP: ${pvpTexto}`);
+        linhas.push(`Liquidez: ${liquidezTexto}`);
+        if (ehFiiShare) linhas.push(`Vacância: ${vacanciaTexto}`);
+        linhas.push(`VP/Cota: ${vpCotaTexto}`);
+        linhas.push(`Variação 12M: ${variacao12mTexto}`);
+
+        const textoBase = linhas.join('\n');
         const textoCompleto = `${textoBase}\n\nVer detalhes: ${deepLink}`;
 
         if (navigator.share) {
@@ -5672,12 +5676,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                 });
             } catch (err) {
                 if (err.name !== 'AbortError') {
-
                     copiarParaClipboard(textoCompleto);
                 }
             }
         } else {
-
             copiarParaClipboard(textoCompleto);
         }
     }
@@ -5854,6 +5856,13 @@ document.addEventListener('DOMContentLoaded', async () => {
             document.getElementById('btn-opt-venda').click();
         } else {
             document.getElementById('btn-opt-compra').click();
+        }
+
+        // Mostra botão de excluir no modo edição
+        const btnExcluir = document.getElementById('btn-excluir-transacao');
+        if (btnExcluir) {
+            btnExcluir.classList.remove('hidden');
+            btnExcluir.onclick = () => handleExcluirTransacao(tx.id, tx.symbol);
         }
 
         addButton.textContent = 'Atualizar';
@@ -7437,6 +7446,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                 comparacao: fundamentos.comparacao || [],
                 logo_url: fundamentos.logo_url || ''
             };
+
+            // Armazena fundamentos para uso no compartilhamento
+            currentDetalhesFundamentos = dados;
 
             // Atualiza badge 12M
             const badge12m = document.getElementById('badge-variacao-12m');

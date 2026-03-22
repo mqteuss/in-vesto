@@ -1012,8 +1012,8 @@ input:-webkit-autofill:active {
     background-color: #141414;
     background-image: none;
     border: none;
-    border-radius: 1.25rem;
-    margin-bottom: 10px;
+    border-radius: 1rem;
+    margin-bottom: 6px;
     position: relative;
     overflow: hidden;
     box-shadow: none;

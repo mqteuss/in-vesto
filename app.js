@@ -4550,7 +4550,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     // ── Estado de ordenação da carteira ──
-    let carteiraSortMode = 'alpha';
+    let carteiraSortMode = localStorage.getItem('vesto_carteira_sort') || 'alpha';
 
     async function renderizarCarteira() {
         // Esconde os skeletons de carregamento
@@ -10667,12 +10667,24 @@ document.addEventListener('DOMContentLoaded', async () => {
     window.abrirDetalhesAtivo = showDetalhesModal;
 
     // ── Sort Buttons ──
-    document.querySelectorAll('.carteira-sort-btn').forEach(btn => {
+    const sortBtns = document.querySelectorAll('.carteira-sort-btn');
+    
+    // Set initial active button state
+    sortBtns.forEach(btn => {
+        if (btn.dataset.sort === carteiraSortMode) {
+            btn.classList.add('active');
+        } else {
+            btn.classList.remove('active');
+        }
+    });
+
+    sortBtns.forEach(btn => {
         btn.addEventListener('click', () => {
             const mode = btn.dataset.sort;
             if (mode === carteiraSortMode) return;
             carteiraSortMode = mode;
-            document.querySelectorAll('.carteira-sort-btn').forEach(b => b.classList.remove('active'));
+            localStorage.setItem('vesto_carteira_sort', mode);
+            sortBtns.forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
             renderizarCarteira();
         });
@@ -10716,18 +10728,18 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // Long-press to enter batch mode
     let longPressTimer = null;
-    let isLongPressing = false; // flag to prevent click right after
+    let cancelClick = false; // flag to prevent click right after
     
     listaCarteira.addEventListener('touchstart', e => {
         const card = e.target.closest('.wallet-card');
         if (!card) return;
         
-        // Se já está em batch mode, não faz nada no touchstart (o click resolve)
+        // Se já está em batch mode, não faz nada no touchstart (deixa pro click)
         if (batchEditMode) return;
         
-        isLongPressing = false;
+        cancelClick = false;
         longPressTimer = setTimeout(() => {
-            isLongPressing = true;
+            cancelClick = true;
             toggleBatchMode(true);
             // Select the long-pressed card
             const symbol = card.dataset.symbol;
@@ -10749,28 +10761,25 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     listaCarteira.addEventListener('touchend', e => {
         if (longPressTimer) { clearTimeout(longPressTimer); longPressTimer = null; }
-        // Se ativou o long press neste toque, previne o click subsequente
-        if (isLongPressing && e.cancelable) {
-            e.preventDefault();
-        }
-    });
+    }, { passive: true });
 
     // Tap to toggle selection in batch mode
-    // Using capture phase to block the card from opening its drawer when batch mode is on
     listaCarteira.addEventListener('click', e => {
-        if (!batchEditMode) {
-            // Se acabou de vir de um long press, bloqueia este click residual
-            if (isLongPressing) {
-                e.preventDefault();
-                e.stopPropagation();
-            }
+        // Se o click veio do final de um long press, apenas ignora
+        if (cancelClick) {
+            cancelClick = false;
+            e.preventDefault();
+            e.stopPropagation();
             return;
         }
+
+        // Se NÃO estamos em modo lote, o click normal flui para abrir/recolher a gaveta (tratado lá em cima)
+        if (!batchEditMode) return;
         
         const card = e.target.closest('.wallet-card');
         if (!card) return;
         
-        // Bloqueia qualquer outra ação do card (ex: abrir modal)
+        // Se ESTAMOS em modo lote, INTERCEPTAMOS o click
         e.stopPropagation();
         e.preventDefault();
         
@@ -10794,7 +10803,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (batchSelected.size === 0) {
             toggleBatchMode(false);
         }
-    }, true); // useCapture = true para interceptar antes do card
+    });
 
     if (batchDeleteBtn) {
         batchDeleteBtn.addEventListener('click', () => {

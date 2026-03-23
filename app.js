@@ -1216,13 +1216,17 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         // Fora do dashboard → sempre cor padrão
         if (!_isDashboardActive) {
-            _metaThemeColor.setAttribute('content', _getDefaultThemeColor());
+            const defColor = _getDefaultThemeColor();
+            _metaThemeColor.setAttribute('content', defColor);
+            document.body.style.backgroundColor = defColor;
             return;
         }
 
         // No dashboard mas sem hero → cor do hero fixa (topo)
         if (!_dashboardTab || !_heroCard) {
-            _metaThemeColor.setAttribute('content', _getHeroThemeColor());
+            const heroColor = _getHeroThemeColor();
+            _metaThemeColor.setAttribute('content', heroColor);
+            document.body.style.backgroundColor = heroColor;
             return;
         }
 
@@ -1243,6 +1247,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         const color = _lerpColor(_getHeroThemeColor(), _getDefaultThemeColor(), t);
         _metaThemeColor.setAttribute('content', color);
+        document.body.style.backgroundColor = color;
     }
 
     if (_dashboardTab) {

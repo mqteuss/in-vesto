@@ -353,6 +353,7 @@ function criarCardElemento(ativo, dados) {
 
     card.onclick = function (e) {
         if (e.target.closest('button')) return;
+        if (document.getElementById('batch-toolbar')?.classList.contains('visible')) return;
 
         // 1. Identifica a seta deste card
         const currentArrow = this.querySelector('.drawer-arrow');

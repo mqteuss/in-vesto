@@ -10667,29 +10667,67 @@ document.addEventListener('DOMContentLoaded', async () => {
     window.confirmarExclusao = handleRemoverAtivo;
     window.abrirDetalhesAtivo = showDetalhesModal;
 
-    // ── Sort Buttons ──
-    const sortBtns = document.querySelectorAll('.carteira-sort-btn');
-    
-    // Set initial active button state
-    sortBtns.forEach(btn => {
-        if (btn.dataset.sort === carteiraSortMode) {
-            btn.classList.add('active');
-        } else {
-            btn.classList.remove('active');
-        }
-    });
+    // ── Carteira Sort Dropdown ──
+    const btnCarteiraSort = document.getElementById('btn-carteira-sort');
+    const carteiraSortMenu = document.getElementById('carteira-sort-menu');
+    const carteiraSortItems = document.querySelectorAll('.carteira-sort-item');
 
-    sortBtns.forEach(btn => {
-        btn.addEventListener('click', () => {
-            const mode = btn.dataset.sort;
-            if (mode === carteiraSortMode) return;
-            carteiraSortMode = mode;
-            localStorage.setItem('vesto_carteira_sort', mode);
-            sortBtns.forEach(b => b.classList.remove('active'));
-            btn.classList.add('active');
-            renderizarCarteira();
+    if (btnCarteiraSort && carteiraSortMenu) {
+        // Set initial state
+        carteiraSortItems.forEach(item => {
+            if (item.dataset.value === carteiraSortMode) {
+                item.classList.add('selected');
+                item.querySelector('.check-icon').classList.remove('opacity-0');
+                item.querySelector('.check-icon').classList.add('opacity-100');
+            } else {
+                item.classList.remove('selected');
+                item.querySelector('.check-icon').classList.remove('opacity-100');
+                item.querySelector('.check-icon').classList.add('opacity-0');
+            }
         });
-    });
+
+        // Abrir/Fechar Menu
+        btnCarteiraSort.addEventListener('click', (e) => {
+            e.stopPropagation();
+            carteiraSortMenu.classList.toggle('visible');
+        });
+
+        // Click no item do menu
+        carteiraSortItems.forEach(item => {
+            item.addEventListener('click', () => {
+                const value = item.dataset.value;
+                if (value === carteiraSortMode) {
+                    carteiraSortMenu.classList.remove('visible');
+                    return;
+                }
+
+                // Atualiza visual
+                carteiraSortItems.forEach(i => {
+                    i.classList.remove('selected');
+                    i.querySelector('.check-icon').classList.remove('opacity-100');
+                    i.querySelector('.check-icon').classList.add('opacity-0');
+                });
+                item.classList.add('selected');
+                item.querySelector('.check-icon').classList.remove('opacity-0');
+                item.querySelector('.check-icon').classList.add('opacity-100');
+
+                // Atualiza ordenação
+                carteiraSortMode = value;
+                localStorage.setItem('vesto_carteira_sort', value);
+                renderizarCarteira();
+
+                // Fecha menu
+                carteiraSortMenu.classList.remove('visible');
+            });
+        });
+
+        // Fechar ao clicar fora
+        document.addEventListener('click', (e) => {
+            if (carteiraSortMenu.classList.contains('visible') && !carteiraSortMenu.contains(e.target) && !btnCarteiraSort.contains(e.target)) {
+                carteiraSortMenu.classList.remove('visible');
+            }
+        });
+    }
 
     // ── Batch Edit Mode ──
     let batchEditMode = false;

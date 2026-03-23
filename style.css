@@ -7,32 +7,6 @@
 }
 
 /* =========================================
-   PORTFOLIO SORT PILLS
-   ========================================= */
-.carteira-sort-btn {
-    display: inline-flex;
-    align-items: center;
-    padding: 4px 10px;
-    font-size: 10px;
-    font-weight: 700;
-    color: rgba(255,255,255,0.4);
-    background: rgba(255,255,255,0.04);
-    border: 1px solid rgba(255,255,255,0.06);
-    border-radius: 20px;
-    white-space: nowrap;
-    transition: all 0.2s;
-    cursor: pointer;
-    text-transform: uppercase;
-    letter-spacing: 0.3px;
-}
-.carteira-sort-btn:active { transform: scale(0.95); }
-.carteira-sort-btn.active {
-    color: #f3f4f6; /* text-gray-100 */
-    background: rgba(255,255,255,0.12); /* Brighter neutral */
-    border-color: rgba(255,255,255,0.25);
-}
-
-/* =========================================
    CONCENTRATION BADGE
    ========================================= */
 .concentration-badge {

@@ -760,6 +760,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const skeletonTotalCusto = document.getElementById('skeleton-total-custo');
     const skeletonTotalPL = document.getElementById('skeleton-total-pl');
     const skeletonTotalProventos = document.getElementById('skeleton-total-proventos');
+    const skeletonTotalDia = document.getElementById('skeleton-total-dia');
     const skeletonTotalCaixa = document.getElementById('skeleton-total-caixa');
     const totalCarteiraValor = document.getElementById('total-carteira-valor');
     const totalCarteiraCusto = document.getElementById('total-carteira-custo');
@@ -4465,8 +4466,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     function renderizarDashboardSkeletons(show) {
-        const skeletons = [skeletonTotalValor, skeletonTotalCusto, skeletonTotalPL, skeletonTotalProventos, skeletonTotalCaixa];
-        const dataElements = [totalCarteiraValor, totalCarteiraCusto, totalCarteiraPL, totalProventosEl, totalCaixaValor];
+        const skeletons = [skeletonTotalValor, skeletonTotalCusto, skeletonTotalPL, skeletonTotalProventos, skeletonTotalCaixa, skeletonTotalDia];
+        const dataElements = [totalCarteiraValor, totalCarteiraCusto, totalCarteiraPL, totalProventosEl, totalCaixaValor, totalCarteiraDia];
 
         if (show) {
             skeletons.forEach(el => { if (el) el.classList.remove('hidden'); });

@@ -1667,6 +1667,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     function showDetalhesModal(symbol) {
+        if (document.getElementById('batch-toolbar')?.classList.contains('visible')) return;
         detalhesPageContent.style.transform = '';
         detalhesPageContent.classList.remove('closing');
         detalhesPageModal.classList.add('visible');

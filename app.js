@@ -4579,9 +4579,12 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             totalValorCarteira += (precoAtual * ativo.quantity);
             totalCustoCarteira += (ativo.precoMedio * ativo.quantity);
-            // Variação do dia: regularMarketChange é a variação em R$ do preço
-            if (dadoPreco && dadoPreco.regularMarketChange != null) {
-                totalVariacaoDia += (dadoPreco.regularMarketChange * ativo.quantity);
+            // Variação do dia: calcula a partir do % e do preço atual
+            if (dadoPreco && precoAtual > 0) {
+                const varPercent = dadoPreco.regularMarketChangePercent ?? 0;
+                // precoAnterior = precoAtual / (1 + varPercent/100)
+                const precoAnterior = precoAtual / (1 + varPercent / 100);
+                totalVariacaoDia += ((precoAtual - precoAnterior) * ativo.quantity);
             }
         });
 

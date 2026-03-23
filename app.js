@@ -764,6 +764,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const totalCarteiraValor = document.getElementById('total-carteira-valor');
     const totalCarteiraCusto = document.getElementById('total-carteira-custo');
     const totalCarteiraPL = document.getElementById('total-carteira-pl');
+    const totalCarteiraDia = document.getElementById('total-carteira-dia');
     const totalCaixaValor = document.getElementById('total-caixa-valor');
     const listaCarteira = document.getElementById('lista-carteira');
     const carteiraSearchInput = document.getElementById('carteira-search-input');
@@ -4568,6 +4569,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         let totalValorCarteira = 0;
         let totalCustoCarteira = 0;
+        let totalVariacaoDia = 0;
         let dadosGrafico = [];
 
         // PASS 1: Calcular totais globais
@@ -4577,6 +4579,10 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             totalValorCarteira += (precoAtual * ativo.quantity);
             totalCustoCarteira += (ativo.precoMedio * ativo.quantity);
+            // Variação do dia: regularMarketChange é a variação em R$ do preço
+            if (dadoPreco && dadoPreco.regularMarketChange != null) {
+                totalVariacaoDia += (dadoPreco.regularMarketChange * ativo.quantity);
+            }
         });
 
         // Verifica se a carteira está vazia
@@ -4744,6 +4750,16 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (totalCarteiraPL) {
                 totalCarteiraPL.innerHTML = `${formatBRL(totalLucroPrejuizo)} <span class="text-xs opacity-60 ml-1">(${totalLucroPrejuizoPercent.toFixed(2)}%)</span>`;
                 totalCarteiraPL.className = `text-sm font-semibold ${corPLTotal === 'text-green-500' ? 'text-green-400' : 'text-red-400'}`;
+            }
+
+            // Variação do dia
+            if (totalCarteiraDia) {
+                const prevTotal = totalValorCarteira - totalVariacaoDia;
+                const varDiaPercent = prevTotal > 0 ? (totalVariacaoDia / prevTotal) * 100 : 0;
+                const sinal = totalVariacaoDia >= 0 ? '+' : '';
+                const cor = totalVariacaoDia > 0.01 ? 'text-green-400' : (totalVariacaoDia < -0.01 ? 'text-red-400' : 'text-gray-500');
+                totalCarteiraDia.innerHTML = `Hoje: <span class="${cor}">${sinal}${formatBRL(totalVariacaoDia)} (${sinal}${varDiaPercent.toFixed(2)}%)</span>`;
+                totalCarteiraDia.classList.remove('hidden');
             }
 
             // Remove os skeletons somente após os valores já estarem no DOM.

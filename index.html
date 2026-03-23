@@ -644,6 +644,37 @@
                             </div>
                         </div>
 
+                        <!-- RESUMO RÁPIDO DA CARTEIRA -->
+                        <div id="carteira-resumo" class="hidden mb-3">
+                            <div class="flex items-center justify-between gap-2 px-1">
+                                <div class="flex-1 text-center">
+                                    <span class="text-[9px] text-gray-500 uppercase tracking-wider font-bold block">Investido</span>
+                                    <span id="carteira-resumo-investido" class="text-xs font-semibold text-gray-300">R$ 0</span>
+                                </div>
+                                <div class="w-px h-6 bg-white/10"></div>
+                                <div class="flex-1 text-center">
+                                    <span class="text-[9px] text-gray-500 uppercase tracking-wider font-bold block">Posição</span>
+                                    <span id="carteira-resumo-posicao" class="text-xs font-semibold text-gray-300">R$ 0</span>
+                                </div>
+                                <div class="w-px h-6 bg-white/10"></div>
+                                <div class="flex-1 text-center">
+                                    <span class="text-[9px] text-gray-500 uppercase tracking-wider font-bold block">L/P</span>
+                                    <span id="carteira-resumo-pl" class="text-xs font-semibold text-gray-500">R$ 0 (0%)</span>
+                                </div>
+                            </div>
+
+                            <!-- BOTÕES DE ORDENAÇÃO -->
+                            <div class="flex items-center gap-1.5 mt-2.5 overflow-x-auto no-scrollbar">
+                                <button class="carteira-sort-btn active" data-sort="alpha">
+                                    <svg class="w-3 h-3 mr-0.5 opacity-60" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 4h13M3 8h9m-9 4h6m4 0l4-4m0 0l4 4m-4-4v12"/></svg>
+                                    A-Z
+                                </button>
+                                <button class="carteira-sort-btn" data-sort="posicao">Posição</button>
+                                <button class="carteira-sort-btn" data-sort="lp">L/P%</button>
+                                <button class="carteira-sort-btn" data-sort="variacao">Dia%</button>
+                            </div>
+                        </div>
+
                         <div id="lista-carteira" class="space-y-4"></div>
 
                         <div id="skeleton-lista-carteira" class="space-y-0 animate-shimmer-parent hidden">
@@ -1209,6 +1240,13 @@
                 <line x1="5" y1="12" x2="19" y2="12"></line>
             </svg>
         </button>
+
+        <!-- BATCH EDIT TOOLBAR -->
+        <div id="batch-toolbar" class="batch-toolbar">
+            <span class="batch-count" id="batch-count">0 selecionados</span>
+            <button class="batch-delete-btn" id="batch-delete-btn">Excluir</button>
+            <button class="batch-cancel-btn" id="batch-cancel-btn">Cancelar</button>
+        </div>
 
         <nav class="fixed z-50 bottom-nav flex justify-around p-1.5 rounded-full">
             <button class="tab-button active flex flex-col items-center justify-center p-1.5" data-tab="tab-dashboard"

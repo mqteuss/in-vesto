@@ -7,6 +7,183 @@
 }
 
 /* =========================================
+   PORTFOLIO SORT PILLS
+   ========================================= */
+.carteira-sort-btn {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 10px;
+    font-size: 10px;
+    font-weight: 700;
+    color: rgba(255,255,255,0.4);
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 20px;
+    white-space: nowrap;
+    transition: all 0.2s;
+    cursor: pointer;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+}
+.carteira-sort-btn:active { transform: scale(0.95); }
+.carteira-sort-btn.active {
+    color: #c4b5fd;
+    background: rgba(167,139,250,0.12);
+    border-color: rgba(167,139,250,0.25);
+}
+
+/* =========================================
+   SWIPE TO REVEAL ACTIONS
+   ========================================= */
+.swipe-container {
+    position: relative;
+    overflow: hidden;
+    border-radius: inherit;
+}
+.swipe-content {
+    position: relative;
+    z-index: 2;
+    transition: transform 0.25s ease;
+    background: inherit;
+}
+.swipe-actions {
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    display: flex;
+    align-items: center;
+    gap: 1px;
+    z-index: 1;
+}
+.swipe-action-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    width: 64px;
+    font-size: 9px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    gap: 4px;
+    border: none;
+    cursor: pointer;
+    transition: opacity 0.15s;
+}
+.swipe-action-btn:active { opacity: 0.7; }
+.swipe-action-btn.swipe-edit {
+    background: rgba(96,165,250,0.15);
+    color: #60a5fa;
+}
+.swipe-action-btn.swipe-delete {
+    background: rgba(239,68,68,0.15);
+    color: #ef4444;
+}
+
+/* =========================================
+   CONCENTRATION BADGE
+   ========================================= */
+.concentration-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    font-size: 9px;
+    font-weight: 700;
+    color: #fbbf24;
+    background: rgba(251,191,36,0.1);
+    border: 1px solid rgba(251,191,36,0.2);
+    padding: 1px 6px;
+    border-radius: 4px;
+    margin-left: 6px;
+}
+
+/* =========================================
+   BATCH EDIT TOOLBAR
+   ========================================= */
+.batch-toolbar {
+    position: fixed;
+    bottom: 70px;
+    left: 50%;
+    transform: translateX(-50%) translateY(100px);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 20px;
+    background: rgba(30,30,30,0.95);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 16px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+    z-index: 999;
+    transition: transform 0.3s ease;
+    opacity: 0;
+    pointer-events: none;
+}
+.batch-toolbar.visible {
+    transform: translateX(-50%) translateY(0);
+    opacity: 1;
+    pointer-events: auto;
+}
+.batch-toolbar .batch-count {
+    font-size: 12px;
+    font-weight: 700;
+    color: #e5e7eb;
+}
+.batch-toolbar .batch-delete-btn {
+    padding: 6px 16px;
+    font-size: 11px;
+    font-weight: 700;
+    color: #fff;
+    background: #ef4444;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+.batch-toolbar .batch-delete-btn:active { transform: scale(0.95); }
+.batch-toolbar .batch-cancel-btn {
+    padding: 6px 12px;
+    font-size: 11px;
+    font-weight: 600;
+    color: #9ca3af;
+    background: transparent;
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 8px;
+    cursor: pointer;
+}
+.wallet-card.batch-selected {
+    outline: 2px solid #a78bfa;
+    outline-offset: -2px;
+}
+.batch-checkbox {
+    position: absolute;
+    top: 8px;
+    left: 8px;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    border: 2px solid rgba(255,255,255,0.2);
+    background: rgba(0,0,0,0.4);
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s;
+}
+.batch-checkbox.checked {
+    background: #a78bfa;
+    border-color: #a78bfa;
+}
+.batch-checkbox.checked::after {
+    content: '✓';
+    color: #fff;
+    font-size: 11px;
+    font-weight: 700;
+}
+
+/* =========================================
    SPINNER LOADING — Circular Indeterminado
    ========================================= */
 .loader {

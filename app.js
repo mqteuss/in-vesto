@@ -4549,6 +4549,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         return resultado;
     }
 
+    // ── Estado de ordenação da carteira ──
+    let carteiraSortMode = 'alpha';
+
     async function renderizarCarteira() {
         // Esconde os skeletons de carregamento
         renderizarCarteiraSkeletons(false);
@@ -4565,8 +4568,30 @@ document.addEventListener('DOMContentLoaded', async () => {
             proventosMap.get(p.symbol).push(p);
         });
 
-        // Ordena a carteira alfabeticamente
-        const carteiraOrdenada = [...carteiraCalculada].sort((a, b) => a.symbol.localeCompare(b.symbol));
+        // Ordena a carteira conforme o modo selecionado
+        const carteiraOrdenada = [...carteiraCalculada].sort((a, b) => {
+            const pa = precosMap.get(a.symbol);
+            const pb = precosMap.get(b.symbol);
+            const precoA = pa ? (pa.regularMarketPrice ?? 0) : 0;
+            const precoB = pb ? (pb.regularMarketPrice ?? 0) : 0;
+
+            switch (carteiraSortMode) {
+                case 'posicao': {
+                    return (precoB * b.quantity) - (precoA * a.quantity);
+                }
+                case 'lp': {
+                    const lpA = precoA > 0 ? ((precoA - a.precoMedio) / a.precoMedio) * 100 : 0;
+                    const lpB = precoB > 0 ? ((precoB - b.precoMedio) / b.precoMedio) * 100 : 0;
+                    return lpB - lpA;
+                }
+                case 'variacao': {
+                    const varA = pa ? (pa.regularMarketChangePercent ?? 0) : 0;
+                    const varB = pb ? (pb.regularMarketChangePercent ?? 0) : 0;
+                    return varB - varA;
+                }
+                default: return a.symbol.localeCompare(b.symbol);
+            }
+        });
 
         let totalValorCarteira = 0;
         let totalCustoCarteira = 0;
@@ -4714,7 +4739,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
 
             // DOM: Cria ou Atualiza
-            // OTIMIZAÇÃO: acesso O(1) via Map em vez de querySelector O(n) dentro do loop
             let card = existingCards.get(ativo.symbol);
 
             if (card) {
@@ -4733,7 +4757,45 @@ document.addEventListener('DOMContentLoaded', async () => {
 
                 listaCarteira.appendChild(card);
             }
+
+            // Reinsere na ordem correta (sort pode mudar)
+            listaCarteira.appendChild(card);
+
+            // Concentration badge
+            const concBadge = card.querySelector('.concentration-badge');
+            if (percentWallet > 30) {
+                if (!concBadge) {
+                    const badge = document.createElement('span');
+                    badge.className = 'concentration-badge';
+                    badge.innerHTML = `⚠ ${percentWallet.toFixed(0)}%`;
+                    const headerRow = card.querySelector('.flex.items-center.gap-2');
+                    if (headerRow) headerRow.appendChild(badge);
+                }
+            } else if (concBadge) {
+                concBadge.remove();
+            }
         });
+
+        // Atualiza Resumo Rápido da Carteira
+        const carteiraResumo = document.getElementById('carteira-resumo');
+        if (carteiraResumo && carteiraOrdenada.length > 0) {
+            carteiraResumo.classList.remove('hidden');
+            const elInv = document.getElementById('carteira-resumo-investido');
+            const elPos = document.getElementById('carteira-resumo-posicao');
+            const elPL = document.getElementById('carteira-resumo-pl');
+            if (elInv) elInv.textContent = formatBRL(totalCustoCarteira);
+            if (elPos) elPos.textContent = formatBRL(totalValorCarteira);
+            if (elPL) {
+                const lp = totalValorCarteira - totalCustoCarteira;
+                const lpPct = totalCustoCarteira > 0 ? (lp / totalCustoCarteira * 100).toFixed(1) : '0.0';
+                const sinal = lp >= 0 ? '+' : '';
+                const cor = lp > 0.01 ? 'text-green-400' : (lp < -0.01 ? 'text-red-400' : 'text-gray-500');
+                elPL.className = `text-xs font-semibold ${cor}`;
+                elPL.textContent = `${sinal}${formatBRL(lp)} (${sinal}${lpPct}%)`;
+            }
+        } else if (carteiraResumo) {
+            carteiraResumo.classList.add('hidden');
+        }
 
         // Atualiza Totais do Dashboard
         if (carteiraOrdenada.length > 0) {
@@ -10604,6 +10666,247 @@ document.addEventListener('DOMContentLoaded', async () => {
     window.confirmarExclusao = handleRemoverAtivo;
     window.abrirDetalhesAtivo = showDetalhesModal;
 
+    // ── Sort Buttons ──
+    document.querySelectorAll('.carteira-sort-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const mode = btn.dataset.sort;
+            if (mode === carteiraSortMode) return;
+            carteiraSortMode = mode;
+            document.querySelectorAll('.carteira-sort-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            renderizarCarteira();
+        });
+    });
+
+    // ── Swipe to Reveal Actions ──
+    (function setupSwipe() {
+        let startX = 0, currentX = 0, swiping = false, activeCard = null, swipeThreshold = 60;
+
+        listaCarteira.addEventListener('touchstart', e => {
+            if (batchEditMode) return;
+            const card = e.target.closest('.wallet-card');
+            if (!card) return;
+            // Close any previously open card
+            if (activeCard && activeCard !== card) {
+                const content = activeCard.querySelector('.swipe-content');
+                if (content) content.style.transform = '';
+                activeCard.classList.remove('swiped');
+            }
+            startX = e.touches[0].clientX;
+            currentX = startX;
+            swiping = true;
+            activeCard = card;
+
+            // Ensure swipe structure
+            if (!card.querySelector('.swipe-actions')) {
+                const symbol = card.dataset.symbol;
+                const inner = card.firstElementChild;
+                // Wrap all content
+                const wrapper = document.createElement('div');
+                wrapper.className = 'swipe-content';
+                wrapper.style.background = getComputedStyle(card).backgroundColor || '#111';
+                while (card.firstChild) wrapper.appendChild(card.firstChild);
+                card.appendChild(wrapper);
+
+                const actions = document.createElement('div');
+                actions.className = 'swipe-actions';
+                actions.innerHTML = `
+                    <button class="swipe-action-btn swipe-edit" data-action="edit-ativo" data-symbol="${symbol}">
+                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+                        Editar
+                    </button>
+                    <button class="swipe-action-btn swipe-delete" data-action="delete-ativo" data-symbol="${symbol}">
+                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                        Excluir
+                    </button>
+                `;
+                card.insertBefore(actions, wrapper);
+            }
+        }, { passive: true });
+
+        listaCarteira.addEventListener('touchmove', e => {
+            if (!swiping || !activeCard) return;
+            currentX = e.touches[0].clientX;
+            const diffX = currentX - startX;
+            if (diffX < 0) { // only swipe left
+                const content = activeCard.querySelector('.swipe-content');
+                if (content) {
+                    const val = Math.max(diffX, -128);
+                    content.style.transform = `translateX(${val}px)`;
+                    content.style.transition = 'none';
+                }
+            }
+        }, { passive: true });
+
+        listaCarteira.addEventListener('touchend', () => {
+            if (!swiping || !activeCard) return;
+            swiping = false;
+            const diffX = currentX - startX;
+            const content = activeCard.querySelector('.swipe-content');
+            if (content) {
+                content.style.transition = 'transform 0.25s ease';
+                if (diffX < -swipeThreshold) {
+                    content.style.transform = 'translateX(-128px)';
+                    activeCard.classList.add('swiped');
+                } else {
+                    content.style.transform = '';
+                    activeCard.classList.remove('swiped');
+                }
+            }
+        }, { passive: true });
+
+        // Handle swipe action clicks
+        listaCarteira.addEventListener('click', e => {
+            const btn = e.target.closest('.swipe-action-btn');
+            if (!btn) return;
+            e.stopPropagation();
+            const symbol = btn.dataset.symbol;
+            const action = btn.dataset.action;
+
+            // Close swipe
+            const card = btn.closest('.wallet-card');
+            const content = card?.querySelector('.swipe-content');
+            if (content) {
+                content.style.transition = 'transform 0.25s ease';
+                content.style.transform = '';
+            }
+            if (card) card.classList.remove('swiped');
+
+            if (action === 'delete-ativo') {
+                handleRemoverAtivo(symbol);
+            } else if (action === 'edit-ativo') {
+                // Abre a gaveta do card (detalhes)
+                showDetalhesModal(symbol);
+            }
+        });
+    })();
+
+    // ── Batch Edit Mode ──
+    let batchEditMode = false;
+    const batchSelected = new Set();
+    const batchToolbar = document.getElementById('batch-toolbar');
+    const batchCountEl = document.getElementById('batch-count');
+    const batchDeleteBtn = document.getElementById('batch-delete-btn');
+    const batchCancelBtn = document.getElementById('batch-cancel-btn');
+
+    function toggleBatchMode(enable) {
+        batchEditMode = enable;
+        batchSelected.clear();
+        updateBatchUI();
+        // Toggle checkboxes on all cards
+        listaCarteira.querySelectorAll('.wallet-card').forEach(card => {
+            card.classList.remove('batch-selected');
+            let cb = card.querySelector('.batch-checkbox');
+            if (enable && !cb) {
+                cb = document.createElement('div');
+                cb.className = 'batch-checkbox';
+                card.style.position = 'relative';
+                card.appendChild(cb);
+            } else if (!enable && cb) {
+                cb.remove();
+            }
+        });
+    }
+
+    function updateBatchUI() {
+        if (batchToolbar) {
+            batchToolbar.classList.toggle('visible', batchEditMode && batchSelected.size > 0);
+        }
+        if (batchCountEl) {
+            batchCountEl.textContent = `${batchSelected.size} selecionado${batchSelected.size !== 1 ? 's' : ''}`;
+        }
+    }
+
+    // Long-press to enter batch mode
+    let longPressTimer = null;
+    listaCarteira.addEventListener('touchstart', e => {
+        const card = e.target.closest('.wallet-card');
+        if (!card || batchEditMode) return;
+        longPressTimer = setTimeout(() => {
+            toggleBatchMode(true);
+            // Select the long-pressed card
+            const symbol = card.dataset.symbol;
+            if (symbol) {
+                batchSelected.add(symbol);
+                card.classList.add('batch-selected');
+                const cb = card.querySelector('.batch-checkbox');
+                if (cb) cb.classList.add('checked');
+                updateBatchUI();
+            }
+            // Vibrate for haptic feedback
+            if (navigator.vibrate) navigator.vibrate(30);
+        }, 500);
+    }, { passive: true });
+
+    listaCarteira.addEventListener('touchmove', () => {
+        if (longPressTimer) { clearTimeout(longPressTimer); longPressTimer = null; }
+    }, { passive: true });
+
+    listaCarteira.addEventListener('touchend', () => {
+        if (longPressTimer) { clearTimeout(longPressTimer); longPressTimer = null; }
+    }, { passive: true });
+
+    // Tap to toggle selection in batch mode
+    listaCarteira.addEventListener('click', e => {
+        if (!batchEditMode) return;
+        const card = e.target.closest('.wallet-card');
+        if (!card) return;
+        e.stopPropagation();
+        e.preventDefault();
+        const symbol = card.dataset.symbol;
+        if (!symbol) return;
+
+        if (batchSelected.has(symbol)) {
+            batchSelected.delete(symbol);
+            card.classList.remove('batch-selected');
+            const cb = card.querySelector('.batch-checkbox');
+            if (cb) cb.classList.remove('checked');
+        } else {
+            batchSelected.add(symbol);
+            card.classList.add('batch-selected');
+            const cb = card.querySelector('.batch-checkbox');
+            if (cb) cb.classList.add('checked');
+        }
+        updateBatchUI();
+
+        // If all deselected, exit batch mode
+        if (batchSelected.size === 0) {
+            toggleBatchMode(false);
+        }
+    });
+
+    if (batchDeleteBtn) {
+        batchDeleteBtn.addEventListener('click', () => {
+            if (batchSelected.size === 0) return;
+            const symbols = [...batchSelected];
+            showModal(
+                'Excluir Ativos',
+                `Tem certeza? Isso removerá ${symbols.join(', ')} e TODO o histórico de compras desses ativos.`,
+                async () => {
+                    for (const symbol of symbols) {
+                        transacoes = transacoes.filter(t => t.symbol !== symbol);
+                        invalidarCacheQtdNaData();
+                        await supabaseDB.deleteTransacoesDoAtivo(symbol);
+                        await removerCacheAtivo(symbol);
+                        await removerProventosConhecidos(symbol);
+                        await supabaseDB.deleteWatchlist(symbol);
+                        watchlist = watchlist.filter(item => item.symbol !== symbol);
+                    }
+                    saldoCaixa = 0;
+                    await salvarCaixa();
+                    mesesProcessados = [];
+                    await salvarHistoricoProcessado();
+                    toggleBatchMode(false);
+                    renderizarWatchlist();
+                    await atualizarTodosDados(true);
+                }
+            );
+        });
+    }
+
+    if (batchCancelBtn) {
+        batchCancelBtn.addEventListener('click', () => toggleBatchMode(false));
+    }
     // Compartilhar ativo direto da gaveta do card
     window.compartilharAtivoDireto = async function(symbol) {
         const ativo = carteiraCalculada.find(a => a.symbol === symbol);

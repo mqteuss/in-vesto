@@ -10678,109 +10678,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     });
 
-    // ── Swipe to Reveal Actions ──
-    (function setupSwipe() {
-        let startX = 0, currentX = 0, swiping = false, activeCard = null, swipeThreshold = 60;
-
-        listaCarteira.addEventListener('touchstart', e => {
-            if (batchEditMode) return;
-            const card = e.target.closest('.wallet-card');
-            if (!card) return;
-            // Close any previously open card
-            if (activeCard && activeCard !== card) {
-                const content = activeCard.querySelector('.swipe-content');
-                if (content) content.style.transform = '';
-                activeCard.classList.remove('swiped');
-            }
-            startX = e.touches[0].clientX;
-            currentX = startX;
-            swiping = true;
-            activeCard = card;
-
-            // Ensure swipe structure
-            if (!card.querySelector('.swipe-actions')) {
-                const symbol = card.dataset.symbol;
-                const inner = card.firstElementChild;
-                // Wrap all content
-                const wrapper = document.createElement('div');
-                wrapper.className = 'swipe-content';
-                wrapper.style.background = getComputedStyle(card).backgroundColor || '#111';
-                while (card.firstChild) wrapper.appendChild(card.firstChild);
-                card.appendChild(wrapper);
-
-                const actions = document.createElement('div');
-                actions.className = 'swipe-actions';
-                actions.innerHTML = `
-                    <button class="swipe-action-btn swipe-edit" data-action="edit-ativo" data-symbol="${symbol}">
-                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
-                        Editar
-                    </button>
-                    <button class="swipe-action-btn swipe-delete" data-action="delete-ativo" data-symbol="${symbol}">
-                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
-                        Excluir
-                    </button>
-                `;
-                card.insertBefore(actions, wrapper);
-            }
-        }, { passive: true });
-
-        listaCarteira.addEventListener('touchmove', e => {
-            if (!swiping || !activeCard) return;
-            currentX = e.touches[0].clientX;
-            const diffX = currentX - startX;
-            if (diffX < 0) { // only swipe left
-                const content = activeCard.querySelector('.swipe-content');
-                if (content) {
-                    const val = Math.max(diffX, -128);
-                    content.style.transform = `translateX(${val}px)`;
-                    content.style.transition = 'none';
-                }
-            }
-        }, { passive: true });
-
-        listaCarteira.addEventListener('touchend', () => {
-            if (!swiping || !activeCard) return;
-            swiping = false;
-            const diffX = currentX - startX;
-            const content = activeCard.querySelector('.swipe-content');
-            if (content) {
-                content.style.transition = 'transform 0.25s ease';
-                if (diffX < -swipeThreshold) {
-                    content.style.transform = 'translateX(-128px)';
-                    activeCard.classList.add('swiped');
-                } else {
-                    content.style.transform = '';
-                    activeCard.classList.remove('swiped');
-                }
-            }
-        }, { passive: true });
-
-        // Handle swipe action clicks
-        listaCarteira.addEventListener('click', e => {
-            const btn = e.target.closest('.swipe-action-btn');
-            if (!btn) return;
-            e.stopPropagation();
-            const symbol = btn.dataset.symbol;
-            const action = btn.dataset.action;
-
-            // Close swipe
-            const card = btn.closest('.wallet-card');
-            const content = card?.querySelector('.swipe-content');
-            if (content) {
-                content.style.transition = 'transform 0.25s ease';
-                content.style.transform = '';
-            }
-            if (card) card.classList.remove('swiped');
-
-            if (action === 'delete-ativo') {
-                handleRemoverAtivo(symbol);
-            } else if (action === 'edit-ativo') {
-                // Abre a gaveta do card (detalhes)
-                showDetalhesModal(symbol);
-            }
-        });
-    })();
-
     // ── Batch Edit Mode ──
     let batchEditMode = false;
     const batchSelected = new Set();
@@ -10819,10 +10716,18 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // Long-press to enter batch mode
     let longPressTimer = null;
+    let isLongPressing = false; // flag to prevent click right after
+    
     listaCarteira.addEventListener('touchstart', e => {
         const card = e.target.closest('.wallet-card');
-        if (!card || batchEditMode) return;
+        if (!card) return;
+        
+        // Se já está em batch mode, não faz nada no touchstart (o click resolve)
+        if (batchEditMode) return;
+        
+        isLongPressing = false;
         longPressTimer = setTimeout(() => {
+            isLongPressing = true;
             toggleBatchMode(true);
             // Select the long-pressed card
             const symbol = card.dataset.symbol;
@@ -10842,17 +10747,33 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (longPressTimer) { clearTimeout(longPressTimer); longPressTimer = null; }
     }, { passive: true });
 
-    listaCarteira.addEventListener('touchend', () => {
+    listaCarteira.addEventListener('touchend', e => {
         if (longPressTimer) { clearTimeout(longPressTimer); longPressTimer = null; }
-    }, { passive: true });
+        // Se ativou o long press neste toque, previne o click subsequente
+        if (isLongPressing && e.cancelable) {
+            e.preventDefault();
+        }
+    });
 
     // Tap to toggle selection in batch mode
+    // Using capture phase to block the card from opening its drawer when batch mode is on
     listaCarteira.addEventListener('click', e => {
-        if (!batchEditMode) return;
+        if (!batchEditMode) {
+            // Se acabou de vir de um long press, bloqueia este click residual
+            if (isLongPressing) {
+                e.preventDefault();
+                e.stopPropagation();
+            }
+            return;
+        }
+        
         const card = e.target.closest('.wallet-card');
         if (!card) return;
+        
+        // Bloqueia qualquer outra ação do card (ex: abrir modal)
         e.stopPropagation();
         e.preventDefault();
+        
         const symbol = card.dataset.symbol;
         if (!symbol) return;
 
@@ -10873,7 +10794,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (batchSelected.size === 0) {
             toggleBatchMode(false);
         }
-    });
+    }, true); // useCapture = true para interceptar antes do card
 
     if (batchDeleteBtn) {
         batchDeleteBtn.addEventListener('click', () => {

@@ -27,59 +27,9 @@
 }
 .carteira-sort-btn:active { transform: scale(0.95); }
 .carteira-sort-btn.active {
-    color: #c4b5fd;
-    background: rgba(167,139,250,0.12);
-    border-color: rgba(167,139,250,0.25);
-}
-
-/* =========================================
-   SWIPE TO REVEAL ACTIONS
-   ========================================= */
-.swipe-container {
-    position: relative;
-    overflow: hidden;
-    border-radius: inherit;
-}
-.swipe-content {
-    position: relative;
-    z-index: 2;
-    transition: transform 0.25s ease;
-    background: inherit;
-}
-.swipe-actions {
-    position: absolute;
-    top: 0;
-    right: 0;
-    bottom: 0;
-    display: flex;
-    align-items: center;
-    gap: 1px;
-    z-index: 1;
-}
-.swipe-action-btn {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    height: 100%;
-    width: 64px;
-    font-size: 9px;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    gap: 4px;
-    border: none;
-    cursor: pointer;
-    transition: opacity 0.15s;
-}
-.swipe-action-btn:active { opacity: 0.7; }
-.swipe-action-btn.swipe-edit {
-    background: rgba(96,165,250,0.15);
-    color: #60a5fa;
-}
-.swipe-action-btn.swipe-delete {
-    background: rgba(239,68,68,0.15);
-    color: #ef4444;
+    color: #f3f4f6; /* text-gray-100 */
+    background: rgba(255,255,255,0.12); /* Brighter neutral */
+    border-color: rgba(255,255,255,0.25);
 }
 
 /* =========================================
@@ -154,7 +104,7 @@
     cursor: pointer;
 }
 .wallet-card.batch-selected {
-    outline: 2px solid #a78bfa;
+    outline: 2px solid #6b7280; /* gray-500 ao invés de roxo */
     outline-offset: -2px;
 }
 .batch-checkbox {
@@ -173,8 +123,8 @@
     transition: all 0.15s;
 }
 .batch-checkbox.checked {
-    background: #a78bfa;
-    border-color: #a78bfa;
+    background: #4b5563; /* gray-600 ao invés de roxo */
+    border-color: #6b7280;
 }
 .batch-checkbox.checked::after {
     content: '✓';

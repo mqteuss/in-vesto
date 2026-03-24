@@ -11224,15 +11224,20 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     function openRaioxModal() {
         if (!comparadorPageModal) return;
-        document.body.style.overflow = 'hidden';
         comparadorPageModal.classList.add('visible');
+        if (comparadorPageContent) {
+            comparadorPageContent.style.transform = '';
+            comparadorPageContent.classList.remove('closing');
+        }
+        document.body.style.overflow = 'hidden';
     }
 
     function closeRaioxModal() {
-        if (comparadorPageModal) {
-            comparadorPageModal.classList.remove('visible');
-            document.body.style.overflow = '';
-        }
+        if (!comparadorPageContent) return;
+        comparadorPageContent.style.transform = '';
+        comparadorPageContent.classList.add('closing');
+        comparadorPageModal.classList.remove('visible');
+        document.body.style.overflow = '';
     }
 
     async function compararAtivos() {

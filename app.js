@@ -442,7 +442,9 @@ function criarCardElemento(ativo, dados) {
                     </div>
                     <div class="text-right">
                          <span class="text-[10px] text-gray-400 uppercase font-bold tracking-wider">Peso Carteira</span>
-                         <p data-field="peso-valor" class="text-sm ${textDrawerVal} font-medium">${formatPercent(percentWallet)}</p>
+                         <p data-field="peso-valor" class="text-sm ${percentWallet > 30 ? 'text-amber-500 font-bold tracking-tight' : textDrawerVal + ' font-medium'}">
+                             ${percentWallet > 30 ? '⚠️ ' : ''}${formatPercent(percentWallet)}
+                         </p>
                     </div>
                 </div>
 

@@ -2054,34 +2054,16 @@ button:not(#show-add-modal-btn):active,
 }
 
 /* Loaders */
-/* ── Loader Principal (Orbital Spinner Roxo) ── */
+/* ── Loader Principal (Spinner Único Profissional) ── */
 .loader {
-    position: relative;
     width: 36px;
     height: 36px;
-    margin: 0 auto;
-}
-
-.loader::before,
-.loader::after {
-    content: '';
-    position: absolute;
-    inset: 0;
     border-radius: 50%;
-    border: 2.5px solid transparent;
-}
-
-.loader::before {
-    border-top-color: #a855f7;
-    border-right-color: rgba(168, 85, 247, 0.3);
-    animation: loaderSpin 0.8s cubic-bezier(0.45, 0.05, 0.55, 0.95) infinite;
-}
-
-.loader::after {
-    inset: 5px;
-    border-bottom-color: #c084fc;
-    border-left-color: rgba(192, 132, 252, 0.2);
-    animation: loaderSpin 1.2s cubic-bezier(0.45, 0.05, 0.55, 0.95) infinite reverse;
+    border: 3px solid rgba(168, 85, 247, 0.2); /* Trilho suave roxo */
+    border-top-color: #a855f7; /* Indicador principal */
+    animation: loaderSpin 0.85s linear infinite;
+    margin: 0 auto;
+    display: block;
 }
 
 @keyframes loaderSpin {
@@ -2090,33 +2072,15 @@ button:not(#show-add-modal-btn):active,
 
 /* ── Loader Pequeno (para botões) ── */
 .loader-sm {
-    position: relative;
     width: 16px;
     height: 16px;
+    border-radius: 50%;
+    border: 2px solid rgba(255, 255, 255, 0.2); /* Trilho branco translúcido */
+    border-top-color: #ffffff; /* Indicador branco sólido */
+    animation: loaderSpin 0.85s linear infinite;
     display: inline-block;
     margin: 0 6px;
     vertical-align: middle;
-}
-
-.loader-sm::before,
-.loader-sm::after {
-    content: '';
-    position: absolute;
-    inset: 0;
-    border-radius: 50%;
-    border: 2px solid transparent;
-}
-
-.loader-sm::before {
-    border-top-color: #ffffff;
-    border-right-color: rgba(255, 255, 255, 0.3);
-    animation: loaderSpin 0.7s cubic-bezier(0.45, 0.05, 0.55, 0.95) infinite;
-}
-
-.loader-sm::after {
-    inset: 3px;
-    border-bottom-color: rgba(255, 255, 255, 0.6);
-    animation: loaderSpin 1s cubic-bezier(0.45, 0.05, 0.55, 0.95) infinite reverse;
 }
 
 #login-form:active,
@@ -2650,15 +2614,6 @@ body.light-mode .floating-input:-webkit-autofill {
     background-color: #6b21a8 !important;
 }
 
-/* Força o Loader Pequeno a ser BRANCO dentro do botão roxo */
-.btn-purple .loader-sm {
-    background: #ffffff !important;
-}
-
-.btn-purple .loader-sm::before,
-.btn-purple .loader-sm::after {
-    background: #ffffff !important;
-}
 
 /* =========================================
    DESKTOP / PC LAYOUT (Responsividade)

@@ -11035,6 +11035,46 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     });
 
+    // ── Carteira Options Toggle (Menu Retrátil da Busca) ──
+    const btnCarteiraOptions = document.getElementById('btn-carteira-options');
+    const carteiraOptionsContainer = document.getElementById('carteira-options-container');
+
+    if (btnCarteiraOptions && carteiraOptionsContainer) {
+        btnCarteiraOptions.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const isOpen = carteiraOptionsContainer.style.maxWidth !== '0px';
+            
+            if (isOpen) {
+                carteiraOptionsContainer.style.maxWidth = '0px';
+                carteiraOptionsContainer.style.opacity = '0';
+                carteiraOptionsContainer.style.transform = 'translateX(-10px)';
+                btnCarteiraOptions.classList.remove('rotate-90', 'scale-110');
+            } else {
+                // Largura suficiente para abrigar os 2 botões (36px + margins)
+                carteiraOptionsContainer.style.maxWidth = '100px'; 
+                carteiraOptionsContainer.style.opacity = '1';
+                carteiraOptionsContainer.style.transform = 'translateX(0)';
+                btnCarteiraOptions.classList.add('rotate-90', 'scale-110');
+                
+                // Esconde o menu de sort se estiver aberto para evitar sobreposição
+                const carteiraSortMenu = document.getElementById('carteira-sort-menu');
+                if (carteiraSortMenu) carteiraSortMenu.classList.remove('visible');
+            }
+        });
+
+        // Fechar ao clicar fora
+        document.addEventListener('click', (e) => {
+            if (carteiraOptionsContainer.style.maxWidth !== '0px') {
+                if (!e.target.closest('#carteira-options-container') && !e.target.closest('#btn-carteira-options')) {
+                    carteiraOptionsContainer.style.maxWidth = '0px';
+                    carteiraOptionsContainer.style.opacity = '0';
+                    carteiraOptionsContainer.style.transform = 'translateX(-10px)';
+                    btnCarteiraOptions.classList.remove('rotate-90', 'scale-110');
+                }
+            }
+        });
+    }
+
     // ── Carteira Sort Dropdown ──
     const btnCarteiraSort = document.getElementById('btn-carteira-sort');
     const carteiraSortMenu = document.getElementById('carteira-sort-menu');

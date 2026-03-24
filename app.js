@@ -11224,28 +11224,15 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     function openRaioxModal() {
         if (!comparadorPageModal) return;
-        comparadorPageModal.style.pointerEvents = 'auto';
-        comparadorPageModal.style.opacity = '1';
-
-        setTimeout(() => {
-            if (comparadorPageContent) {
-                comparadorPageContent.style.transition = 'transform 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94)';
-                comparadorPageContent.style.transform = 'translateY(0)';
-            }
-        }, 10);
+        document.body.style.overflow = 'hidden';
+        comparadorPageModal.classList.add('visible');
     }
 
     function closeRaioxModal() {
-        if (!comparadorPageModal) return;
-        if (comparadorPageContent) {
-            comparadorPageContent.style.transition = 'transform 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94)';
-            comparadorPageContent.style.transform = 'translateY(100%)';
+        if (comparadorPageModal) {
+            comparadorPageModal.classList.remove('visible');
+            document.body.style.overflow = '';
         }
-        
-        setTimeout(() => {
-            comparadorPageModal.style.opacity = '0';
-            comparadorPageModal.style.pointerEvents = 'none';
-        }, 300);
     }
 
     async function compararAtivos() {

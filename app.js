@@ -10688,9 +10688,12 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         });
 
-        if (!isVisible) {
+        if (isVisible) {
+            popover.style.opacity = '0';
+            setTimeout(() => popover.classList.add('hidden'), 200);
+        } else {
             popover.classList.remove('hidden');
-            void popover.offsetWidth;
+            void popover.offsetWidth; // force reflow
             popover.style.opacity = '1';
             
             setTimeout(() => {
@@ -10698,7 +10701,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     popover.style.opacity = '0';
                     setTimeout(() => popover.classList.add('hidden'), 200);
                 }
-            }, 6000);
+            }, 8000);
         }
     };
 

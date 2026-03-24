@@ -442,7 +442,7 @@ function criarCardElemento(ativo, dados) {
                     </div>
                     <div class="text-right relative">
                          <span class="text-[10px] text-gray-400 uppercase font-bold tracking-wider">Peso Carteira</span>
-                         <p data-field="peso-valor" class="text-sm cursor-pointer ${percentWallet > 30 ? 'text-amber-500 font-bold tracking-tight inline-flex items-center justify-end gap-1' : textDrawerVal + ' font-medium'}" onclick="window.togglePesoPopover(event, this)">
+                         <p data-field="peso-valor" class="text-sm cursor-pointer ${percentWallet > 30 ? 'text-amber-500 font-bold tracking-tight flex items-center justify-end gap-1' : textDrawerVal + ' font-medium'}" onclick="window.togglePesoPopover(event, this)">
                              ${percentWallet > 30 ? '<svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>' : ''}${formatPercent(percentWallet)}
                          </p>
                          <div class="peso-popover absolute right-0 top-full mt-1 w-48 bg-[#1C1C1E] border border-[#2C2C2E] rounded-xl p-3 shadow-2xl transition-all duration-200 text-left hidden opacity-0 z-50 cursor-default" onclick="event.stopPropagation()">
@@ -514,7 +514,7 @@ function atualizarCardElemento(card, ativo, dados) {
     const pesoEl = card.querySelector('[data-field="peso-valor"]');
     if (pesoEl) {
         if (percentWallet > 30) {
-            pesoEl.className = 'text-sm cursor-pointer text-amber-500 font-bold tracking-tight inline-flex items-center justify-end gap-1';
+            pesoEl.className = 'text-sm cursor-pointer text-amber-500 font-bold tracking-tight flex items-center justify-end gap-1';
             pesoEl.innerHTML = `<svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>${formatPercent(percentWallet)}`;
         } else {
             pesoEl.innerHTML = formatPercent(percentWallet);
@@ -10682,8 +10682,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         const isVisible = !popover.classList.contains('hidden');
         
         document.querySelectorAll('.peso-popover').forEach(p => {
-            p.style.opacity = '0';
-            setTimeout(() => p.classList.add('hidden'), 200);
+            if (p !== popover) {
+                p.style.opacity = '0';
+                setTimeout(() => p.classList.add('hidden'), 200);
+            }
         });
 
         if (!isVisible) {

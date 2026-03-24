@@ -787,29 +787,10 @@
                 <div id="tab-noticias"
                     class="tab-content w-full flex-shrink-0 h-full overflow-y-auto pb-32 custom-scroll">
                     <div class="px-4 pt-2 pb-4">
-
-                        <!-- HEADER: Status B3 + Refresh -->
-                        <div class="flex justify-between items-center mb-3">
-                            <div id="market-status-pill" class="market-status-pill">
-                                <span id="market-status-dot" class="market-status-dot closed"></span>
-                                <span id="market-status-text" class="text-[11px] font-bold uppercase tracking-wider">B3 Fechada</span>
-                            </div>
-                            <button id="refresh-noticias-button"
-                                class="p-1 mt-1 text-gray-500 hover:text-white rounded-full transition-all duration-200 hover:bg-gray-800"
-                                title="Atualizar notícias">
-                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
-                                    stroke="currentColor" stroke-width="2" stroke-linecap="round"
-                                    stroke-linejoin="round" class="w-5 h-5">
-                                    <path d="M21 2v6h-6"></path>
-                                    <path d="M3 22v-6h6"></path>
-                                    <path d="M21 13a9 9 0 0 1-9 9H3"></path>
-                                    <path d="M3 11a9 9 0 0 1 9-9h9"></path>
-                                </svg>
-                            </button>
-                        </div>
-
+                    <div class="px-4 pt-4 pb-4">
+                        
                         <!-- ABAS DE CATEGORIA -->
-                        <div class="hist-tabs-container relative mb-3">
+                        <div class="hist-tabs-container relative mb-4">
                             <button class="hist-tab-btn news-cat-btn active" style="font-size: 13px;" data-category="geral">Geral</button>
                             <button class="hist-tab-btn news-cat-btn" style="font-size: 13px;" data-category="fiis">FIIs</button>
                             <button class="hist-tab-btn news-cat-btn" style="font-size: 13px;" data-category="acoes">Ações</button>
@@ -817,17 +798,23 @@
                             <div id="news-tab-indicator" class="active-tab-indicator" style="width: 25%;"></div>
                         </div>
 
-                        <!-- BARRA DE PESQUISA -->
-                        <div class="history-tools-container -mx-4 mb-2">
-                            <div class="compact-search-wrapper">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="compact-search-icon" fill="none"
-                                    viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                    <path stroke-linecap="round" stroke-linejoin="round"
-                                        d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                        <!-- BARRA DE PESQUISA + STATUS B3 + REFRESH -->
+                        <div class="history-tools-container flex items-center gap-2 -mx-4 px-4 mb-4">
+                            <div class="compact-search-wrapper flex-1">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="compact-search-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                                 </svg>
-                                <input type="text" id="news-search-input" placeholder="Buscar notícia..."
-                                    class="compact-search-input">
+                                <input type="text" id="news-search-input" placeholder="Buscar notícia..." class="compact-search-input min-w-0">
                             </div>
+
+                            <div id="market-status-pill" class="flex-shrink-0 flex items-center gap-1.5 px-3 h-[40px] rounded-[14px] bg-white/5 border border-white/5 shadow-sm transition-all duration-300" title="Status da Bolsa (B3)">
+                                <span id="market-status-dot" class="market-status-dot closed"></span>
+                                <span id="market-status-text" class="text-[10px] font-bold uppercase tracking-wider text-gray-300">B3 Fechada</span>
+                            </div>
+
+                            <button id="refresh-noticias-button" class="filter-funnel-btn flex-shrink-0" title="Atualizar">
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4"><path d="M21 2v6h-6"></path><path d="M3 22v-6h6"></path><path d="M21 13a9 9 0 0 1-9 9H3"></path><path d="M3 11a9 9 0 0 1 9-9h9"></path></svg>
+                            </button>
                         </div>
 
                         <!-- CONTEÚDO -->

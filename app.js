@@ -2047,7 +2047,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             this.renderRowFn = renderRowFn;
 
             // Configurações dinâmicas de altura
-            this.headerHeight = options.headerHeight || 50;
+            this.headerHeight = options.headerHeight || 36;
             this.rowHeight = options.rowHeight || 72;
 
             // Limpeza de estilos conflitantes do container original

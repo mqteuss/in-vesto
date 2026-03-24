@@ -2467,7 +2467,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     // 3. NOVO: Lógica do Menu de Filtro (Funil) - Substitui os Chips antigos
     const btnFilter = document.getElementById('btn-history-filter');
     const filterMenu = document.getElementById('history-filter-menu');
-    const filterItems = document.querySelectorAll('.filter-dropdown-item');
+    const filterItems = filterMenu ? filterMenu.querySelectorAll('.filter-dropdown-item') : [];
 
     if (btnFilter && filterMenu) {
         // Abrir/Fechar Menu

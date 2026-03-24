@@ -4937,29 +4937,31 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (skeleton) skeleton.classList.remove('hidden');
         if (chartWrapper) chartWrapper.classList.add('hidden');
 
-        // Mapa: timestamp → valor total acumulado da carteira
-        const timestampMap = new Map();
+        // Cada ativo guarda sua série de preços separadamente
+        const assetSeries = [];
+        const allTimestamps = new Set();
 
-        // Busca sequencial (for...of) — sem Promise.all
+        // Busca sequencial (for...of) via Yahoo Finance scraper — sem Promise.all
         for (const ativo of carteiraCalculada) {
             try {
-                const tickerParaApi = isFII(ativo.symbol) ? `${ativo.symbol}.SA` : ativo.symbol;
-                const data = await fetchBFF(`/api/brapi?path=/quote/${tickerParaApi}?range=1d&interval=15m`);
-                const result = data.results?.[0];
+                const response = await callScraperCotacaoHistoricaAPI(ativo.symbol, '1D');
+                const points = response?.points;
 
-                if (result && result.historicalDataPrice && result.historicalDataPrice.length > 0) {
+                if (points && points.length > 0) {
                     const qtdCotas = ativo.quantity || 0;
+                    const series = new Map();
 
-                    for (const ponto of result.historicalDataPrice) {
-                        const ts = ponto.date * 1000; // unix → ms
-                        const preco = ponto.close ?? ponto.open ?? 0;
-                        const valorPosicao = preco * qtdCotas;
-
-                        if (timestampMap.has(ts)) {
-                            timestampMap.set(ts, timestampMap.get(ts) + valorPosicao);
-                        } else {
-                            timestampMap.set(ts, valorPosicao);
+                    for (const ponto of points) {
+                        const ts = ponto.timestamp || new Date(ponto.date).getTime();
+                        const preco = ponto.price ?? ponto.close ?? ponto.open ?? 0;
+                        if (preco > 0) {
+                            series.set(ts, preco);
+                            allTimestamps.add(ts);
                         }
+                    }
+
+                    if (series.size > 0) {
+                        assetSeries.push({ symbol: ativo.symbol, qtd: qtdCotas, series });
                     }
                 }
             } catch (err) {
@@ -4971,18 +4973,32 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (skeleton) skeleton.classList.add('hidden');
         if (chartWrapper) chartWrapper.classList.remove('hidden');
 
-        if (timestampMap.size === 0) {
-            // Sem dados (mercado fechado ou erro)
+        if (allTimestamps.size === 0 || assetSeries.length === 0) {
             if (intradayContainer) intradayContainer.classList.add('hidden');
             return null;
         }
 
-        // Ordena por timestamp e constrói array de pontos
-        const sortedEntries = [...timestampMap.entries()].sort((a, b) => a[0] - b[0]);
-        const dataPoints = sortedEntries.map(([ts, valor]) => ({
-            date: ts,
-            value: valor
-        }));
+        // Ordena todos os timestamps
+        const sortedTimestamps = [...allTimestamps].sort((a, b) => a - b);
+
+        // Para cada timestamp, calcula o valor total da carteira
+        // usando o último preço conhecido de cada ativo (forward-fill)
+        const dataPoints = [];
+        const lastKnownPrice = new Map();
+
+        for (const ts of sortedTimestamps) {
+            let totalValue = 0;
+
+            for (const asset of assetSeries) {
+                if (asset.series.has(ts)) {
+                    lastKnownPrice.set(asset.symbol, asset.series.get(ts));
+                }
+                const preco = lastKnownPrice.get(asset.symbol) || 0;
+                totalValue += preco * asset.qtd;
+            }
+
+            dataPoints.push({ date: ts, value: totalValue });
+        }
 
         // Cacheia por 5 minutos
         try {

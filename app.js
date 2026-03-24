@@ -4864,6 +4864,13 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const cor = totalVariacaoDia > 0.01 ? 'text-green-400' : (totalVariacaoDia < -0.01 ? 'text-red-400' : 'text-gray-500');
                 totalCarteiraDia.innerHTML = `Hoje: <span class="${cor}">${sinal}${formatBRL(totalVariacaoDia)} (${sinal}${varDiaPercent.toFixed(2)}%)</span>`;
                 totalCarteiraDia.classList.remove('hidden');
+
+                // Exporta estado exato do dashboard para o gráfico intradiário sincronizar o cabeçalho
+                window.dashboardIntradayState = {
+                    currentValue: totalValorCarteira,
+                    variation: totalVariacaoDia,
+                    prevTotal: prevTotal
+                };
             }
 
             // Remove os skeletons somente após os valores já estarem no DOM.
@@ -5031,10 +5038,15 @@ document.addEventListener('DOMContentLoaded', async () => {
         const labels = dataPoints.map(p => new Date(p.date));
         const values = dataPoints.map(p => p.value);
 
-        const startValue = values[0];
-        const endValue = values[values.length - 1];
-        const diff = endValue - startValue;
-        const diffPercent = startValue > 0 ? (diff / startValue) * 100 : 0;
+        // Pega estado do dashboard (valores exatos consolidados) ou caso não exista, usa o fallback do gráfico
+        const dashState = window.dashboardIntradayState || {};
+        const isDashboardDataAvailable = dashState.currentValue !== undefined;
+        
+        // Base de cálculo para variação percentual (prevTotal do dashboard)
+        const baseStartValue = isDashboardDataAvailable ? dashState.prevTotal : values[0];
+        const defaultEndValue = isDashboardDataAvailable ? dashState.currentValue : values[values.length - 1];
+        
+        const diff = defaultEndValue - baseStartValue;
         const isPositive = diff >= 0;
 
         // Atualiza o header
@@ -5043,8 +5055,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         const elTime = document.getElementById('intraday-chart-time');
 
         const updateIntradayHeader = (currentValue) => {
-            const d = currentValue - startValue;
-            const pct = startValue > 0 ? (d / startValue) * 100 : 0;
+            const d = currentValue - baseStartValue;
+            const pct = baseStartValue > 0 ? (d / baseStartValue) * 100 : 0;
             const sign = d >= 0 ? '+' : '';
             const cor = d >= 0 ? '#4ade80' : '#f87171';
 
@@ -5055,8 +5067,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         };
 
-        // Estado inicial
-        updateIntradayHeader(endValue);
+        // Estado inicial (mostra o total consolidado do dashboard)
+        updateIntradayHeader(defaultEndValue);
 
         if (elTime) {
             const lastDate = new Date(dataPoints[dataPoints.length - 1].date);
@@ -5076,9 +5088,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             id: 'intradayCrosshair',
             afterDraw: (chart) => {
                 if (!chart.tooltip?._active?.length) {
-                    // Repouso: mostra valor final
+                    // Repouso: mostra valor final ou consolidado do dashboard
                     if (chart._lastIntradayUpdate !== 'end') {
-                        updateIntradayHeader(endValue);
+                        updateIntradayHeader(defaultEndValue);
                         if (elTime) {
                             const lastDate = new Date(dataPoints[dataPoints.length - 1].date);
                             elTime.textContent = `Hoje • ${lastDate.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`;

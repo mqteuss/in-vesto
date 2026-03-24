@@ -477,7 +477,8 @@ function atualizarCardElemento(card, ativo, dados) {
     } = dados;
 
     // Atualiza Cabeçalho
-    card.querySelector('[data-field="cota-qtd"]').textContent = `${ativo.quantity} cotas`;
+    const badgeHtml = percentWallet > 30 ? ` <span class="text-amber-500 font-bold ml-1 tracking-tight">&bull; ⚠️ ${percentWallet.toFixed(0)}%</span>` : '';
+    card.querySelector('[data-field="cota-qtd"]').innerHTML = `${ativo.quantity} cotas${badgeHtml}`;
     card.querySelector('[data-field="preco-unitario"]').textContent = precoFormatado;
 
     // Atualiza Valores Principais
@@ -4768,19 +4769,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             // Reinsere na ordem correta (sort pode mudar)
             listaCarteira.appendChild(card);
 
-            // Concentration badge
-            const concBadge = card.querySelector('.concentration-badge');
-            if (percentWallet > 30) {
-                if (!concBadge) {
-                    const badge = document.createElement('span');
-                    badge.className = 'concentration-badge';
-                    badge.innerHTML = `⚠ ${percentWallet.toFixed(0)}%`;
-                    const headerRow = card.querySelector('.flex.items-center.gap-2');
-                    if (headerRow) headerRow.appendChild(badge);
-                }
-            } else if (concBadge) {
-                concBadge.remove();
-            }
         });
 
         // Atualiza Resumo Rápido da Carteira

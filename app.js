@@ -2035,7 +2035,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     class VirtualScroller {
-        constructor(scrollContainer, listContainer, items, renderRowFn) {
+        constructor(scrollContainer, listContainer, items, renderRowFn, options = {}) {
             // 1. Inicializa variáveis CRÍTICAS primeiro para evitar crash
             this.visibleItems = new Map();
             this.positions = [];
@@ -2046,9 +2046,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             this.items = items;
             this.renderRowFn = renderRowFn;
 
-            // Configurações de altura
-            this.headerHeight = 50;
-            this.rowHeight = 72;
+            // Configurações dinâmicas de altura
+            this.headerHeight = options.headerHeight || 50;
+            this.rowHeight = options.rowHeight || 72;
 
             // Limpeza de estilos conflitantes do container original
             this.listContainer.classList.remove('px-4', 'pt-2', 'pb-20');
@@ -2457,6 +2457,11 @@ document.addEventListener('DOMContentLoaded', async () => {
             viewProventos.classList.add('hidden');
 
             if (statusEl) statusEl.classList.add('hidden');
+            
+            // Reseta o scroll para garantir que a lista comece do topo
+            const scrollContainer = document.getElementById('tab-historico');
+            if (scrollContainer) scrollContainer.scrollTop = 0;
+            
             renderizarHistorico();
         });
 
@@ -2473,6 +2478,11 @@ document.addEventListener('DOMContentLoaded', async () => {
             viewProventos.classList.remove('hidden');
 
             if (statusEl) statusEl.classList.add('hidden');
+            
+            // Reseta o scroll para garantir que a lista comece do topo
+            const scrollContainer = document.getElementById('tab-historico');
+            if (scrollContainer) scrollContainer.scrollTop = 0;
+            
             renderizarHistoricoProventos();
         });
     }

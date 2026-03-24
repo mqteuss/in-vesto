@@ -651,6 +651,23 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Variável para armazenar cache simples do IPCA
     let ipcaCacheData = null;
 
+    const btnOpenRaiox = document.getElementById('btn-carteira-raiox');
+    const comparadorPageModal = document.getElementById('comparador-page-modal');
+    const comparadorPageContent = document.getElementById('tab-comparador-content');
+    const comparadorVoltarBtn = document.getElementById('comparador-voltar-btn');
+    const raioxInputA = document.getElementById('raiox-input-a');
+    const raioxInputB = document.getElementById('raiox-input-b');
+    const btnRaioxCompare = document.getElementById('btn-raiox-compare');
+    const raioxLoading = document.getElementById('raiox-loading');
+    const raioxResults = document.getElementById('raiox-results');
+    const raioxGridBody = document.getElementById('raiox-grid-body');
+    const raioxTitleA = document.getElementById('raiox-title-a');
+    const raioxTitleB = document.getElementById('raiox-title-b');
+
+    let isDraggingComparador = false;
+    let touchStartComparadorY = 0;
+    let touchMoveComparadorY = 0;
+
     const vestoDB = {
         db: null,
         init() {
@@ -11205,6 +11222,144 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     };
 
+    function openRaioxModal() {
+        if (!comparadorPageModal) return;
+        comparadorPageModal.style.pointerEvents = 'auto';
+        comparadorPageModal.style.opacity = '1';
+
+        setTimeout(() => {
+            if (comparadorPageContent) {
+                comparadorPageContent.style.transition = 'transform 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94)';
+                comparadorPageContent.style.transform = 'translateY(0)';
+            }
+        }, 10);
+    }
+
+    function closeRaioxModal() {
+        if (!comparadorPageModal) return;
+        if (comparadorPageContent) {
+            comparadorPageContent.style.transition = 'transform 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94)';
+            comparadorPageContent.style.transform = 'translateY(100%)';
+        }
+        
+        setTimeout(() => {
+            comparadorPageModal.style.opacity = '0';
+            comparadorPageModal.style.pointerEvents = 'none';
+        }, 300);
+    }
+
+    async function compararAtivos() {
+        if (!raioxInputA || !raioxInputB) return;
+        
+        const tA = raioxInputA.value.trim().toUpperCase();
+        const tB = raioxInputB.value.trim().toUpperCase();
+
+        if (!tA || !tB) {
+            showToast('Digite os dois ativos para comparar.');
+            return;
+        }
+
+        btnRaioxCompare.disabled = true;
+        btnRaioxCompare.innerHTML = 'Processando...';
+        raioxLoading.classList.remove('hidden');
+        raioxResults.classList.add('hidden');
+        raioxGridBody.innerHTML = '';
+
+        try {
+            const getQuote = async (ticker) => {
+                try {
+                    const res = await fetchBFF(`/api/brapi?path=/quote/${ticker}?range=1d&interval=1d`);
+                    if (res && res.results && res.results[0]) return res.results[0].regularMarketPrice;
+                } catch(e) {}
+                return null;
+            };
+
+            const [fundA, fundB, quoteA, quoteB] = await Promise.all([
+                callScraperFundamentosAPI(tA),
+                callScraperFundamentosAPI(tB),
+                getQuote(tA),
+                getQuote(tB)
+            ]);
+
+            const parsePercentStrict = (str) => {
+                if (!str || str === 'N/A' || str === '-') return null;
+                return parseFloat(str.replace('%','').replace('.','').replace(',','.'));
+            };
+            const parseNumberStrict = (str) => {
+                if (!str || str === 'N/A' || str === '-') return null;
+                return parseFloat(str.replace(/\\./g,'').replace(',','.'));
+            };
+            const formatVal = (val, type) => {
+                if (val === null) return '-';
+                if (type === 'percent') return val.toFixed(2).replace('.',',') + '%';
+                if (type === 'number') return val.toFixed(2).replace('.',',');
+                if (type === 'money') return formatBRL(val);
+                return val;
+            };
+
+            const valA = {
+                cotacao: quoteA,
+                dy: parsePercentStrict(fundA.dy),
+                pvp: parseNumberStrict(fundA.pvp),
+                pl: parseNumberStrict(fundA.pl),
+                segmento: fundA.segmento && fundA.segmento !== 'N/A' ? fundA.segmento : '-'
+            };
+
+            const valB = {
+                cotacao: quoteB,
+                dy: parsePercentStrict(fundB.dy),
+                pvp: parseNumberStrict(fundB.pvp),
+                pl: parseNumberStrict(fundB.pl),
+                segmento: fundB.segmento && fundB.segmento !== 'N/A' ? fundB.segmento : '-'
+            };
+
+            raioxTitleA.textContent = tA;
+            raioxTitleB.textContent = tB;
+
+            const rows = [
+                { label: 'Cotação', a: valA.cotacao, b: valB.cotacao, type: 'money', winner: 'none' },
+                { label: 'P/VP', a: valA.pvp, b: valB.pvp, type: 'number', winner: 'lower' },
+                { label: 'P/L', a: valA.pl, b: valB.pl, type: 'number', winner: 'lower' },
+                { label: 'Div. Yield', a: valA.dy, b: valB.dy, type: 'percent', winner: 'higher' },
+                { label: 'Setor', a: valA.segmento, b: valB.segmento, type: 'string', winner: 'none' }
+            ];
+
+            let html = '';
+            rows.forEach(r => {
+                let classA = 'text-white';
+                let classB = 'text-white';
+                
+                if (r.winner === 'higher' && r.a !== null && r.b !== null) {
+                    if (r.a > r.b) classA = 'text-green-400 font-bold';
+                    else if (r.b > r.a) classB = 'text-green-400 font-bold';
+                } else if (r.winner === 'lower' && r.a !== null && r.b !== null) {
+                    if (r.a > 0 && r.b > 0) {
+                        if (r.a < r.b) classA = 'text-green-400 font-bold';
+                        else if (r.b < r.a) classB = 'text-green-400 font-bold';
+                    }
+                }
+
+                html += `
+                <div class="flex items-center bg-[#1C1C1E] rounded-xl p-3 shadow-sm">
+                    <div class="flex-1 text-center text-sm ${classA}">${formatVal(r.a, r.type)}</div>
+                    <div class="w-20 text-center text-[10px] uppercase font-bold text-gray-400 leading-tight">${r.label}</div>
+                    <div class="flex-1 text-center text-sm ${classB}">${formatVal(r.b, r.type)}</div>
+                </div>`;
+            });
+
+            raioxGridBody.innerHTML = html;
+            raioxResults.classList.remove('hidden');
+
+        } catch (e) {
+            console.error(e);
+            showToast('Erro ao comparar ativos. Tente novamente.');
+        } finally {
+            raioxLoading.classList.add('hidden');
+            btnRaioxCompare.disabled = false;
+            btnRaioxCompare.innerHTML = 'COMPARAR NOVAMENTE';
+        }
+    }
+
     async function openIpcaModal() {
         if (!ipcaPageModal) return;
 
@@ -11798,6 +11953,61 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     if (ipcaVoltarBtn) {
         ipcaVoltarBtn.addEventListener('click', closeIpcaModal);
+    }
+
+    if (btnOpenRaiox) {
+        btnOpenRaiox.addEventListener('click', openRaioxModal);
+    }
+
+    if (comparadorVoltarBtn) {
+        comparadorVoltarBtn.addEventListener('click', closeRaioxModal);
+    }
+
+    if (btnRaioxCompare) {
+        btnRaioxCompare.addEventListener('click', compararAtivos);
+        
+        const triggerEnter = (e) => {
+            if (e.key === 'Enter') compararAtivos();
+        };
+        if (raioxInputA) raioxInputA.addEventListener('keypress', triggerEnter);
+        if (raioxInputB) raioxInputB.addEventListener('keypress', triggerEnter);
+    }
+
+    if (comparadorPageContent) {
+        const scrollContainerComp = comparadorPageContent.querySelector('.overflow-y-auto');
+
+        comparadorPageContent.addEventListener('touchstart', (e) => {
+            if (scrollContainerComp && scrollContainerComp.scrollTop === 0) {
+                touchStartComparadorY = e.touches[0].clientY;
+                touchMoveComparadorY = touchStartComparadorY;
+                isDraggingComparador = true;
+                comparadorPageContent.style.transition = 'none';
+            }
+        }, { passive: true });
+
+        comparadorPageContent.addEventListener('touchmove', (e) => {
+            if (!isDraggingComparador) return;
+            touchMoveComparadorY = e.touches[0].clientY;
+            const diff = touchMoveComparadorY - touchStartComparadorY;
+            if (diff > 0) {
+                comparadorPageContent.style.transform = `translateY(${diff}px)`;
+                if (e.cancelable) e.preventDefault();
+            }
+        }, { passive: false });
+
+        comparadorPageContent.addEventListener('touchend', () => {
+            if (!isDraggingComparador) return;
+            isDraggingComparador = false;
+            const diff = touchMoveComparadorY - touchStartComparadorY;
+            comparadorPageContent.style.transition = 'transform 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94)';
+            if (diff > 120) {
+                closeRaioxModal();
+            } else {
+                comparadorPageContent.style.transform = '';
+            }
+            touchStartComparadorY = 0;
+            touchMoveComparadorY = 0;
+        });
     }
 
     if (ipcaPageContent) {

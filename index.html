@@ -269,7 +269,7 @@
 
 
                         <div class="relative z-50 px-4 pt-2 mb-2">
-                            <div class="flex justify-end items-start text-right">
+                            <div class="flex flex-row-reverse justify-start items-start gap-3 text-right">
 
                                 <button id="btn-notifications"
                                     class="relative mt-1 p-1 text-gray-400 hover:text-white transition-colors focus:outline-none"
@@ -281,6 +281,14 @@
                                     </svg>
                                     <span id="notification-badge"
                                         class="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full border border-black hidden"></span>
+                                </button>
+                                
+                                <button id="toggle-privacy-btn"
+                                    class="relative mt-1 p-1 text-gray-400 hover:text-white transition-colors focus:outline-none"
+                                    title="Ocultar Valores">
+                                    <svg class="w-5 h-5 text-gray-400 hover:text-white" id="privacy-icon">
+                                        <use href="#ico-eye" />
+                                    </svg>
                                 </button>
                             </div>
 
@@ -973,26 +981,7 @@
                                 </button>
                             </div>
 
-                            <div class="settings-item">
-                                <div class="flex items-center">
-                                    <div class="settings-icon-box icon-box-gray">
-                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none"
-                                            viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                            <path stroke-linecap="round" stroke-linejoin="round"
-                                                d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
-                                        </svg>
-                                    </div>
-                                    <div>
-                                        <span class="settings-label">Modo Privacidade</span>
-                                        <p class="settings-sub">Ocultar valores</p>
-                                    </div>
-                                </div>
-                                <button id="toggle-privacy-btn"
-                                    class="relative inline-flex h-6 w-11 items-center rounded-full bg-gray-700 transition-colors focus:outline-none">
-                                    <span id="privacy-toggle-knob"
-                                        class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform translate-x-1"></span>
-                                </button>
-                            </div>
+                            <!-- Privacidade movida para o Dashboard -->
                         </div>
 
                         <h3 class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 ml-2">Ferramentas

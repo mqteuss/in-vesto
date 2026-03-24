@@ -109,9 +109,26 @@ function base64ToBuffer(base64) {
 const _fmtBRL = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
 const _fmtNumber = new Intl.NumberFormat('pt-BR');
 
-const formatBRL = (value) => value != null ? _fmtBRL.format(value) : 'N/A';
-const formatNumber = (value) => value != null ? _fmtNumber.format(value) : 'N/A';
-const formatCurrencyShort = (value) => value != null ? _fmtNumber.format(value) : 'N/A';
+const isPrivacyModeActive = () => document.body.classList.contains('privacy-mode');
+
+const formatBRL = (value) => {
+    if (value == null) return 'N/A';
+    if (isPrivacyModeActive()) return 'R$ ••••';
+    return _fmtBRL.format(value);
+};
+
+const formatNumber = (value) => {
+    if (value == null) return 'N/A';
+    if (isPrivacyModeActive()) return '••••';
+    return _fmtNumber.format(value);
+};
+
+const formatCurrencyShort = (value) => {
+    if (value == null) return 'N/A';
+    if (isPrivacyModeActive()) return 'R$ ••••';
+    return _fmtNumber.format(value);
+};
+
 const formatPercent = (value) => `${(value ?? 0).toFixed(2)}%`;
 const formatDate = (dateString, includeTime = false) => {
     if (!dateString) return 'N/A';
@@ -743,7 +760,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     const toggleThemeBtn = document.getElementById('toggle-theme-btn');
     const themeToggleKnob = document.getElementById('theme-toggle-knob');
     const togglePrivacyBtn = document.getElementById('toggle-privacy-btn');
-    const privacyToggleKnob = document.getElementById('privacy-toggle-knob');
     const exportCsvBtn = document.getElementById('export-csv-btn');
     const clearCacheBtn = document.getElementById('clear-cache-btn');
     const appWrapper = document.getElementById('app-wrapper');
@@ -4878,6 +4894,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
         totalProventosEl.textContent = formatBRL(totalEstimado);
     }
+    window.renderizarProventosGlobal = renderizarProventos;
 
     async function handleAtualizarNoticias(force = false, category = null) {
         const cat = category || currentNewsCategory;
@@ -9253,18 +9270,24 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     function updatePrivacyUI() {
         const isPrivacyOn = localStorage.getItem('vesto_privacy_mode') === 'true';
+        const privacyIcon = document.getElementById('privacy-icon');
+        
         if (isPrivacyOn) {
             document.body.classList.add('privacy-mode');
-            togglePrivacyBtn.classList.remove('bg-gray-700');
-            togglePrivacyBtn.classList.add('bg-purple-600');
-            privacyToggleKnob.classList.remove('translate-x-1');
-            privacyToggleKnob.classList.add('translate-x-6');
+            if (privacyIcon) privacyIcon.innerHTML = '<use href="#ico-eye-off" />';
         } else {
             document.body.classList.remove('privacy-mode');
-            togglePrivacyBtn.classList.remove('bg-purple-600');
-            togglePrivacyBtn.classList.add('bg-gray-700');
-            privacyToggleKnob.classList.remove('translate-x-6');
-            privacyToggleKnob.classList.add('translate-x-1');
+            if (privacyIcon) privacyIcon.innerHTML = '<use href="#ico-eye" />';
+        }
+
+        // Force UI re-renders to apply the formatBRL R$ •••• masking
+        if (typeof window.renderizarCarteiraGlobal === 'function') window.renderizarCarteiraGlobal();
+        if (typeof window.renderizarHistoricoGlobal === 'function') window.renderizarHistoricoGlobal();
+        if (typeof window.renderizarHistoricoProventosGlobal === 'function') window.renderizarHistoricoProventosGlobal();
+        if (typeof window.renderizarProventosGlobal === 'function') window.renderizarProventosGlobal();
+        
+        if (typeof window.renderizarGraficoPatrimonio === 'function') {
+            window.renderizarGraficoPatrimonio(true);
         }
     }
 

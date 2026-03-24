@@ -1858,21 +1858,6 @@ body.light-mode .news-cover-img {
     display: none !important;
 }
 
-/* Privacidade */
-body.privacy-mode [data-privacy="true"],
-body.privacy-mode #total-carteira-valor,
-body.privacy-mode #total-caixa-valor,
-body.privacy-mode #total-proventos,
-body.privacy-mode #total-carteira-custo,
-body.privacy-mode #total-carteira-pl,
-body.privacy-mode .money-value,
-body.privacy-mode [data-field="posicao-valor"],
-body.privacy-mode [data-field="custo-valor"],
-body.privacy-mode [data-field="pl-valor"] {
-    filter: blur(7px) !important;
-    user-select: none;
-    pointer-events: none;
-}
 
 /* ── Marquee Ticker (Índices de Mercado) ── */
 @keyframes marqueeScroll {

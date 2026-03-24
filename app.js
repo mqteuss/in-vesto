@@ -2814,11 +2814,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     function atualizarStatusMercado() {
         const open = isB3Open();
         const pill = document.getElementById('market-status-pill');
-        if (marketStatusDot && marketStatusText) {
+        if (marketStatusDot) {
             marketStatusDot.className = `market-status-dot ${open ? 'open' : 'closed'}`;
-            marketStatusText.textContent = open ? 'B3 Aberta' : 'B3 Fechada';
-            marketStatusText.className = `text-[11px] font-bold uppercase tracking-wider ${open ? 'text-green' : 'text-red'}`;
-            if (pill) pill.classList.toggle('open', open);
+            if (pill) {
+                pill.classList.toggle('open', open);
+                pill.title = open ? 'B3 Aberta' : 'B3 Fechada';
+            }
         }
     }
 
@@ -11047,13 +11048,11 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (isOpen) {
                 carteiraOptionsContainer.style.maxWidth = '0px';
                 carteiraOptionsContainer.style.opacity = '0';
-                carteiraOptionsContainer.style.transform = 'translateX(-10px)';
                 btnCarteiraOptions.classList.remove('rotate-90', 'scale-110');
             } else {
-                // Largura suficiente para abrigar os 2 botões (36px + margins)
-                carteiraOptionsContainer.style.maxWidth = '100px'; 
+                // Largura suficiente para abrigar os 3 botões (Refresh, Sort, Raio-X)
+                carteiraOptionsContainer.style.maxWidth = '160px'; 
                 carteiraOptionsContainer.style.opacity = '1';
-                carteiraOptionsContainer.style.transform = 'translateX(0)';
                 btnCarteiraOptions.classList.add('rotate-90', 'scale-110');
                 
                 // Esconde o menu de sort se estiver aberto para evitar sobreposição
@@ -11068,7 +11067,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                 if (!e.target.closest('#carteira-options-container') && !e.target.closest('#btn-carteira-options')) {
                     carteiraOptionsContainer.style.maxWidth = '0px';
                     carteiraOptionsContainer.style.opacity = '0';
-                    carteiraOptionsContainer.style.transform = 'translateX(-10px)';
                     btnCarteiraOptions.classList.remove('rotate-90', 'scale-110');
                 }
             }

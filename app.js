@@ -11284,12 +11284,24 @@ document.addEventListener('DOMContentLoaded', async () => {
                 return val;
             };
 
+            const attrA = (key) => fundA[key] && fundA[key] !== 'N/A' && fundA[key] !== '-' ? fundA[key] : null;
+            const attrB = (key) => fundB[key] && fundB[key] !== 'N/A' && fundB[key] !== '-' ? fundB[key] : null;
+
             const valA = {
                 cotacao: quoteA,
                 dy: parsePercentStrict(fundA.dy),
                 pvp: parseNumberStrict(fundA.pvp),
                 pl: parseNumberStrict(fundA.pl),
-                segmento: fundA.segmento && fundA.segmento !== 'N/A' ? fundA.segmento : '-'
+                segmento: attrA('segmento') || '-',
+                roe: parsePercentStrict(fundA.roe),
+                lpa: parseNumberStrict(fundA.lpa),
+                vpa: parseNumberStrict(fundA.vp_cota),
+                margem_liquida: parsePercentStrict(fundA.margem_liquida),
+                divida_liquida_ebitda: parseNumberStrict(fundA.divida_liquida_ebitda),
+                vacancia: parsePercentStrict(fundA.vacancia),
+                tipo_fundo: attrA('tipo_fundo') || '-',
+                mandato: attrA('mandato') || '-',
+                tipo_gestao: attrA('tipo_gestao') || '-'
             };
 
             const valB = {
@@ -11297,7 +11309,16 @@ document.addEventListener('DOMContentLoaded', async () => {
                 dy: parsePercentStrict(fundB.dy),
                 pvp: parseNumberStrict(fundB.pvp),
                 pl: parseNumberStrict(fundB.pl),
-                segmento: fundB.segmento && fundB.segmento !== 'N/A' ? fundB.segmento : '-'
+                segmento: attrB('segmento') || '-',
+                roe: parsePercentStrict(fundB.roe),
+                lpa: parseNumberStrict(fundB.lpa),
+                vpa: parseNumberStrict(fundB.vp_cota),
+                margem_liquida: parsePercentStrict(fundB.margem_liquida),
+                divida_liquida_ebitda: parseNumberStrict(fundB.divida_liquida_ebitda),
+                vacancia: parsePercentStrict(fundB.vacancia),
+                tipo_fundo: attrB('tipo_fundo') || '-',
+                mandato: attrB('mandato') || '-',
+                tipo_gestao: attrB('tipo_gestao') || '-'
             };
 
             raioxTitleA.textContent = tA;
@@ -11305,14 +11326,25 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             const rows = [
                 { label: 'Cotação', a: valA.cotacao, b: valB.cotacao, type: 'money', winner: 'none' },
+                { label: 'Setor', a: valA.segmento, b: valB.segmento, type: 'string', winner: 'none' },
                 { label: 'P/VP', a: valA.pvp, b: valB.pvp, type: 'number', winner: 'lower' },
                 { label: 'P/L', a: valA.pl, b: valB.pl, type: 'number', winner: 'lower' },
                 { label: 'Div. Yield', a: valA.dy, b: valB.dy, type: 'percent', winner: 'higher' },
-                { label: 'Setor', a: valA.segmento, b: valB.segmento, type: 'string', winner: 'none' }
+                { label: 'ROE', a: valA.roe, b: valB.roe, type: 'percent', winner: 'higher' },
+                { label: 'LPA', a: valA.lpa, b: valB.lpa, type: 'number', winner: 'higher' },
+                { label: 'VPA', a: valA.vpa, b: valB.vpa, type: 'number', winner: 'none' },
+                { label: 'Margem Líq', a: valA.margem_liquida, b: valB.margem_liquida, type: 'percent', winner: 'higher' },
+                { label: 'Dív. / EBITDA', a: valA.divida_liquida_ebitda, b: valB.divida_liquida_ebitda, type: 'number', winner: 'lower' },
+                { label: 'Vacância', a: valA.vacancia, b: valB.vacancia, type: 'percent', winner: 'lower' },
+                { label: 'Gestão', a: valA.tipo_gestao, b: valB.tipo_gestao, type: 'string', winner: 'none' },
+                { label: 'Fundo', a: valA.tipo_fundo, b: valB.tipo_fundo, type: 'string', winner: 'none' },
+                { label: 'Mandato', a: valA.mandato, b: valB.mandato, type: 'string', winner: 'none' }
             ];
 
+            const validRows = rows.filter(r => (r.a !== null && r.a !== '-') || (r.b !== null && r.b !== '-'));
+
             let html = '';
-            rows.forEach(r => {
+            validRows.forEach(r => {
                 let classA = 'text-white';
                 let classB = 'text-white';
                 

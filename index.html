@@ -696,6 +696,21 @@
                         <!-- DIVISÓRIA -->
                         <div class="h-px bg-white/10 -mx-4 mb-4"></div>
 
+                        <!-- GRÁFICO INTRADIÁRIO DA CARTEIRA -->
+                        <div id="intraday-chart-container" class="hidden mb-4">
+                            <div class="flex items-baseline justify-between px-1 mb-2">
+                                <div>
+                                    <span id="intraday-chart-value" class="text-lg font-bold text-white">R$ 0,00</span>
+                                    <span id="intraday-chart-var" class="text-xs font-bold text-gray-500 ml-1">+0,00%</span>
+                                </div>
+                                <span id="intraday-chart-time" class="text-[9px] text-gray-500 uppercase font-bold tracking-wider">Hoje</span>
+                            </div>
+                            <div id="intraday-chart-wrapper" class="relative w-full" style="height: 160px;">
+                                <canvas id="canvas-intraday-portfolio" style="width:100%;height:100%;"></canvas>
+                            </div>
+                            <div id="intraday-chart-skeleton" class="hidden w-full rounded-xl bg-[#151515] animate-pulse" style="height: 160px;"></div>
+                        </div>
+
                         <!-- RESUMO RÁPIDO DA CARTEIRA -->
                         <div id="carteira-resumo" class="hidden mb-3">
                             <div class="flex items-center justify-between gap-2 px-1">

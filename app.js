@@ -4913,6 +4913,251 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
     window.renderizarProventosGlobal = renderizarProventos;
 
+    // =============================================
+    // GRÁFICO INTRADIÁRIO DA CARTEIRA
+    // =============================================
+    let intradayPortfolioChartInstance = null;
+    const CACHE_INTRADAY = 5 * 60 * 1000; // 5 minutos
+
+    async function buscarDadosIntradiariosCarteira() {
+        if (carteiraCalculada.length === 0) return null;
+
+        // Verifica cache primeiro
+        try {
+            const cached = await getCache('intraday_portfolio_chart');
+            if (cached) return cached;
+        } catch (_) { }
+
+        const intradayContainer = document.getElementById('intraday-chart-container');
+        const skeleton = document.getElementById('intraday-chart-skeleton');
+        const chartWrapper = document.getElementById('intraday-chart-wrapper');
+
+        // Mostra skeleton enquanto carrega
+        if (intradayContainer) intradayContainer.classList.remove('hidden');
+        if (skeleton) skeleton.classList.remove('hidden');
+        if (chartWrapper) chartWrapper.classList.add('hidden');
+
+        // Mapa: timestamp → valor total acumulado da carteira
+        const timestampMap = new Map();
+
+        // Busca sequencial (for...of) — sem Promise.all
+        for (const ativo of carteiraCalculada) {
+            try {
+                const tickerParaApi = isFII(ativo.symbol) ? `${ativo.symbol}.SA` : ativo.symbol;
+                const data = await fetchBFF(`/api/brapi?path=/quote/${tickerParaApi}?range=1d&interval=15m`);
+                const result = data.results?.[0];
+
+                if (result && result.historicalDataPrice && result.historicalDataPrice.length > 0) {
+                    const qtdCotas = ativo.quantity || 0;
+
+                    for (const ponto of result.historicalDataPrice) {
+                        const ts = ponto.date * 1000; // unix → ms
+                        const preco = ponto.close ?? ponto.open ?? 0;
+                        const valorPosicao = preco * qtdCotas;
+
+                        if (timestampMap.has(ts)) {
+                            timestampMap.set(ts, timestampMap.get(ts) + valorPosicao);
+                        } else {
+                            timestampMap.set(ts, valorPosicao);
+                        }
+                    }
+                }
+            } catch (err) {
+                console.warn(`[Intraday] Erro ao buscar ${ativo.symbol}:`, err.message);
+            }
+        }
+
+        // Esconde skeleton
+        if (skeleton) skeleton.classList.add('hidden');
+        if (chartWrapper) chartWrapper.classList.remove('hidden');
+
+        if (timestampMap.size === 0) {
+            // Sem dados (mercado fechado ou erro)
+            if (intradayContainer) intradayContainer.classList.add('hidden');
+            return null;
+        }
+
+        // Ordena por timestamp e constrói array de pontos
+        const sortedEntries = [...timestampMap.entries()].sort((a, b) => a[0] - b[0]);
+        const dataPoints = sortedEntries.map(([ts, valor]) => ({
+            date: ts,
+            value: valor
+        }));
+
+        // Cacheia por 5 minutos
+        try {
+            await setCache('intraday_portfolio_chart', dataPoints, CACHE_INTRADAY);
+        } catch (_) { }
+
+        return dataPoints;
+    }
+
+    function renderizarGraficoIntradiarioCarteira(dataPoints) {
+        const container = document.getElementById('intraday-chart-container');
+        const wrapper = document.getElementById('intraday-chart-wrapper');
+        const canvas = document.getElementById('canvas-intraday-portfolio');
+
+        if (!dataPoints || dataPoints.length < 2 || !canvas || !container) {
+            if (container) container.classList.add('hidden');
+            return;
+        }
+
+        container.classList.remove('hidden');
+        if (wrapper) wrapper.classList.remove('hidden');
+
+        // Destroy previous instance
+        if (intradayPortfolioChartInstance) {
+            intradayPortfolioChartInstance.destroy();
+            intradayPortfolioChartInstance = null;
+        }
+
+        const ctx = canvas.getContext('2d');
+        const labels = dataPoints.map(p => new Date(p.date));
+        const values = dataPoints.map(p => p.value);
+
+        const startValue = values[0];
+        const endValue = values[values.length - 1];
+        const diff = endValue - startValue;
+        const diffPercent = startValue > 0 ? (diff / startValue) * 100 : 0;
+        const isPositive = diff >= 0;
+
+        // Atualiza o header
+        const elValue = document.getElementById('intraday-chart-value');
+        const elVar = document.getElementById('intraday-chart-var');
+        const elTime = document.getElementById('intraday-chart-time');
+
+        const updateIntradayHeader = (currentValue) => {
+            const d = currentValue - startValue;
+            const pct = startValue > 0 ? (d / startValue) * 100 : 0;
+            const sign = d >= 0 ? '+' : '';
+            const cor = d >= 0 ? '#4ade80' : '#f87171';
+
+            if (elValue) elValue.textContent = currentValue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+            if (elVar) {
+                elVar.textContent = `${sign}${d.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} (${sign}${pct.toFixed(2).replace('.', ',')}%)`;
+                elVar.style.color = cor;
+            }
+        };
+
+        // Estado inicial
+        updateIntradayHeader(endValue);
+
+        if (elTime) {
+            const lastDate = new Date(dataPoints[dataPoints.length - 1].date);
+            elTime.textContent = `Hoje • ${lastDate.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`;
+        }
+
+        // Cores e gradiente
+        const colorLine = isPositive ? '#4ade80' : '#f87171';
+        const colorFillStart = isPositive ? 'rgba(74, 222, 128, 0.15)' : 'rgba(248, 113, 113, 0.15)';
+
+        const gradient = ctx.createLinearGradient(0, 0, 0, 160);
+        gradient.addColorStop(0, colorFillStart);
+        gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
+
+        // Crosshair plugin
+        const intradayCrosshairPlugin = {
+            id: 'intradayCrosshair',
+            afterDraw: (chart) => {
+                if (!chart.tooltip?._active?.length) {
+                    // Repouso: mostra valor final
+                    if (chart._lastIntradayUpdate !== 'end') {
+                        updateIntradayHeader(endValue);
+                        if (elTime) {
+                            const lastDate = new Date(dataPoints[dataPoints.length - 1].date);
+                            elTime.textContent = `Hoje • ${lastDate.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`;
+                        }
+                        chart._lastIntradayUpdate = 'end';
+                    }
+                    return;
+                }
+
+                const activePoint = chart.tooltip._active[0];
+                const idx = activePoint.index;
+                const focusedValue = values[idx];
+                const focusedDate = new Date(dataPoints[idx].date);
+
+                // Atualiza header com valor do ponto focado
+                if (chart._lastIntradayIdx !== idx) {
+                    updateIntradayHeader(focusedValue);
+                    if (elTime) {
+                        elTime.textContent = `${focusedDate.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })} • ${focusedDate.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`;
+                    }
+                    chart._lastIntradayIdx = idx;
+                    chart._lastIntradayUpdate = 'active';
+                }
+
+                // Desenha linha vertical
+                const ctx2 = chart.ctx;
+                const x = activePoint.element.x;
+                const topY = chart.chartArea.top;
+                const bottomY = chart.chartArea.bottom;
+
+                ctx2.save();
+                ctx2.beginPath();
+                ctx2.moveTo(x, topY);
+                ctx2.lineTo(x, bottomY);
+                ctx2.lineWidth = 1;
+                ctx2.strokeStyle = 'rgba(163, 163, 163, 0.4)';
+                ctx2.setLineDash([4, 4]);
+                ctx2.stroke();
+                ctx2.setLineDash([]);
+                ctx2.restore();
+            }
+        };
+
+        intradayPortfolioChartInstance = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [{
+                    data: values,
+                    borderColor: colorLine,
+                    backgroundColor: gradient,
+                    borderWidth: 1.5,
+                    pointRadius: 0,
+                    pointHitRadius: 20,
+                    pointHoverRadius: 4,
+                    pointHoverBackgroundColor: colorLine,
+                    pointHoverBorderWidth: 0,
+                    fill: true,
+                    tension: 0.2
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                layout: { padding: { left: 0, right: 0, top: 5, bottom: 5 } },
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        enabled: false, // Tooltip visual desativado; o header faz o papel
+                        mode: 'index',
+                        intersect: false
+                    }
+                },
+                scales: {
+                    x: { display: false },
+                    y: { display: false }
+                },
+                interaction: { mode: 'nearest', axis: 'x', intersect: false },
+                animation: { duration: 400, easing: 'easeOutQuart' }
+            },
+            plugins: [intradayCrosshairPlugin]
+        });
+    }
+
+    async function atualizarGraficoIntradiario() {
+        try {
+            const dataPoints = await buscarDadosIntradiariosCarteira();
+            if (dataPoints && dataPoints.length >= 2) {
+                renderizarGraficoIntradiarioCarteira(dataPoints);
+            }
+        } catch (err) {
+            console.warn('[Intraday] Erro geral:', err.message);
+        }
+    }
+
     async function handleAtualizarNoticias(force = false, category = null) {
         const cat = category || currentNewsCategory;
         const cacheKey = `noticias_json_v5_${cat}`;
@@ -5780,6 +6025,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (precos.length > 0) {
                 precosAtuais = precos;
                 renderizarCarteiraDebounced(); // debounced — aguarda 100 ms antes de renderizar
+                // Atualiza o gráfico intradiário da carteira (fire-and-forget)
+                atualizarGraficoIntradiario();
             } else if (precosAtuais.length === 0) {
                 renderizarCarteiraDebounced();
             }

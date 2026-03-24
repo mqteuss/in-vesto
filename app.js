@@ -477,8 +477,7 @@ function atualizarCardElemento(card, ativo, dados) {
     } = dados;
 
     // Atualiza Cabeçalho
-    const badgeHtml = percentWallet > 30 ? ` <span class="text-amber-500 font-bold ml-1 tracking-tight">&bull; ⚠️ ${percentWallet.toFixed(0)}%</span>` : '';
-    card.querySelector('[data-field="cota-qtd"]').innerHTML = `${ativo.quantity} cotas${badgeHtml}`;
+    card.querySelector('[data-field="cota-qtd"]').textContent = `${ativo.quantity} cotas`;
     card.querySelector('[data-field="preco-unitario"]').textContent = precoFormatado;
 
     // Atualiza Valores Principais
@@ -509,7 +508,12 @@ function atualizarCardElemento(card, ativo, dados) {
 
     const pesoEl = card.querySelector('[data-field="peso-valor"]');
     if (pesoEl) {
-        pesoEl.textContent = formatPercent(percentWallet);
+        if (percentWallet > 30) {
+            pesoEl.innerHTML = `<span class="text-amber-500 font-bold tracking-tight">⚠️ ${formatPercent(percentWallet)}</span>`;
+        } else {
+            pesoEl.textContent = formatPercent(percentWallet);
+            pesoEl.className = `text-sm ${document.body.classList.contains('light-mode') ? 'text-gray-700' : 'text-gray-300'} font-medium`;
+        }
     }
 
     // Atualização dos Proventos

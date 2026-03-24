@@ -11296,8 +11296,15 @@ document.addEventListener('DOMContentLoaded', async () => {
                 roe: parsePercentStrict(fundA.roe),
                 lpa: parseNumberStrict(fundA.lpa),
                 vpa: parseNumberStrict(fundA.vp_cota),
+                margem_bruta: parsePercentStrict(fundA.margem_bruta),
+                margem_ebit: parsePercentStrict(fundA.margem_ebit),
                 margem_liquida: parsePercentStrict(fundA.margem_liquida),
+                ev_ebitda: parseNumberStrict(fundA.ev_ebitda),
                 divida_liquida_ebitda: parseNumberStrict(fundA.divida_liquida_ebitda),
+                divida_liquida_pl: parseNumberStrict(fundA.divida_liquida_pl),
+                payout: parsePercentStrict(fundA.payout),
+                cagr_receita_5a: parsePercentStrict(fundA.cagr_receita_5a),
+                cagr_lucros_5a: parsePercentStrict(fundA.cagr_lucros_5a),
                 vacancia: parsePercentStrict(fundA.vacancia),
                 tipo_fundo: attrA('tipo_fundo') || '-',
                 mandato: attrA('mandato') || '-',
@@ -11313,8 +11320,15 @@ document.addEventListener('DOMContentLoaded', async () => {
                 roe: parsePercentStrict(fundB.roe),
                 lpa: parseNumberStrict(fundB.lpa),
                 vpa: parseNumberStrict(fundB.vp_cota),
+                margem_bruta: parsePercentStrict(fundB.margem_bruta),
+                margem_ebit: parsePercentStrict(fundB.margem_ebit),
                 margem_liquida: parsePercentStrict(fundB.margem_liquida),
+                ev_ebitda: parseNumberStrict(fundB.ev_ebitda),
                 divida_liquida_ebitda: parseNumberStrict(fundB.divida_liquida_ebitda),
+                divida_liquida_pl: parseNumberStrict(fundB.divida_liquida_pl),
+                payout: parsePercentStrict(fundB.payout),
+                cagr_receita_5a: parsePercentStrict(fundB.cagr_receita_5a),
+                cagr_lucros_5a: parsePercentStrict(fundB.cagr_lucros_5a),
                 vacancia: parsePercentStrict(fundB.vacancia),
                 tipo_fundo: attrB('tipo_fundo') || '-',
                 mandato: attrB('mandato') || '-',
@@ -11333,8 +11347,15 @@ document.addEventListener('DOMContentLoaded', async () => {
                 { label: 'ROE', a: valA.roe, b: valB.roe, type: 'percent', winner: 'higher' },
                 { label: 'LPA', a: valA.lpa, b: valB.lpa, type: 'number', winner: 'higher' },
                 { label: 'VPA', a: valA.vpa, b: valB.vpa, type: 'number', winner: 'none' },
+                { label: 'Margem Bruta', a: valA.margem_bruta, b: valB.margem_bruta, type: 'percent', winner: 'higher' },
+                { label: 'Margem EBIT', a: valA.margem_ebit, b: valB.margem_ebit, type: 'percent', winner: 'higher' },
                 { label: 'Margem Líq', a: valA.margem_liquida, b: valB.margem_liquida, type: 'percent', winner: 'higher' },
+                { label: 'EV/EBITDA', a: valA.ev_ebitda, b: valB.ev_ebitda, type: 'number', winner: 'lower' },
                 { label: 'Dív. / EBITDA', a: valA.divida_liquida_ebitda, b: valB.divida_liquida_ebitda, type: 'number', winner: 'lower' },
+                { label: 'Dívida Líq/PL', a: valA.divida_liquida_pl, b: valB.divida_liquida_pl, type: 'number', winner: 'lower' },
+                { label: 'Payout', a: valA.payout, b: valB.payout, type: 'percent', winner: 'none' },
+                { label: 'CAGR Rec. 5A', a: valA.cagr_receita_5a, b: valB.cagr_receita_5a, type: 'percent', winner: 'higher' },
+                { label: 'CAGR Lucros 5A', a: valA.cagr_lucros_5a, b: valB.cagr_lucros_5a, type: 'percent', winner: 'higher' },
                 { label: 'Vacância', a: valA.vacancia, b: valB.vacancia, type: 'percent', winner: 'lower' },
                 { label: 'Gestão', a: valA.tipo_gestao, b: valB.tipo_gestao, type: 'string', winner: 'none' },
                 { label: 'Fundo', a: valA.tipo_fundo, b: valB.tipo_fundo, type: 'string', winner: 'none' },
@@ -11980,6 +12001,12 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     if (comparadorVoltarBtn) {
         comparadorVoltarBtn.addEventListener('click', closeRaioxModal);
+    }
+
+    if (comparadorPageModal) {
+        comparadorPageModal.addEventListener('click', (e) => {
+            if (e.target === comparadorPageModal) closeRaioxModal();
+        });
     }
 
     if (btnRaioxCompare) {

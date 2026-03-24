@@ -2833,6 +2833,18 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
 
+    // Tooltip ao clicar na bolinha da B3
+    const marketPill = document.getElementById('market-status-pill');
+    if (marketPill) {
+        marketPill.addEventListener('click', () => {
+            const open = isB3Open();
+            showToast(
+                open ? 'A Bolsa de Valores (B3) está Aberta' : 'A Bolsa de Valores (B3) está Fechada',
+                open ? 'success' : 'error'
+            );
+        });
+    }
+
     function renderizarGraficoAlocacao(isRetry = false) {
         const canvas = document.getElementById('alocacao-chart');
         if (!canvas) return;

@@ -9994,8 +9994,12 @@ document.addEventListener('DOMContentLoaded', async () => {
             renderizarDashboardSkeletons(true);
             renderizarCarteiraSkeletons(true);
 
+            // Tempo mínimo para o skeleton ser visível (UX profissional)
+            const skeletonMinTime = new Promise(resolve => setTimeout(resolve, 600));
+
             // Dispara todas as requisições ao mesmo tempo
             await Promise.all([
+                skeletonMinTime,
                 carregarTransacoes(),
                 carregarPatrimonio(),
                 carregarCaixa(),

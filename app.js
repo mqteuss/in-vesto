@@ -6026,10 +6026,14 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
 
         // Fazemos isso primeiro para mostrar algo imediatamente (mesmo que velho)
-        calcularCarteira();
-        await processarDividendosPagos();
-        renderizarHistorico();
-        renderizarGraficoPatrimonio();
+        // Mas APENAS em refreshes silenciosos — no load inicial (force=true), 
+        // mantemos os skeletons visíveis até os dados reais chegarem da API.
+        if (!force) {
+            calcularCarteira();
+            await processarDividendosPagos();
+            renderizarHistorico();
+            renderizarGraficoPatrimonio();
+        }
 
         // Mostra loading se tiver carteira e não for um refresh forçado (que já tratou acima)
         if (carteiraCalculada.length > 0 && !force) {

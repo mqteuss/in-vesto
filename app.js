@@ -2051,6 +2051,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             this.rowHeight = options.rowHeight || 72;
 
             // Limpeza de estilos conflitantes do container original
+            this.listContainer.innerHTML = ''; // Limpa qualquer conteúdo residual (ex: mensagem "Nenhum provento")
             this.listContainer.classList.remove('px-4', 'pt-2', 'pb-20');
             this.listContainer.style.marginTop = '0px';
 

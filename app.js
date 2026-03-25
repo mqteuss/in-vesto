@@ -2263,10 +2263,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             const isFundo = typeof isFII === 'function' ? isFII(t.symbol) : t.symbol.endsWith('11');
 
             const iconSvg = isFundo
-                ? `<svg class="w-5 h-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+                ? `<svg class="w-[22px] h-[22px] text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
                      <path stroke-linecap="round" stroke-linejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
                    </svg>`
-                : `<svg class="w-5 h-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+                : `<svg class="w-[22px] h-[22px] text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
                      <path stroke-linecap="round" stroke-linejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0h6" />
                    </svg>`;
 
@@ -2276,8 +2276,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                 ? `<path stroke-linecap="round" stroke-linejoin="round" d="M5 10l7-7m0 0l7 7m-7-7v18" />`
                 : `<path stroke-linecap="round" stroke-linejoin="round" d="M19 14l-7 7m0 0l-7-7m7 7V3" />`;
 
-            const badge = `<div class="absolute -bottom-0.5 -right-0.5 w-4 h-4 ${badgeColor} rounded-full flex items-center justify-center border-2 border-black">
-                <svg class="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">
+            const badge = `<div class="absolute -bottom-0.5 -right-0.5 w-[18px] h-[18px] ${badgeColor} rounded-full flex items-center justify-center border-2 border-black">
+                <svg class="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">
                     ${badgeArrow}
                 </svg>
             </div>`;
@@ -2402,15 +2402,15 @@ document.addEventListener('DOMContentLoaded', async () => {
             const isFundo = typeof isFII === 'function' ? isFII(p.symbol) : p.symbol.endsWith('11');
 
             const iconSvg = isFundo
-                ? `<svg class="w-5 h-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+                ? `<svg class="w-[22px] h-[22px] text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
                      <path stroke-linecap="round" stroke-linejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
                    </svg>`
-                : `<svg class="w-5 h-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+                : `<svg class="w-[22px] h-[22px] text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
                      <path stroke-linecap="round" stroke-linejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0h6" />
                    </svg>`;
 
-            const greenBadge = `<div class="absolute -bottom-0.5 -right-0.5 w-4 h-4 bg-green-500 rounded-full flex items-center justify-center border-2 border-black">
-                <svg class="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">
+            const greenBadge = `<div class="absolute -bottom-0.5 -right-0.5 w-[18px] h-[18px] bg-green-500 rounded-full flex items-center justify-center border-2 border-black">
+                <svg class="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
                 </svg>
             </div>`;
@@ -6051,14 +6051,19 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         // Calcula a carteira sempre (necessário para saber quais ativos buscar)
         calcularCarteira();
-        await processarDividendosPagos();
-        renderizarHistorico();
 
-        // Re-ativa skeletons após os renders iniciais — garante que
-        // quaisquer efeitos colaterais (valores zerados no DOM) sejam ocultados
         if (force) {
+            // No load inicial, re-ativa skeletons SINCRONAMENTE após calcular,
+            // ANTES de qualquer await que possa ceder controle ao browser e permitir
+            // um paint frame com valores zerados.
             renderizarDashboardSkeletons(true);
             renderizarCarteiraSkeletons(true);
+            // Fire-and-forget: processa em background, sem ceder paint frame
+            processarDividendosPagos();
+            renderizarHistorico();
+        } else {
+            await processarDividendosPagos();
+            renderizarHistorico();
         }
 
         // O gráfico de patrimônio pode renderizar com dados em cache

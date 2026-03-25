@@ -6054,6 +6054,13 @@ document.addEventListener('DOMContentLoaded', async () => {
         await processarDividendosPagos();
         renderizarHistorico();
 
+        // Re-ativa skeletons após os renders iniciais — garante que
+        // quaisquer efeitos colaterais (valores zerados no DOM) sejam ocultados
+        if (force) {
+            renderizarDashboardSkeletons(true);
+            renderizarCarteiraSkeletons(true);
+        }
+
         // O gráfico de patrimônio pode renderizar com dados em cache
         if (!force) {
             renderizarGraficoPatrimonio();

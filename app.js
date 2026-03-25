@@ -10323,9 +10323,11 @@ document.addEventListener('DOMContentLoaded', async () => {
             carregarRankings();
 
             // Inicia cálculos pesados e chamadas externas
-            atualizarTodosDados(false);
+            // Usa force=true no load inicial para ativar os skeletons de carregamento
+            atualizarTodosDados(true);
             handleAtualizarNoticias(false);
 
+            // Refresh periódico com force=false (sem skeletons, silencioso)
             setInterval(() => atualizarTodosDados(false), REFRESH_INTERVAL);
 
         } catch (e) {

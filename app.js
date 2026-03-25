@@ -6025,11 +6025,12 @@ document.addEventListener('DOMContentLoaded', async () => {
             dashboardStatus.classList.add('hidden');
         }
 
-        // Fazemos isso primeiro para mostrar algo imediatamente (mesmo que velho)
-        // Mas APENAS em refreshes silenciosos — no load inicial (force=true), 
-        // mantemos os skeletons visíveis até os dados reais chegarem da API.
+        // Calcula a carteira sempre (necessário para saber quais ativos buscar)
+        calcularCarteira();
+
+        // Renderiza dados em cache imediatamente — MAS APENAS em refreshes silenciosos.
+        // No load inicial (force=true), mantemos os skeletons visíveis até a API responder.
         if (!force) {
-            calcularCarteira();
             await processarDividendosPagos();
             renderizarHistorico();
             renderizarGraficoPatrimonio();

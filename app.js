@@ -6014,8 +6014,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     async function atualizarTodosDados(force = false) {
 
         if (force) {
-            // 1. Feedback Tátil (Vibração leve em Android)
-            if (navigator.vibrate) navigator.vibrate(50);
+            // 1. Feedback Tátil (Vibração leve em Android — requer gesto do usuário)
+            try { navigator.vibrate?.(50); } catch (_) { /* Chrome bloqueia sem gesto */ }
 
             // 2. Feedback Visual (Mostra os esqueletos de carregamento)
             renderizarDashboardSkeletons(true);

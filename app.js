@@ -6027,12 +6027,11 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         // Calcula a carteira sempre (necessário para saber quais ativos buscar)
         calcularCarteira();
+        await processarDividendosPagos();
+        renderizarHistorico();
 
-        // Renderiza dados em cache imediatamente — MAS APENAS em refreshes silenciosos.
-        // No load inicial (force=true), mantemos os skeletons visíveis até a API responder.
+        // O gráfico de patrimônio pode renderizar com dados em cache
         if (!force) {
-            await processarDividendosPagos();
-            renderizarHistorico();
             renderizarGraficoPatrimonio();
         }
 

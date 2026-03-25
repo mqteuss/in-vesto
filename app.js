@@ -4467,6 +4467,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     function renderizarTimelinePagamentos() {
         const container = document.getElementById('timeline-pagamentos-container');
         const lista = document.getElementById('timeline-lista');
+        const timelineSkeleton = document.getElementById('timeline-skeleton');
 
         // Estilos de margem garantidos
         container.style.marginTop = '0px';
@@ -4501,6 +4502,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             container.classList.add('hidden');
             return;
         }
+
+        // Esconde o skeleton e mostra os dados reais
+        if (timelineSkeleton) timelineSkeleton.classList.add('hidden');
 
         // Configura container para Carousel Horizontal (só ativa scroll se tiver > 2 itens para liberar o gesto de aba)
         const isScrollable = pagamentosReais.length > 2;
@@ -6044,6 +6048,14 @@ document.addEventListener('DOMContentLoaded', async () => {
             // 2. Feedback Visual (Mostra os esqueletos de carregamento)
             renderizarDashboardSkeletons(true);
             renderizarCarteiraSkeletons(true);
+
+            // 3. Mostra Timeline com skeleton
+            const timelineContainer = document.getElementById('timeline-pagamentos-container');
+            const timelineSkeleton = document.getElementById('timeline-skeleton');
+            const timelineLista = document.getElementById('timeline-lista');
+            if (timelineContainer) timelineContainer.classList.remove('hidden');
+            if (timelineSkeleton) timelineSkeleton.classList.remove('hidden');
+            if (timelineLista) timelineLista.innerHTML = '';
 
             // Opcional: Esconder status antigos enquanto carrega
             dashboardStatus.classList.add('hidden');
@@ -10735,6 +10747,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             // já mostre skeletons em vez de valores zerados.
             renderizarDashboardSkeletons(true);
             renderizarCarteiraSkeletons(true);
+
+            // Timeline: mostra container com skeleton visível
+            const _tlContainer = document.getElementById('timeline-pagamentos-container');
+            if (_tlContainer) _tlContainer.classList.remove('hidden');
 
             const userEmailDisplay = document.getElementById('user-email-display');
             if (userEmailDisplay && session.user.email) {

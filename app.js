@@ -10730,6 +10730,12 @@ document.addEventListener('DOMContentLoaded', async () => {
             authContainer.classList.add('hidden');
             appWrapper.classList.remove('hidden');
 
+            // CRÍTICO: Ativa os skeletons IMEDIATAMENTE após o app ficar visível,
+            // ANTES de qualquer await, para que o primeiro frame pintado pelo browser
+            // já mostre skeletons em vez de valores zerados.
+            renderizarDashboardSkeletons(true);
+            renderizarCarteiraSkeletons(true);
+
             const userEmailDisplay = document.getElementById('user-email-display');
             if (userEmailDisplay && session.user.email) {
                 userEmailDisplay.textContent = session.user.email;

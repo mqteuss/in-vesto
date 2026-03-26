@@ -4200,6 +4200,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     async function renderizarGraficoPatrimonio(isRetry = false) {
         const canvas = document.getElementById('patrimonio-chart');
         if (!canvas) return;
+        // Guard: não tenta buscar dados se o IndexedDB ainda não inicializou
+        if (!vestoDB.db) return;
 
         // ── Atualiza valores LIVE (preço atual × quantidade) ──
         const temPrecos = Array.isArray(precosAtuais) && precosAtuais.length > 0;

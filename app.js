@@ -818,6 +818,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const carteiraStatus = document.getElementById('carteira-status');
     const skeletonListaCarteira = document.getElementById('skeleton-lista-carteira');
     const emptyStateAddBtn = document.getElementById('empty-state-add-btn');
+    const totalProventosEl = document.getElementById('total-proventos');
     const detalhesPageModal = document.getElementById('detalhes-page-modal');
     const detalhesPageContent = document.getElementById('tab-detalhes');
     const detalhesVoltarBtn = document.getElementById('detalhes-voltar-btn');
@@ -5175,7 +5176,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 }
             }
         });
-        totalProventosEl.textContent = formatBRL(totalEstimado);
+        if (totalProventosEl) totalProventosEl.textContent = formatBRL(totalEstimado);
     }
     window.renderizarProventosGlobal = renderizarProventos;
 
@@ -6375,7 +6376,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 renderizarProventos();
                 if (precosAtuais.length > 0) { renderizarCarteiraDebounced(); }
             } else if (proventosAtuais.length === 0) {
-                totalProventosEl.textContent = "Erro";
+                if (totalProventosEl) totalProventosEl.textContent = "Erro";
             }
         });
 

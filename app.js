@@ -4905,7 +4905,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         // PASS 1: Calcular totais globais
         carteiraOrdenada.forEach(ativo => {
             const dadoPreco = precosMap.get(ativo.symbol);
-            const precoAtual = dadoPreco ? (dadoPreco.regularMarketPrice ?? 0) : 0;
+            const precoMercado = dadoPreco ? (dadoPreco.regularMarketPrice ?? 0) : 0;
+            const precoAtual = precoMercado > 0 ? precoMercado : (ativo.precoMedio || 0); // Fallback para renda fixa / missing data
 
             totalValorCarteira += (precoAtual * ativo.quantity);
             totalCustoCarteira += (ativo.precoMedio * ativo.quantity);
@@ -5000,8 +5001,11 @@ document.addEventListener('DOMContentLoaded', async () => {
                 variacaoFormatada = formatPercent(variacao);
                 corVariacao = variacao > 0 ? 'text-green-500' : (variacao < 0 ? 'text-red-500' : 'text-gray-500');
             } else {
-                precoFormatado = '...';
-                corVariacao = 'text-yellow-500';
+                // Fallback para o preço médio se não houver cotação real (Renda Fixa, IPs customizados)
+                precoAtual = ativo.precoMedio || 0;
+                precoFormatado = formatBRL(precoAtual);
+                variacaoFormatada = '0.00%';
+                corVariacao = 'text-gray-500';
             }
 
             // Cálculos Financeiros
@@ -12015,6 +12019,34 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
 
+    // --- Helper para garantir dados de patrimônio para o IPCA ---
+    async function obterPatrimonioHistoricoMaximo() {
+        if (window.cachedPatrimonioHistorico) return window.cachedPatrimonioHistorico;
+        const calcCacheKey = `patrimonio_calc_ALL`;
+        try {
+            const cached = await getCache(calcCacheKey);
+            if (cached) {
+                window.cachedPatrimonioHistorico = cached;
+                return cached;
+            }
+        } catch (_) { }
+
+        // Calcula "ALL" sob demanda (caso o usuário não tenha aberto o gráfico de rentabilidade ainda)
+        try {
+            const historicoPrecosMap = await buscarHistoricoPrecosCarteira('ALL');
+            const dadosPatrimonio = calcularPatrimonioHistorico(historicoPrecosMap);
+            if (dadosPatrimonio.length > 0) {
+                const ttl = typeof isB3Open === 'function' && isB3Open() ? CACHE_HIST_ABERTO : CACHE_HIST_FECHADO;
+                try { await setCache(calcCacheKey, dadosPatrimonio, ttl); } catch (_) { }
+                window.cachedPatrimonioHistorico = dadosPatrimonio;
+                return dadosPatrimonio;
+            }
+        } catch (err) {
+            console.error('Erro get patrimonio historico IPCA:', err);
+        }
+        return typeof patrimonio !== 'undefined' ? patrimonio : [];
+    }
+
     async function openIpcaModal() {
         if (!ipcaPageModal) return;
 
@@ -12022,6 +12054,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         ipcaPageContent.style.transform = '';
         ipcaPageContent.classList.remove('closing');
         document.body.style.overflow = 'hidden';
+
+        // Garante que a matriz de patrimônio foi calculada e populada
+        if (!window.cachedPatrimonioHistorico) {
+            // Mostra o skeleton ou indicativo que está sendo preparado enquanto o gráfico IPCA já poderia loadar
+            await obterPatrimonioHistoricoMaximo();
+        }
 
         // Se já tiver cache, renderiza direto. Senão busca.
         if (ipcaCacheData) {
@@ -12136,8 +12174,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (!dados || !dados.historico) return;
 
         const mapPatrimonio = {};
-        if (typeof patrimonio !== 'undefined' && Array.isArray(patrimonio)) {
-            patrimonio.forEach(p => {
+        const sourcePatrimonio = window.cachedPatrimonioHistorico || (typeof patrimonio !== 'undefined' ? patrimonio : []);
+        if (Array.isArray(sourcePatrimonio)) {
+            sourcePatrimonio.forEach(p => {
                 if (p.date && p.value) {
                     const key = p.date.substring(0, 7);
                     mapPatrimonio[key] = p.value;

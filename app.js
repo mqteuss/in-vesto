@@ -4175,7 +4175,12 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         // Calcula patrimônio por dia
         const resultado = [];
-        const lastKnownPrice = new Map(); // Forward-fill para dias sem preço
+        // Seed com precoMedio como fallback para ativos sem dados no início do range
+        const lastKnownPrice = new Map();
+        for (const ativo of carteiraCalculada) {
+            const pm = parseFloat(ativo.precoMedio || ativo.averagePrice || 0);
+            if (pm > 0) lastKnownPrice.set(ativo.symbol, pm);
+        }
         let proventosAcumulados = 0;
         let provIdx = 0; // Ponteiro para percorrer proventos em O(n)
 

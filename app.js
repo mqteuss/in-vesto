@@ -804,20 +804,20 @@ document.addEventListener('DOMContentLoaded', async () => {
     const skeletonTotalValor = document.getElementById('skeleton-total-valor');
     const skeletonTotalCusto = document.getElementById('skeleton-total-custo');
     const skeletonTotalPL = document.getElementById('skeleton-total-pl');
-    const skeletonTotalProventos = document.getElementById('skeleton-total-proventos');
+    const skeletonTotalMercado = document.getElementById('skeleton-total-mercado');
     const skeletonTotalDia = document.getElementById('skeleton-total-dia');
     const skeletonTotalCaixa = document.getElementById('skeleton-total-caixa');
     const totalCarteiraValor = document.getElementById('total-carteira-valor');
     const totalCarteiraCusto = document.getElementById('total-carteira-custo');
     const totalCarteiraPL = document.getElementById('total-carteira-pl');
     const totalCarteiraDia = document.getElementById('total-carteira-dia');
+    const totalCarteiraMercado = document.getElementById('total-carteira-mercado');
     const totalCaixaValor = document.getElementById('total-caixa-valor');
     const listaCarteira = document.getElementById('lista-carteira');
     const carteiraSearchInput = document.getElementById('carteira-search-input');
     const carteiraStatus = document.getElementById('carteira-status');
     const skeletonListaCarteira = document.getElementById('skeleton-lista-carteira');
     const emptyStateAddBtn = document.getElementById('empty-state-add-btn');
-    const totalProventosEl = document.getElementById('total-proventos');
     const detalhesPageModal = document.getElementById('detalhes-page-modal');
     const detalhesPageContent = document.getElementById('tab-detalhes');
     const detalhesVoltarBtn = document.getElementById('detalhes-voltar-btn');
@@ -4765,8 +4765,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     function renderizarDashboardSkeletons(show) {
-        const skeletons = [skeletonTotalValor, skeletonTotalCusto, skeletonTotalPL, skeletonTotalProventos, skeletonTotalCaixa, skeletonTotalDia];
-        const dataElements = [totalCarteiraValor, totalCarteiraCusto, totalCarteiraPL, totalProventosEl, totalCaixaValor, totalCarteiraDia];
+        const skeletons = [skeletonTotalValor, skeletonTotalCusto, skeletonTotalPL, skeletonTotalMercado, skeletonTotalCaixa, skeletonTotalDia];
+        const dataElements = [totalCarteiraValor, totalCarteiraCusto, totalCarteiraPL, totalCarteiraMercado, totalCaixaValor, totalCarteiraDia];
 
         if (show) {
             skeletons.forEach(el => { if (el) el.classList.remove('hidden'); });
@@ -5090,21 +5090,28 @@ document.addEventListener('DOMContentLoaded', async () => {
         // Atualiza Totais do Dashboard
         if (carteiraOrdenada.length > 0) {
             const patrimonioTotalAtivos = totalValorCarteira;
-            const totalLucroPrejuizo = totalValorCarteira - totalCustoCarteira;
+            
+            // FINTECH MODE: Patrimônio Total = Ativos + Caixa
+            const patrimonioTotalGeral = patrimonioTotalAtivos + saldoCaixa;
+            
+            // Rentabilidade agora sobre o Total Geral
+            // Lucro Real = (Ativos + Caixa) - Custo
+            const totalLucroPrejuizo = patrimonioTotalGeral - totalCustoCarteira;
             const totalLucroPrejuizoPercent = (totalCustoCarteira === 0) ? 0 : (totalLucroPrejuizo / totalCustoCarteira) * 100;
 
             let corPLTotal = 'text-gray-500';
             if (totalLucroPrejuizo > 0.01) corPLTotal = 'text-green-500';
             else if (totalLucroPrejuizo < -0.01) corPLTotal = 'text-red-500';
 
-            // Grava os valores antes de revelar os elementos, garantindo que
-            // o browser nunca pinte os campos ainda zerados (R$ 0,00).
-            if (totalCarteiraValor) totalCarteiraValor.textContent = formatBRL(patrimonioTotalAtivos);
+            // Grava os valores antes de revelar os elementos
+            if (totalCarteiraValor) totalCarteiraValor.textContent = formatBRL(patrimonioTotalGeral);
             if (totalCaixaValor) totalCaixaValor.textContent = formatBRL(saldoCaixa);
             if (totalCarteiraCusto) totalCarteiraCusto.textContent = formatBRL(totalCustoCarteira);
+            if (totalCarteiraMercado) totalCarteiraMercado.textContent = formatBRL(patrimonioTotalAtivos);
 
             if (totalCarteiraPL) {
-                totalCarteiraPL.innerHTML = `${formatBRL(totalLucroPrejuizo)} <span class="text-xs opacity-60 ml-1">(${totalLucroPrejuizoPercent.toFixed(2)}%)</span>`;
+                const sinalLucro = totalLucroPrejuizo >= 0 ? '+' : '';
+                totalCarteiraPL.innerHTML = `${sinalLucro}${formatBRL(totalLucroPrejuizo)} <span class="text-xs opacity-60 ml-1">(${sinalLucro}${totalLucroPrejuizoPercent.toFixed(2)}%)</span>`;
                 totalCarteiraPL.className = `text-sm font-semibold ${corPLTotal === 'text-green-500' ? 'text-green-400' : 'text-red-400'}`;
             }
 

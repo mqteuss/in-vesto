@@ -4069,10 +4069,139 @@ document.addEventListener('DOMContentLoaded', async () => {
         document.body.style.overflow = '';
     }
 
-    function renderizarGraficoPatrimonio(isRetry = false) {
+    // ═══════════════════════════════════════════════════════════════════
+    // PATRIMÔNIO HISTÓRICO — Yahoo Finance v8 (Cálculo On-The-Fly)
+    // ═══════════════════════════════════════════════════════════════════
+
+    // Mapea range do UI para range do Yahoo Finance
+    const PATRIMONIO_RANGE_MAP = {
+        '7D': '1M',   // busca 1 mês, filtra últimos 7 dias no frontend
+        '1M': '1M',
+        '6M': '6M',
+        '1Y': '1A',
+        'ALL': 'Tudo'
+    };
+
+    const CACHE_HIST_ABERTO = 1000 * 60 * 30;       // 30 min
+    const CACHE_HIST_FECHADO = 1000 * 60 * 60 * 6;   // 6 horas
+
+    /**
+     * Busca preços históricos diários de todos os ativos da carteira via Yahoo Finance v8.
+     * Retorna Map<symbol, [{date: 'YYYY-MM-DD', close: number}]>
+     */
+    async function buscarHistoricoPrecosCarteira(yahooRange) {
+        if (carteiraCalculada.length === 0) return new Map();
+
+        const ttl = isB3Open() ? CACHE_HIST_ABERTO : CACHE_HIST_FECHADO;
+        const historicosMap = new Map();
+
+        for (const ativo of carteiraCalculada) {
+            const symbol = ativo.symbol;
+            const cacheKey = `hist_${yahooRange}_${symbol}`;
+
+            // Tenta cache primeiro
+            try {
+                const cached = await getCache(cacheKey);
+                if (cached) {
+                    historicosMap.set(symbol, cached);
+                    continue;
+                }
+            } catch (_) { }
+
+            // Busca via Yahoo Finance v8 (sequencial, sem Promise.all)
+            try {
+                const response = await callScraperCotacaoHistoricaAPI(symbol, yahooRange);
+                const points = response?.points;
+
+                if (points && points.length > 0) {
+                    const dailyPrices = points.map(p => ({
+                        date: new Date(p.timestamp || new Date(p.date).getTime())
+                              .toISOString().split('T')[0],
+                        close: p.price ?? p.close ?? 0
+                    })).filter(p => p.close > 0);
+
+                    if (dailyPrices.length > 0) {
+                        historicosMap.set(symbol, dailyPrices);
+                        try { await setCache(cacheKey, dailyPrices, ttl); } catch (_) { }
+                    }
+                }
+            } catch (err) {
+                console.warn(`[Patrimônio] Erro ao buscar histórico de ${symbol}:`, err.message);
+            }
+        }
+
+        return historicosMap;
+    }
+
+    /**
+     * Calcula o patrimônio líquido para cada dia útil nos dados históricos.
+     * Para cada dia, soma: quantidadeNaData(symbol, date) × preço de fechamento.
+     * Retorna [{date: 'YYYY-MM-DD', value: number}]
+     */
+    function calcularPatrimonioHistorico(historicoPrecosMap) {
+        if (historicoPrecosMap.size === 0) return [];
+
+        // Coleta todas as datas únicas de todos os ativos
+        const allDates = new Set();
+        for (const [, prices] of historicoPrecosMap) {
+            for (const p of prices) {
+                allDates.add(p.date);
+            }
+        }
+
+        // Ordena cronologicamente
+        const sortedDates = [...allDates].sort();
+
+        // Para cada ativo, cria um Map rápido de date → close
+        const pricesBySymbol = new Map();
+        for (const [symbol, prices] of historicoPrecosMap) {
+            const map = new Map();
+            for (const p of prices) {
+                map.set(p.date, p.close);
+            }
+            pricesBySymbol.set(symbol, map);
+        }
+
+        // Calcula patrimônio por dia
+        const resultado = [];
+        const lastKnownPrice = new Map(); // Forward-fill para dias sem preço
+
+        for (const date of sortedDates) {
+            let totalDia = 0;
+
+            for (const [symbol, priceMap] of pricesBySymbol) {
+                // Atualiza último preço conhecido se disponível
+                if (priceMap.has(date)) {
+                    lastKnownPrice.set(symbol, priceMap.get(date));
+                }
+
+                const preco = lastKnownPrice.get(symbol);
+                if (!preco) continue;
+
+                // Quantas cotas o usuário tinha nessa data?
+                const qtd = getQuantidadeNaData(symbol, date);
+                if (qtd > 0) {
+                    totalDia += preco * qtd;
+                }
+            }
+
+            // Só inclui dias em que havia posição
+            if (totalDia > 0) {
+                resultado.push({ date, value: totalDia });
+            }
+        }
+
+        return resultado;
+    }
+
+    // Flag para evitar chamadas simultâneas
+    let _patrimonioLoading = false;
+
+    async function renderizarGraficoPatrimonio(isRetry = false) {
         const canvas = document.getElementById('patrimonio-chart');
         if (!canvas) return;
 
+        // ── Atualiza valores LIVE (preço atual × quantidade) ──
         const temPrecos = Array.isArray(precosAtuais) && precosAtuais.length > 0;
 
         if (!window.patrimonioRetryCount) window.patrimonioRetryCount = 0;
@@ -4127,6 +4256,43 @@ document.addEventListener('DOMContentLoaded', async () => {
             elCusto.textContent = custoTotalLive.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
         }
 
+        // ── Busca dados históricos via Yahoo Finance v8 ──
+        if (_patrimonioLoading) return;
+
+        const yahooRange = PATRIMONIO_RANGE_MAP[currentPatrimonioRange] || '1A';
+
+        // Tenta cache calculado primeiro
+        const calcCacheKey = `patrimonio_calc_${currentPatrimonioRange}`;
+        let dadosPatrimonio = null;
+
+        try {
+            dadosPatrimonio = await getCache(calcCacheKey);
+        } catch (_) { }
+
+        if (!dadosPatrimonio) {
+            // Mostra loading
+            const elChartVal = document.getElementById('modal-patrimonio-chart-val');
+            if (elChartVal) elChartVal.textContent = 'Calculando...';
+
+            _patrimonioLoading = true;
+            try {
+                const historicoPrecosMap = await buscarHistoricoPrecosCarteira(yahooRange);
+                dadosPatrimonio = calcularPatrimonioHistorico(historicoPrecosMap);
+
+                // Cacheia o resultado calculado
+                if (dadosPatrimonio.length > 0) {
+                    const ttl = isB3Open() ? CACHE_HIST_ABERTO : CACHE_HIST_FECHADO;
+                    try { await setCache(calcCacheKey, dadosPatrimonio, ttl); } catch (_) { }
+                }
+            } catch (err) {
+                console.error('[Patrimônio] Erro ao calcular histórico:', err);
+                dadosPatrimonio = [];
+            } finally {
+                _patrimonioLoading = false;
+            }
+        }
+
+        // ── Filtra por data de corte ──
         const hoje = new Date();
         hoje.setHours(23, 59, 59, 999);
         let dataCorte;
@@ -4148,7 +4314,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
         dataCorte.setHours(0, 0, 0, 0);
 
-        let dadosOrdenados = [...patrimonio]
+        let dadosOrdenados = dadosPatrimonio
             .filter(p => {
                 const parts = p.date.split('-');
                 const dataPonto = new Date(parts[0], parts[1] - 1, parts[2]);
@@ -4176,6 +4342,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             return;
         }
 
+        // ── Monta arrays para o gráfico ──
         const labels = [];
         const dataValor = [];
         const dataCusto = [];
@@ -4224,16 +4391,13 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         }
 
-
         // ═══════════════════════════════════════════════════
         // CDI BENCHMARK LINE (Selic ~13.15% ao ano)
         // ═══════════════════════════════════════════════════
         const taxaDiaCDI = Math.pow(1 + 0.1315, 1 / 252) - 1;
         const dataCDI = [];
-        // Encontra o primeiro ponto com custo > 0
         let cdiStartIdx = dataCusto.findIndex(c => c > 0);
         if (cdiStartIdx >= 0) {
-            // Preenche zeros antes do início
             for (let i = 0; i < cdiStartIdx; i++) dataCDI.push(0);
             let acumuladoCDI = dataCusto[cdiStartIdx];
             dataCDI.push(parseFloat(acumuladoCDI.toFixed(2)));
@@ -4625,6 +4789,10 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     function invalidarCacheQtdNaData() {
         _cacheQtdNaData = {};
+        // Limpa caches de cálculo do patrimônio histórico (força recálculo)
+        ['7D', '1M', '6M', '1Y', 'ALL'].forEach(r => {
+            try { vestoDB.delete('apiCache', `patrimonio_calc_${r}`); } catch (_) { }
+        });
     }
 
     function getQuantidadeNaData(symbol, dataLimiteStr) {
@@ -9654,9 +9822,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (typeof window.renderizarHistoricoProventosGlobal === 'function') window.renderizarHistoricoProventosGlobal();
         if (typeof window.renderizarProventosGlobal === 'function') window.renderizarProventosGlobal();
         
-        if (typeof window.renderizarGraficoPatrimonio === 'function') {
-            window.renderizarGraficoPatrimonio(true);
-        }
+        renderizarGraficoPatrimonio(true);
     }
 
     if (togglePrivacyBtn) {

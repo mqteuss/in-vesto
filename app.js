@@ -4348,7 +4348,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (patrimonioChartInstance) {
                 const defaultColors = dataValues.map((_, i) => i === dataValues.length - 1 ? '#3b82f6' : '#1e3a5f');
                 patrimonioChartInstance.data.datasets[0].backgroundColor = defaultColors;
-                patrimonioChartInstance.update('none');
+                patrimonioChartInstance.update();
             }
         }
 
@@ -4368,23 +4368,23 @@ document.addEventListener('DOMContentLoaded', async () => {
             patrimonioChartInstance = null;
         }
 
-        // Year annotation plugin — draws year text + separator line
+        // Year annotation plugin — alternating subtle background bands + year labels
         const yearAnnotationPlugin = {
             id: 'yearAnnotation',
-            afterDraw: (chart) => {
+            beforeDatasetsDraw: (chart) => {
                 const ctx2 = chart.ctx;
                 ctx2.save();
-
                 const barMeta = chart.getDatasetMeta(0);
+                const topY = chart.scales.y.top;
                 const bottomY = chart.scales.x.bottom;
 
+                let yearIndex = 0;
                 let lastYear = null;
                 for (const [idxStr, year] of Object.entries(yearLabels)) {
                     const idx = parseInt(idxStr);
                     if (year === lastYear) continue;
                     lastYear = year;
 
-                    // Find the range of bars for this year
                     let endIdx = idx;
                     for (let j = idx + 1; j < dadosMensais.length; j++) {
                         if (dadosMensais[j].date.substring(0, 4) === year) endIdx = j;
@@ -4395,22 +4395,40 @@ document.addEventListener('DOMContentLoaded', async () => {
                     const endBar = barMeta.data[endIdx];
                     if (!startBar || !endBar) continue;
 
-                    // Separator line to the left of the first bar of the year (except the very first)
-                    if (idx > 0) {
-                        const prevBar = barMeta.data[idx - 1];
-                        if (prevBar) {
-                            const lineX = (prevBar.x + startBar.x) / 2;
-                            ctx2.strokeStyle = '#333';
-                            ctx2.lineWidth = 1;
-                            ctx2.setLineDash([]);
-                            ctx2.beginPath();
-                            ctx2.moveTo(lineX, chart.scales.y.top);
-                            ctx2.lineTo(lineX, bottomY);
-                            ctx2.stroke();
-                        }
+                    // Alternating subtle background band
+                    if (yearIndex % 2 === 1) {
+                        const halfGap = (startBar.width || 10) * 0.8;
+                        const x1 = startBar.x - halfGap;
+                        const x2 = endBar.x + halfGap;
+                        ctx2.fillStyle = 'rgba(255,255,255,0.02)';
+                        ctx2.fillRect(x1, topY, x2 - x1, bottomY - topY);
+                    }
+                    yearIndex++;
+                }
+                ctx2.restore();
+            },
+            afterDraw: (chart) => {
+                const ctx2 = chart.ctx;
+                ctx2.save();
+                const barMeta = chart.getDatasetMeta(0);
+                const bottomY = chart.scales.x.bottom;
+
+                let lastYear = null;
+                for (const [idxStr, year] of Object.entries(yearLabels)) {
+                    const idx = parseInt(idxStr);
+                    if (year === lastYear) continue;
+                    lastYear = year;
+
+                    let endIdx = idx;
+                    for (let j = idx + 1; j < dadosMensais.length; j++) {
+                        if (dadosMensais[j].date.substring(0, 4) === year) endIdx = j;
+                        else break;
                     }
 
-                    // Year label centered below bars
+                    const startBar = barMeta.data[idx];
+                    const endBar = barMeta.data[endIdx];
+                    if (!startBar || !endBar) continue;
+
                     const centerX = (startBar.x + endBar.x) / 2;
                     ctx2.font = 'bold 10px Inter, sans-serif';
                     ctx2.fillStyle = '#9ca3af';
@@ -4561,8 +4579,28 @@ document.addEventListener('DOMContentLoaded', async () => {
         const riscoLabel = document.getElementById('risco-periodo-label');
         if (riscoLabel) riscoLabel.textContent = PERIODO_LABELS[currentPatrimonioRange] || 'Máximo';
 
+        // Sharpe tooltip toggle
+        const sharpeTooltipBtn = document.getElementById('sharpe-tooltip-btn');
+        const sharpeTooltip = document.getElementById('sharpe-tooltip');
+        if (sharpeTooltipBtn && sharpeTooltip && !sharpeTooltipBtn._evolBound) {
+            sharpeTooltipBtn.addEventListener('click', () => {
+                sharpeTooltip.classList.toggle('hidden');
+            });
+            sharpeTooltipBtn._evolBound = true;
+        }
+
+        // Risco periodo btn opens bottom sheet
+        const riscoPeriodoBtn = document.getElementById('risco-periodo-btn');
+        if (riscoPeriodoBtn && !riscoPeriodoBtn._evolBound) {
+            riscoPeriodoBtn.addEventListener('click', openPeriodoSheet);
+            riscoPeriodoBtn._evolBound = true;
+        }
+
         // ── Risco / Sharpe ──
         calcularERenderizarRisco(dadosMensais);
+
+        // ── DY Anualizado ──
+        calcularERenderizarDY();
     }
 
     // ═══════════════════════════════════════════════════════════
@@ -4598,19 +4636,63 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (el('risco-retorno-cdi')) el('risco-retorno-cdi').textContent = `${cdiAcumulado.toFixed(2)}%`;
         if (el('risco-volatilidade')) el('risco-volatilidade').textContent = `${volatilidadeAnual.toFixed(2)}%`;
 
-        desenharGaugeSharpe(sharpe);
+        desenharGauge('sharpe-gauge', sharpe, -2, 2);
     }
 
-    function desenharGaugeSharpe(sharpe) {
-        const canvas = document.getElementById('sharpe-gauge');
+    // ═══════════════════════════════════════════════════════════
+    // DY ANUALIZADO
+    // ═══════════════════════════════════════════════════════════
+    async function calcularERenderizarDY() {
+        try {
+            const dados = await calcularDyCarteiraTeorico();
+            if (!dados || typeof dados !== 'object') return;
+
+            const dyVal = dados.dyPercent || 0;
+            const totalVal = dados.totalDiv12m || 0;
+            const mensalMedia = totalVal / 12;
+
+            let textoAvaliacao = '';
+            let corAvaliacao = '';
+            if (dyVal < 6) {
+                textoAvaliacao = 'Abaixo da Inflação';
+                corAvaliacao = 'text-red-400';
+            } else if (dyVal < 10) {
+                textoAvaliacao = 'Bom Retorno';
+                corAvaliacao = 'text-yellow-400';
+            } else {
+                textoAvaliacao = 'Excelente Retorno';
+                corAvaliacao = 'text-green-400';
+            }
+
+            const el = (id) => document.getElementById(id);
+            if (el('dy-valor')) el('dy-valor').textContent = dyVal.toFixed(2) + '%';
+            if (el('dy-proventos-12m')) el('dy-proventos-12m').textContent = formatBRL(totalVal);
+            if (el('dy-media-mensal')) el('dy-media-mensal').textContent = formatBRL(mensalMedia);
+            if (el('dy-avaliacao')) {
+                el('dy-avaliacao').textContent = textoAvaliacao;
+                el('dy-avaliacao').className = `text-sm font-bold mt-0.5 ${corAvaliacao}`;
+            }
+
+            // DY clamped [0, 20] for gauge
+            desenharGauge('dy-gauge', dyVal, 0, 20);
+        } catch (e) {
+            console.warn('[DY] Erro ao calcular:', e.message);
+        }
+    }
+
+    // ═══════════════════════════════════════════════════════════
+    // GAUGE UNIVERSAL (semicírculo vermelho→amarelo→verde)
+    // ═══════════════════════════════════════════════════════════
+    function desenharGauge(canvasId, value, minVal, maxVal) {
+        const canvas = document.getElementById(canvasId);
         if (!canvas) return;
 
         const ctx = canvas.getContext('2d');
         const w = canvas.width;
         const h = canvas.height;
         const centerX = w / 2;
-        const centerY = h - 5;
-        const radius = Math.min(w, h) - 15;
+        const centerY = h - 10;
+        const radius = Math.min(w / 2, h) - 20;
 
         ctx.clearRect(0, 0, w, h);
 
@@ -4639,17 +4721,17 @@ document.addEventListener('DOMContentLoaded', async () => {
             ctx.beginPath();
             ctx.arc(centerX, centerY, radius, startAngle + i * arcStep, startAngle + (i + 1) * arcStep + 0.02);
             ctx.strokeStyle = `rgb(${r},${g},${b})`;
-            ctx.lineWidth = 10;
-            ctx.lineCap = 'round';
+            ctx.lineWidth = 12;
+            ctx.lineCap = 'butt';
             ctx.stroke();
         }
 
-        // Needle — Sharpe clamped [-2, 2] → angle [π, 2π]
-        const clampedSharpe = Math.max(-2, Math.min(2, sharpe));
-        const normalizedSharpe = (clampedSharpe + 2) / 4;
-        const needleAngle = startAngle + normalizedSharpe * (endAngle - startAngle);
+        // Needle
+        const clamped = Math.max(minVal, Math.min(maxVal, value));
+        const normalized = (clamped - minVal) / (maxVal - minVal);
+        const needleAngle = startAngle + normalized * (endAngle - startAngle);
 
-        const needleLen = radius - 15;
+        const needleLen = radius - 18;
         const nx = centerX + Math.cos(needleAngle) * needleLen;
         const ny = centerY + Math.sin(needleAngle) * needleLen;
 
@@ -4657,7 +4739,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         ctx.moveTo(centerX, centerY);
         ctx.lineTo(nx, ny);
         ctx.strokeStyle = '#fff';
-        ctx.lineWidth = 2;
+        ctx.lineWidth = 2.5;
         ctx.lineCap = 'round';
         ctx.stroke();
 

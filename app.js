@@ -4135,7 +4135,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     /**
      * Calcula o patrimônio líquido para cada dia útil nos dados históricos.
-     * Para cada dia, soma: quantidadeNaData(symbol, date) × preço de fechamento.
+     * Para cada dia, soma: (quantidadeNaData × preço de fechamento) + proventos acumulados.
      * Retorna [{date: 'YYYY-MM-DD', value: number}]
      */
     function calcularPatrimonioHistorico(historicoPrecosMap) {
@@ -4162,15 +4162,38 @@ document.addEventListener('DOMContentLoaded', async () => {
             pricesBySymbol.set(symbol, map);
         }
 
+        // ── Pré-calcula proventos pagos ordenados por paymentDate ──
+        const proventosPagos = proventosConhecidos
+            .filter(p => p.paymentDate && p.value > 0)
+            .map(p => ({
+                symbol: p.symbol,
+                value: p.value,
+                paymentDate: p.paymentDate,
+                dataRef: p.dataCom || p.paymentDate
+            }))
+            .sort((a, b) => a.paymentDate.localeCompare(b.paymentDate));
+
         // Calcula patrimônio por dia
         const resultado = [];
         const lastKnownPrice = new Map(); // Forward-fill para dias sem preço
+        let proventosAcumulados = 0;
+        let provIdx = 0; // Ponteiro para percorrer proventos em O(n)
 
         for (const date of sortedDates) {
+            // ── Acumula proventos recebidos até esta data ──
+            while (provIdx < proventosPagos.length && proventosPagos[provIdx].paymentDate <= date) {
+                const prov = proventosPagos[provIdx];
+                const qtdElegivel = getQuantidadeNaData(prov.symbol, prov.dataRef);
+                if (qtdElegivel > 0) {
+                    proventosAcumulados += prov.value * qtdElegivel;
+                }
+                provIdx++;
+            }
+
+            // ── Valor da carteira neste dia ──
             let totalDia = 0;
 
             for (const [symbol, priceMap] of pricesBySymbol) {
-                // Atualiza último preço conhecido se disponível
                 if (priceMap.has(date)) {
                     lastKnownPrice.set(symbol, priceMap.get(date));
                 }
@@ -4178,16 +4201,17 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const preco = lastKnownPrice.get(symbol);
                 if (!preco) continue;
 
-                // Quantas cotas o usuário tinha nessa data?
                 const qtd = getQuantidadeNaData(symbol, date);
                 if (qtd > 0) {
                     totalDia += preco * qtd;
                 }
             }
 
-            // Só inclui dias em que havia posição
-            if (totalDia > 0) {
-                resultado.push({ date, value: totalDia });
+            // Patrimônio = valorização + proventos recebidos
+            const patrimonioTotal = totalDia + proventosAcumulados;
+
+            if (patrimonioTotal > 0) {
+                resultado.push({ date, value: patrimonioTotal });
             }
         }
 

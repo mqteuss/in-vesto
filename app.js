@@ -4155,6 +4155,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // Flag para evitar chamadas simultâneas
     let _patrimonioLoading = false;
+    let _evolSelectedBarIdx = -1; // -1 = nenhum selecionado
 
     async function renderizarGraficoPatrimonio(isRetry = false) {
         const canvas = document.getElementById('patrimonio-chart');
@@ -4193,9 +4194,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         }
 
-        // Guarda para outras funcionalidades (ex: IPCA)
         window.cachedPatrimonioHistorico = dadosPatrimonio;
-
         if (!dadosPatrimonio || dadosPatrimonio.length === 0) return;
 
         // ── Filtra por período selecionado ──
@@ -4235,7 +4234,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         if (dadosMensais.length === 0) return;
 
-        // ── Calcula stats para o período completo e por mês ──
+        // ── Helpers ──
         const fmtBRL = (v) => Math.abs(v).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
         const MESES_PT = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
 
@@ -4247,11 +4246,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             const parts = p.date.split('-');
             const mesIdx = parseInt(parts[1]) - 1;
             const ano = parts[0];
-            const mesCurto = MESES_PT[mesIdx].charAt(0);
-            labels.push(mesCurto);
+            labels.push(MESES_PT[mesIdx].charAt(0));
             dataValues.push(parseFloat(p.value.toFixed(2)));
-
-            // Marca ano no primeiro mês daquele ano
             if (idx === 0 || dadosMensais[idx - 1].date.substring(0, 4) !== ano) {
                 yearLabels[idx] = ano;
             }
@@ -4273,13 +4269,15 @@ document.addEventListener('DOMContentLoaded', async () => {
         // ── Calcula proventos recebidos no período ──
         function calcProventosPeriodo(inicio, fim) {
             let total = 0;
-            proventosConhecidos.forEach(p => {
-                if (p.paymentDate && p.value > 0 && p.paymentDate >= inicio && p.paymentDate <= fim) {
-                    const dataRef = p.dataCom || p.paymentDate;
-                    const qtd = getQuantidadeNaData(p.symbol, dataRef);
-                    if (qtd > 0) total += p.value * qtd;
-                }
-            });
+            if (typeof proventosConhecidos !== 'undefined') {
+                proventosConhecidos.forEach(p => {
+                    if (p.paymentDate && p.value > 0 && p.paymentDate >= inicio && p.paymentDate <= fim) {
+                        const dataRef = p.dataCom || p.paymentDate;
+                        const qtd = getQuantidadeNaData(p.symbol, dataRef);
+                        if (qtd > 0) total += p.value * qtd;
+                    }
+                });
+            }
             return total;
         }
 
@@ -4318,7 +4316,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         }
 
-        // ── Período texto ──
+        // ── Período texto (baseado na primeira transação) ──
         function formatarPeriodoTexto(inicio, fim) {
             const fmtData = (d) => {
                 const parts = d.split('-');
@@ -4327,23 +4325,42 @@ document.addEventListener('DOMContentLoaded', async () => {
             return inicio === fim ? `Período de ${fmtData(inicio)}` : `Período de ${fmtData(inicio)} até ${fmtData(fim)}`;
         }
 
-        // Stats do período inteiro
+        // Encontra a data da primeira transação de compra
+        let primeiraCompra = dadosMensais[0].date;
+        if (transacoes.length > 0) {
+            const sorted = [...transacoes].filter(t => t.type === 'buy').sort((a, b) => a.date.localeCompare(b.date));
+            if (sorted.length > 0) primeiraCompra = sorted[0].date;
+        }
+        const hojeStr = `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}-${String(hoje.getDate()).padStart(2, '0')}`;
+
+        // Stats do período inteiro (default)
         const periodoInicio = dadosMensais[0].date;
         const periodoFim = dadosMensais[dadosMensais.length - 1].date;
         const patInicial = dadosMensais.length > 1 ? dataValues[0] : 0;
         const patFinal = dataValues[dataValues.length - 1];
 
-        atualizarStatsGrid(patInicial, patFinal, periodoInicio, periodoFim);
+        function mostrarStatsCompleto() {
+            _evolSelectedBarIdx = -1;
+            atualizarStatsGrid(patInicial, patFinal, periodoInicio, periodoFim);
+            const elPeriodoTexto = document.getElementById('evolucao-periodo-texto');
+            if (elPeriodoTexto) elPeriodoTexto.textContent = formatarPeriodoTexto(primeiraCompra, hojeStr);
+            // Reset bar colors
+            if (patrimonioChartInstance) {
+                const defaultColors = dataValues.map((_, i) => i === dataValues.length - 1 ? '#3b82f6' : '#1e3a5f');
+                patrimonioChartInstance.data.datasets[0].backgroundColor = defaultColors;
+                patrimonioChartInstance.update('none');
+            }
+        }
 
-        const elPeriodoTexto = document.getElementById('evolucao-periodo-texto');
-        if (elPeriodoTexto) elPeriodoTexto.textContent = formatarPeriodoTexto(periodoInicio, periodoFim);
+        // Inicializa stats
+        mostrarStatsCompleto();
 
         // ── Bar Chart ──
         const ctx = canvas.getContext('2d');
 
         const barColors = dataValues.map((_, idx) => {
-            if (idx === dataValues.length - 1) return '#3b82f6'; // último = azul forte
-            return '#1e3a5f'; // anteriores = azul escuro
+            if (idx === dataValues.length - 1) return '#3b82f6';
+            return '#1e3a5f';
         });
 
         if (patrimonioChartInstance) {
@@ -4351,20 +4368,17 @@ document.addEventListener('DOMContentLoaded', async () => {
             patrimonioChartInstance = null;
         }
 
-        // Year annotation plugin
+        // Year annotation plugin — draws year text + separator line
         const yearAnnotationPlugin = {
             id: 'yearAnnotation',
             afterDraw: (chart) => {
                 const ctx2 = chart.ctx;
-                const xScale = chart.scales.x;
                 ctx2.save();
-                ctx2.font = '10px Inter, sans-serif';
-                ctx2.fillStyle = '#6b7280';
-                ctx2.textAlign = 'center';
+
+                const barMeta = chart.getDatasetMeta(0);
+                const bottomY = chart.scales.x.bottom;
 
                 let lastYear = null;
-                const barMeta = chart.getDatasetMeta(0);
-
                 for (const [idxStr, year] of Object.entries(yearLabels)) {
                     const idx = parseInt(idxStr);
                     if (year === lastYear) continue;
@@ -4379,10 +4393,29 @@ document.addEventListener('DOMContentLoaded', async () => {
 
                     const startBar = barMeta.data[idx];
                     const endBar = barMeta.data[endIdx];
-                    if (startBar && endBar) {
-                        const centerX = (startBar.x + endBar.x) / 2;
-                        ctx2.fillText(year, centerX, chart.scales.x.bottom + 14);
+                    if (!startBar || !endBar) continue;
+
+                    // Separator line to the left of the first bar of the year (except the very first)
+                    if (idx > 0) {
+                        const prevBar = barMeta.data[idx - 1];
+                        if (prevBar) {
+                            const lineX = (prevBar.x + startBar.x) / 2;
+                            ctx2.strokeStyle = '#333';
+                            ctx2.lineWidth = 1;
+                            ctx2.setLineDash([]);
+                            ctx2.beginPath();
+                            ctx2.moveTo(lineX, chart.scales.y.top);
+                            ctx2.lineTo(lineX, bottomY);
+                            ctx2.stroke();
+                        }
                     }
+
+                    // Year label centered below bars
+                    const centerX = (startBar.x + endBar.x) / 2;
+                    ctx2.font = 'bold 10px Inter, sans-serif';
+                    ctx2.fillStyle = '#9ca3af';
+                    ctx2.textAlign = 'center';
+                    ctx2.fillText(year, centerX, bottomY + 14);
                 }
                 ctx2.restore();
             }
@@ -4435,11 +4468,19 @@ document.addEventListener('DOMContentLoaded', async () => {
                 onClick: (evt, elements) => {
                     if (elements.length > 0) {
                         const idx = elements[0].index;
+
+                        // Toggle: se clicar na barra já selecionada, desmarca
+                        if (_evolSelectedBarIdx === idx) {
+                            mostrarStatsCompleto();
+                            return;
+                        }
+
+                        _evolSelectedBarIdx = idx;
                         const mesData = dadosMensais[idx];
                         const mesAnterior = idx > 0 ? dadosMensais[idx - 1] : null;
                         const patIni = mesAnterior ? mesAnterior.value : 0;
 
-                        // Highlight bar
+                        // Highlight only selected bar
                         const newColors = dataValues.map((_, i) => i === idx ? '#3b82f6' : '#1e3a5f');
                         patrimonioChartInstance.data.datasets[0].backgroundColor = newColors;
                         patrimonioChartInstance.update('none');
@@ -4449,6 +4490,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                         const mesFim = mesData.date;
 
                         atualizarStatsGrid(patIni, mesData.value, mesInicio, mesFim);
+                        const elPeriodoTexto = document.getElementById('evolucao-periodo-texto');
                         if (elPeriodoTexto) elPeriodoTexto.textContent = formatarPeriodoTexto(mesFim, mesFim);
                     }
                 },
@@ -4498,6 +4540,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             btn.addEventListener('click', () => {
                 const range = btn.dataset.range;
                 currentPatrimonioRange = range;
+                _evolSelectedBarIdx = -1;
                 if (periodoLabel) periodoLabel.textContent = PERIODO_LABELS[range] || range;
 
                 // Atualiza visual dos botões
@@ -4513,6 +4556,116 @@ document.addEventListener('DOMContentLoaded', async () => {
             });
             btn._evolBound = true;
         });
+
+        // Atualiza label do Risco
+        const riscoLabel = document.getElementById('risco-periodo-label');
+        if (riscoLabel) riscoLabel.textContent = PERIODO_LABELS[currentPatrimonioRange] || 'Máximo';
+
+        // ── Risco / Sharpe ──
+        calcularERenderizarRisco(dadosMensais);
+    }
+
+    // ═══════════════════════════════════════════════════════════
+    // RISCO / SHARPE GAUGE
+    // ═══════════════════════════════════════════════════════════
+    function calcularERenderizarRisco(dadosMensais) {
+        if (!dadosMensais || dadosMensais.length < 2) return;
+
+        const retornosMensais = [];
+        for (let i = 1; i < dadosMensais.length; i++) {
+            const prev = dadosMensais[i - 1].value;
+            const curr = dadosMensais[i].value;
+            if (prev > 0) retornosMensais.push((curr - prev) / prev);
+        }
+        if (retornosMensais.length === 0) return;
+
+        const totalMeses = retornosMensais.length;
+        const retornoMedio = retornosMensais.reduce((a, b) => a + b, 0) / totalMeses;
+        const retornoAcumulado = (dadosMensais[dadosMensais.length - 1].value / dadosMensais[0].value - 1) * 100;
+
+        const variancia = retornosMensais.reduce((s, r) => s + Math.pow(r - retornoMedio, 2), 0) / totalMeses;
+        const desvioPadrao = Math.sqrt(variancia);
+        const volatilidadeAnual = desvioPadrao * Math.sqrt(12) * 100;
+
+        const cdiMensal = Math.pow(1 + 0.1315, 1 / 12) - 1;
+        const cdiAcumulado = (Math.pow(1 + cdiMensal, totalMeses) - 1) * 100;
+
+        const sharpe = desvioPadrao > 0 ? (retornoMedio - cdiMensal) / desvioPadrao : 0;
+
+        const el = (id) => document.getElementById(id);
+        if (el('sharpe-valor')) el('sharpe-valor').textContent = sharpe.toFixed(2);
+        if (el('risco-retorno-carteira')) el('risco-retorno-carteira').textContent = `${retornoAcumulado.toFixed(2)}%`;
+        if (el('risco-retorno-cdi')) el('risco-retorno-cdi').textContent = `${cdiAcumulado.toFixed(2)}%`;
+        if (el('risco-volatilidade')) el('risco-volatilidade').textContent = `${volatilidadeAnual.toFixed(2)}%`;
+
+        desenharGaugeSharpe(sharpe);
+    }
+
+    function desenharGaugeSharpe(sharpe) {
+        const canvas = document.getElementById('sharpe-gauge');
+        if (!canvas) return;
+
+        const ctx = canvas.getContext('2d');
+        const w = canvas.width;
+        const h = canvas.height;
+        const centerX = w / 2;
+        const centerY = h - 5;
+        const radius = Math.min(w, h) - 15;
+
+        ctx.clearRect(0, 0, w, h);
+
+        // Gradient arc (vermelho → amarelo → verde)
+        const startAngle = Math.PI;
+        const endAngle = 2 * Math.PI;
+        const segments = 100;
+        const arcStep = (endAngle - startAngle) / segments;
+
+        for (let i = 0; i < segments; i++) {
+            const t = i / segments;
+            let r, g, b;
+            if (t < 0.25) {
+                r = 220; g = Math.round(60 + t * 4 * 120); b = 30;
+            } else if (t < 0.5) {
+                const t2 = (t - 0.25) * 4;
+                r = Math.round(220 - t2 * 40); g = Math.round(180 + t2 * 60); b = 30;
+            } else if (t < 0.75) {
+                const t2 = (t - 0.5) * 4;
+                r = Math.round(180 - t2 * 120); g = Math.round(240 - t2 * 40); b = Math.round(30 + t2 * 40);
+            } else {
+                const t2 = (t - 0.75) * 4;
+                r = Math.round(60 - t2 * 30); g = Math.round(200 - t2 * 30); b = Math.round(70 + t2 * 20);
+            }
+
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, radius, startAngle + i * arcStep, startAngle + (i + 1) * arcStep + 0.02);
+            ctx.strokeStyle = `rgb(${r},${g},${b})`;
+            ctx.lineWidth = 10;
+            ctx.lineCap = 'round';
+            ctx.stroke();
+        }
+
+        // Needle — Sharpe clamped [-2, 2] → angle [π, 2π]
+        const clampedSharpe = Math.max(-2, Math.min(2, sharpe));
+        const normalizedSharpe = (clampedSharpe + 2) / 4;
+        const needleAngle = startAngle + normalizedSharpe * (endAngle - startAngle);
+
+        const needleLen = radius - 15;
+        const nx = centerX + Math.cos(needleAngle) * needleLen;
+        const ny = centerY + Math.sin(needleAngle) * needleLen;
+
+        ctx.beginPath();
+        ctx.moveTo(centerX, centerY);
+        ctx.lineTo(nx, ny);
+        ctx.strokeStyle = '#fff';
+        ctx.lineWidth = 2;
+        ctx.lineCap = 'round';
+        ctx.stroke();
+
+        // Center dot
+        ctx.beginPath();
+        ctx.arc(centerX, centerY, 4, 0, 2 * Math.PI);
+        ctx.fillStyle = '#fff';
+        ctx.fill();
     }
 
 

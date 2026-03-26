@@ -560,7 +560,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     let lastHistoricoListSignature = '';
     let lastHistoricoProventosSignature = '';
     let lastAlocacaoData = '';
-    let currentPatrimonioRange = '1M';
+    let currentPatrimonioRange = 'ALL';
     let histFilterType = 'all'; // 'all', 'buy', 'sell'
     let histSearchTerm = '';
     let provSearchTerm = '';
@@ -863,53 +863,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const btnSairLock = document.getElementById('btn-sair-lock');
     const installSection = document.getElementById('install-section');
     const installBtn = document.getElementById('install-app-btn');
-    const patrimonioRangeButtons = document.querySelectorAll('.patrimonio-range-btn');
-    const patrimonioSlider = document.getElementById('patrimonio-range-slider');
-
-    function movePatrimonioSlider(targetBtn) {
-        if (!patrimonioSlider || !targetBtn) return;
-        const bar = document.getElementById('patrimonio-range-bar');
-        if (!bar) return;
-        const barRect = bar.getBoundingClientRect();
-        const btnRect = targetBtn.getBoundingClientRect();
-        patrimonioSlider.style.left = (btnRect.left - barRect.left) + 'px';
-        patrimonioSlider.style.width = btnRect.width + 'px';
-    }
-
-    patrimonioRangeButtons.forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            const isLight = document.body.classList.contains('light-mode');
-            const target = e.target;
-
-            // Update text colors
-            patrimonioRangeButtons.forEach(b => {
-                b.classList.add('text-gray-500');
-                b.classList.remove('text-white', 'text-[#1f2937]');
-            });
-
-            if (isLight) {
-                target.classList.add('text-[#1f2937]');
-                target.classList.remove('text-gray-500');
-                patrimonioSlider.className = 'absolute top-1 bottom-1 rounded-md bg-white shadow-sm transition-all duration-300 ease-out pointer-events-none z-0';
-            } else {
-                target.classList.add('text-white');
-                target.classList.remove('text-gray-500');
-                patrimonioSlider.className = 'absolute top-1 bottom-1 rounded-md bg-[#2c2c2e] transition-all duration-300 ease-out pointer-events-none z-0';
-            }
-
-            // Slide the indicator
-            movePatrimonioSlider(target);
-
-            currentPatrimonioRange = target.dataset.range;
-            renderizarGraficoPatrimonio();
-        });
-    });
-
-    // Initialize slider position on the default active button (1M)
-    requestAnimationFrame(() => {
-        const defaultBtn = document.querySelector('.patrimonio-range-btn[data-range="1M"]');
-        if (defaultBtn) movePatrimonioSlider(defaultBtn);
-    });
+    // Range buttons e slider antigos foram removidos – período agora é via bottom sheet
 
     // ─── NAVEGAÇÃO POR TABS DO MODAL DE DETALHES ─────────────────────────────
     function switchDetalhesTab(tabName) {
@@ -3942,45 +3896,20 @@ document.addEventListener('DOMContentLoaded', async () => {
     function openPatrimonioModal() {
         if (!patrimonioPageModal) return;
 
-        // 1. Mostra o modal
         patrimonioPageModal.classList.add('visible');
         patrimonioPageContent.style.transform = '';
         patrimonioPageContent.classList.remove('closing');
         document.body.style.overflow = 'hidden';
 
-        // 2. Atualiza textos do Header do modal
-        if (modalPatrimonioValor && totalCarteiraValor) {
-            modalPatrimonioValor.textContent = totalCarteiraValor.textContent;
-            // Mantém a classe de blur/privacidade se houver
-            if (totalCarteiraValor.classList.contains('blur-sm')) {
-                modalPatrimonioValor.classList.add('blur-sm');
-            } else {
-                modalPatrimonioValor.classList.remove('blur-sm');
-            }
-        }
-        if (modalCustoValor && totalCarteiraCusto) {
-            modalCustoValor.textContent = totalCarteiraCusto.textContent;
-        }
         requestAnimationFrame(() => {
-            // Reposition the slider now that the modal is visible and measurable
-            const activeRangeBtn = document.querySelector('.patrimonio-range-btn[data-range="' + currentPatrimonioRange + '"]');
-            if (activeRangeBtn) {
-                patrimonioSlider.style.transition = 'none';
-                movePatrimonioSlider(activeRangeBtn);
-                // Re-enable transition after paint
-                requestAnimationFrame(() => { patrimonioSlider.style.transition = ''; });
-            }
-
             setTimeout(() => {
                 if (patrimonioChartInstance) {
-                    // Força o Chart.js a reler o tamanho do container pai
                     patrimonioChartInstance.resize();
-                    patrimonioChartInstance.update('none'); // Update sem animação para ser rápido
+                    patrimonioChartInstance.update('none');
                 } else {
-                    // Se o gráfico ainda não existia (primeira vez), cria ele
                     renderizarGraficoPatrimonio();
                 }
-            }, 50); // 50ms é suficiente
+            }, 50);
         });
     }
 
@@ -4230,71 +4159,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     async function renderizarGraficoPatrimonio(isRetry = false) {
         const canvas = document.getElementById('patrimonio-chart');
         if (!canvas) return;
-        // Guard: não tenta buscar dados se o IndexedDB ainda não inicializou
         if (!vestoDB.db) return;
 
-        // ── Atualiza valores LIVE (preço atual × quantidade) ──
-        const temPrecos = Array.isArray(precosAtuais) && precosAtuais.length > 0;
-
-        if (!window.patrimonioRetryCount) window.patrimonioRetryCount = 0;
-
-        if (!temPrecos && window.patrimonioRetryCount < 5) {
-            window.patrimonioRetryTimer = setTimeout(() => {
-                window.patrimonioRetryCount++;
-                renderizarGraficoPatrimonio(true);
-            }, 800);
-        } else if (temPrecos) {
-            window.patrimonioRetryCount = 0;
-            if (window.patrimonioRetryTimer) clearTimeout(window.patrimonioRetryTimer);
-        }
-
-        const mapPrecos = new Map();
-        if (temPrecos) {
-            precosAtuais.forEach(p => {
-                const sym = p.symbol || p.ticker || p.codigo;
-                const val = p.regularMarketPrice || p.price || p.cotacao || p.valor;
-                if (sym && val) {
-                    mapPrecos.set(sym.toUpperCase().trim(), parseFloat(val));
-                }
-            });
-        }
-
-        let totalAtualLive = 0;
-        let custoTotalLive = 0;
-
-        if (Array.isArray(carteiraCalculada)) {
-            carteiraCalculada.forEach(ativo => {
-                const ticker = (ativo.symbol || ativo.ticker).toUpperCase().trim();
-                const qtd = parseFloat(ativo.quantity || ativo.quantidade || 0);
-                const precoMedio = parseFloat(ativo.precoMedio || ativo.averagePrice || 0);
-
-                let precoLive = mapPrecos.get(ticker);
-                if (!precoLive) precoLive = parseFloat(ativo.regularMarketPrice || ativo.price || 0);
-                if (!precoLive || isNaN(precoLive) || precoLive === 0) precoLive = precoMedio;
-
-                totalAtualLive += precoLive * qtd;
-                custoTotalLive += precoMedio * qtd;
-            });
-        }
-
-        const elLive = document.getElementById('modal-patrimonio-live');
-        if (elLive) {
-            elLive.textContent = totalAtualLive.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-            elLive.className = "text-sm font-bold text-white mt-1 truncate";
-        }
-
-        const elCusto = document.getElementById('modal-custo-valor');
-        if (elCusto) {
-            elCusto.textContent = custoTotalLive.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-        }
-
-        // ── Busca dados históricos via Yahoo Finance v8 ──
+        // ── Busca dados históricos via Yahoo Finance (sempre ALL) ──
         if (_patrimonioLoading) return;
 
-        const yahooRange = PATRIMONIO_RANGE_MAP[currentPatrimonioRange] || '1A';
-
-        // Tenta cache calculado primeiro
-        const calcCacheKey = `patrimonio_calc_${currentPatrimonioRange}`;
+        const calcCacheKey = `patrimonio_calc_ALL`;
         let dadosPatrimonio = null;
 
         try {
@@ -4302,16 +4172,13 @@ document.addEventListener('DOMContentLoaded', async () => {
         } catch (_) { }
 
         if (!dadosPatrimonio) {
-            // Mostra loading
-            const elChartVal = document.getElementById('modal-patrimonio-chart-val');
-            if (elChartVal) elChartVal.textContent = 'Calculando...';
+            const elLoading = document.getElementById('patrimonio-loading');
+            if (elLoading) elLoading.classList.remove('hidden');
 
             _patrimonioLoading = true;
             try {
-                const historicoPrecosMap = await buscarHistoricoPrecosCarteira(yahooRange);
+                const historicoPrecosMap = await buscarHistoricoPrecosCarteira('Tudo');
                 dadosPatrimonio = calcularPatrimonioHistorico(historicoPrecosMap);
-
-                // Cacheia o resultado calculado
                 if (dadosPatrimonio.length > 0) {
                     const ttl = isB3Open() ? CACHE_HIST_ABERTO : CACHE_HIST_FECHADO;
                     try { await setCache(calcCacheKey, dadosPatrimonio, ttl); } catch (_) { }
@@ -4321,343 +4188,331 @@ document.addEventListener('DOMContentLoaded', async () => {
                 dadosPatrimonio = [];
             } finally {
                 _patrimonioLoading = false;
+                const elLoading = document.getElementById('patrimonio-loading');
+                if (elLoading) elLoading.classList.add('hidden');
             }
         }
 
-        // ── Filtra por data de corte ──
+        // Guarda para outras funcionalidades (ex: IPCA)
+        window.cachedPatrimonioHistorico = dadosPatrimonio;
+
+        if (!dadosPatrimonio || dadosPatrimonio.length === 0) return;
+
+        // ── Filtra por período selecionado ──
         const hoje = new Date();
         hoje.setHours(23, 59, 59, 999);
         let dataCorte;
 
-        if (currentPatrimonioRange === '7D') {
-            dataCorte = new Date(hoje);
-            dataCorte.setDate(hoje.getDate() - 7);
-        } else if (currentPatrimonioRange === '1M') {
-            dataCorte = new Date(hoje);
-            dataCorte.setDate(hoje.getDate() - 30);
+        if (currentPatrimonioRange === '1M') {
+            dataCorte = new Date(hoje); dataCorte.setMonth(hoje.getMonth() - 1);
+        } else if (currentPatrimonioRange === '3M') {
+            dataCorte = new Date(hoje); dataCorte.setMonth(hoje.getMonth() - 3);
         } else if (currentPatrimonioRange === '6M') {
-            dataCorte = new Date(hoje);
-            dataCorte.setMonth(hoje.getMonth() - 6);
+            dataCorte = new Date(hoje); dataCorte.setMonth(hoje.getMonth() - 6);
         } else if (currentPatrimonioRange === '1Y') {
-            dataCorte = new Date(hoje);
-            dataCorte.setFullYear(hoje.getFullYear() - 1);
+            dataCorte = new Date(hoje); dataCorte.setFullYear(hoje.getFullYear() - 1);
         } else {
-            dataCorte = new Date('2000-01-01'); // ALL
+            dataCorte = new Date('2000-01-01');
         }
         dataCorte.setHours(0, 0, 0, 0);
 
-        let dadosOrdenados = dadosPatrimonio
+        const dadosFiltrados = dadosPatrimonio
             .filter(p => {
                 const parts = p.date.split('-');
-                const dataPonto = new Date(parts[0], parts[1] - 1, parts[2]);
-                return dataPonto >= dataCorte;
+                return new Date(parts[0], parts[1] - 1, parts[2]) >= dataCorte;
             })
-            .sort((a, b) => new Date(a.date) - new Date(b.date));
+            .sort((a, b) => a.date.localeCompare(b.date));
 
-        if (['6M', '1Y', 'ALL'].includes(currentPatrimonioRange)) {
-            const grupos = {};
-            dadosOrdenados.forEach(p => {
-                const chaveMes = p.date.substring(0, 7);
-                grupos[chaveMes] = p;
-            });
-            dadosOrdenados = Object.values(grupos);
-            dadosOrdenados.sort((a, b) => new Date(a.date) - new Date(b.date));
-        }
-
-        if (dadosOrdenados.length === 0) {
-            if (patrimonioChartInstance) {
-                patrimonioChartInstance.destroy();
-                patrimonioChartInstance = null;
-            }
-            const elChartVal = document.getElementById('modal-patrimonio-chart-val');
-            if (elChartVal) elChartVal.textContent = "R$ 0,00";
-            return;
-        }
-
-        // ── Monta arrays para o gráfico ──
-        const labels = [];
-        const dataValor = [];
-        const dataCusto = [];
-
-        const txOrdenadas = [...transacoes].sort((a, b) => new Date(a.date) - new Date(b.date));
-        let custoAcumulado = 0;
-        let txIndex = 0;
-
-        dadosOrdenados.forEach(p => {
-            const parts = p.date.split('-');
-            const d = new Date(parts[0], parts[1] - 1, parts[2]);
-            const dia = String(d.getDate()).padStart(2, '0');
-            const mes = d.toLocaleString('pt-BR', { month: 'short' }).replace('.', '').toUpperCase();
-            const ano = d.getFullYear().toString().slice(-2);
-
-            if (['7D', '1M'].includes(currentPatrimonioRange)) labels.push([dia, mes]);
-            else if (['6M', '1Y'].includes(currentPatrimonioRange)) labels.push([mes, ano]);
-            else labels.push([dia, mes, ano]);
-
-            dataValor.push(parseFloat(p.value.toFixed(2)));
-
-            const dataPontoLimite = new Date(p.date + 'T23:59:59');
-            while (txIndex < txOrdenadas.length) {
-                const tx = txOrdenadas[txIndex];
-                const dataTx = new Date(tx.date);
-                if (dataTx <= dataPontoLimite) {
-                    let operacao = (tx.quantity * tx.price);
-                    if (tx.type === 'buy') custoAcumulado += operacao;
-                    if (tx.type === 'sell') custoAcumulado -= operacao;
-                    custoAcumulado = parseFloat(custoAcumulado.toFixed(2));
-                    txIndex++;
-                } else {
-                    break;
-                }
-            }
-            dataCusto.push(custoAcumulado);
+        // ── Agrupa por mês (YYYY-MM → último valor do mês) ──
+        const gruposMes = {};
+        dadosFiltrados.forEach(p => {
+            const chaveMes = p.date.substring(0, 7);
+            gruposMes[chaveMes] = p;
         });
 
-        const elChartVal = document.getElementById('modal-patrimonio-chart-val');
-        if (elChartVal) {
-            if (dataValor.length > 0) {
-                const ultimoValorGrafico = dataValor[dataValor.length - 1];
-                elChartVal.textContent = ultimoValorGrafico.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-            } else {
-                elChartVal.textContent = "R$ 0,00";
+        const meses = Object.keys(gruposMes).sort();
+        const dadosMensais = meses.map(m => gruposMes[m]);
+
+        if (dadosMensais.length === 0) return;
+
+        // ── Calcula stats para o período completo e por mês ──
+        const fmtBRL = (v) => Math.abs(v).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+        const MESES_PT = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+
+        const labels = [];
+        const dataValues = [];
+        const yearLabels = {};
+
+        dadosMensais.forEach((p, idx) => {
+            const parts = p.date.split('-');
+            const mesIdx = parseInt(parts[1]) - 1;
+            const ano = parts[0];
+            const mesCurto = MESES_PT[mesIdx].charAt(0);
+            labels.push(mesCurto);
+            dataValues.push(parseFloat(p.value.toFixed(2)));
+
+            // Marca ano no primeiro mês daquele ano
+            if (idx === 0 || dadosMensais[idx - 1].date.substring(0, 4) !== ano) {
+                yearLabels[idx] = ano;
             }
-        }
+        });
 
-        // ═══════════════════════════════════════════════════
-        // CDI BENCHMARK LINE (Selic ~13.15% ao ano)
-        // ═══════════════════════════════════════════════════
-        const taxaDiaCDI = Math.pow(1 + 0.1315, 1 / 252) - 1;
-        const dataCDI = [];
-        let cdiStartIdx = dataCusto.findIndex(c => c > 0);
-        if (cdiStartIdx >= 0) {
-            for (let i = 0; i < cdiStartIdx; i++) dataCDI.push(0);
-            let acumuladoCDI = dataCusto[cdiStartIdx];
-            dataCDI.push(parseFloat(acumuladoCDI.toFixed(2)));
-            for (let i = cdiStartIdx + 1; i < dataCusto.length; i++) {
-                const aporteDiff = dataCusto[i] - dataCusto[i - 1];
-                acumuladoCDI = acumuladoCDI * (1 + taxaDiaCDI) + aporteDiff;
-                dataCDI.push(parseFloat(acumuladoCDI.toFixed(2)));
-            }
-        }
-
-        const ctx = canvas.getContext('2d');
-        const isLight = document.body.classList.contains('light-mode');
-
-        const colorLinePatrimonio = '#c084fc';
-        const colorLineInvestido = isLight ? '#9ca3af' : '#525252';
-        const colorLineCDI = '#eab308';
-        const colorBadgeBg = isLight ? '#f3f4f6' : '#1f2937';
-        const colorBadgeText = isLight ? '#1f2937' : '#f9fafb';
-        const colorCrosshair = isLight ? '#d1d5db' : '#404040';
-
-        const gradientFill = ctx.createLinearGradient(0, 0, 0, 400);
-        gradientFill.addColorStop(0, 'rgba(192, 132, 252, 0.45)');
-        gradientFill.addColorStop(1, 'rgba(192, 132, 252, 0.0)');
-
-        const patrimonioCrosshairPlugin = {
-            id: 'patrimonioCrosshair',
-            afterDraw: (chart) => {
-                if (chart.tooltip?._active?.length && chart.tooltip._eventPosition) {
-                    const ctx = chart.ctx;
-                    const activePoint = chart.tooltip._active[0];
-                    const x = activePoint.element.x;
-                    const y = chart.tooltip._eventPosition.y;
-
-                    const topY = chart.scales.y.top;
-                    const bottomY = chart.scales.y.bottom;
-                    const leftX = chart.scales.x.left;
-                    const rightX = chart.scales.x.right;
-
-                    ctx.save();
-                    ctx.lineWidth = 1;
-                    ctx.strokeStyle = colorCrosshair;
-                    ctx.setLineDash([4, 4]);
-
-                    // Crosshair
-                    ctx.beginPath();
-                    ctx.moveTo(x, topY);
-                    ctx.lineTo(x, bottomY);
-                    ctx.stroke();
-
-                    ctx.beginPath();
-                    ctx.moveTo(leftX, y);
-                    ctx.lineTo(rightX, y);
-                    ctx.stroke();
-
-                    // Badge X (Data)
-                    const xIndex = activePoint.index;
-                    const labelRaw = chart.data.labels[xIndex];
-                    const labelText = Array.isArray(labelRaw) ? labelRaw.join(' ') : labelRaw;
-
-                    ctx.font = 'bold 10px Inter, sans-serif';
-                    const dateWidth = ctx.measureText(labelText).width + 12;
-                    const dateHeight = 20;
-                    let dateBadgeX = x - (dateWidth / 2);
-
-                    if (dateBadgeX < leftX) dateBadgeX = leftX;
-                    if (dateBadgeX + dateWidth > rightX) dateBadgeX = rightX - dateWidth;
-
-                    // Força o badge para dentro da área visível inferior
-                    const dateBadgeY = bottomY - dateHeight - 2;
-
-                    ctx.fillStyle = colorBadgeBg;
-                    ctx.beginPath();
-                    ctx.roundRect(dateBadgeX, dateBadgeY, dateWidth, dateHeight, 4);
-                    ctx.fill();
-
-                    ctx.fillStyle = colorBadgeText;
-                    ctx.textAlign = 'center';
-                    ctx.textBaseline = 'middle';
-                    ctx.fillText(labelText, dateBadgeX + (dateWidth / 2), dateBadgeY + (dateHeight / 2));
-
-                    // Badge Y (Valor)
-                    const yValue = chart.scales.y.getValueForPixel(y);
-                    const priceText = yValue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-                    const priceWidth = ctx.measureText(priceText).width + 12;
-                    const priceHeight = 20;
-
-                    const priceBadgeX = rightX - priceWidth;
-                    let priceBadgeY = y - (priceHeight / 2);
-
-                    if (priceBadgeY < topY) priceBadgeY = topY;
-                    if (priceBadgeY + priceHeight > bottomY) priceBadgeY = bottomY - priceHeight;
-
-                    ctx.fillStyle = colorBadgeBg;
-                    ctx.beginPath();
-                    ctx.roundRect(priceBadgeX, priceBadgeY, priceWidth, priceHeight, 4);
-                    ctx.fill();
-
-                    ctx.fillStyle = colorBadgeText;
-                    ctx.textAlign = 'left';
-                    ctx.textBaseline = 'middle';
-                    ctx.fillText(priceText, priceBadgeX + 6, priceBadgeY + (priceHeight / 2));
-
-                    ctx.restore();
+        // ── Calcula movimentações no período ──
+        function calcMovimentacoesPeriodo(inicio, fim) {
+            let totalMov = 0;
+            transacoes.forEach(tx => {
+                if (tx.date >= inicio && tx.date <= fim) {
+                    const valor = tx.quantity * tx.price;
+                    if (tx.type === 'buy') totalMov += valor;
+                    else if (tx.type === 'sell') totalMov -= valor;
                 }
+            });
+            return totalMov;
+        }
+
+        // ── Calcula proventos recebidos no período ──
+        function calcProventosPeriodo(inicio, fim) {
+            let total = 0;
+            proventosConhecidos.forEach(p => {
+                if (p.paymentDate && p.value > 0 && p.paymentDate >= inicio && p.paymentDate <= fim) {
+                    const dataRef = p.dataCom || p.paymentDate;
+                    const qtd = getQuantidadeNaData(p.symbol, dataRef);
+                    if (qtd > 0) total += p.value * qtd;
+                }
+            });
+            return total;
+        }
+
+        // ── Função para atualizar stats grid ──
+        function atualizarStatsGrid(patInicial, patFinal, dataInicio, dataFim) {
+            const varReais = patFinal - patInicial;
+            const varPct = patInicial > 0 ? ((patFinal - patInicial) / patInicial) * 100 : 0;
+            const movimentacoes = calcMovimentacoesPeriodo(dataInicio, dataFim);
+            const proventosRecebidos = calcProventosPeriodo(dataInicio, dataFim);
+
+            const sinalVar = varReais >= 0 ? '+ ' : '— ';
+            const corVar = varReais >= 0 ? 'text-green-400' : 'text-red-400';
+            const sinalPct = varPct > 0 ? '▲ ' : (varPct < 0 ? '▼ ' : '— ');
+            const sinalMov = movimentacoes >= 0 ? '▲ ' : '▼ ';
+            const corMov = movimentacoes >= 0 ? 'text-green-400' : 'text-red-400';
+
+            const el = (id) => document.getElementById(id);
+            if (el('evolucao-pat-inicial')) el('evolucao-pat-inicial').textContent = fmtBRL(patInicial);
+            if (el('evolucao-pat-final')) el('evolucao-pat-final').textContent = fmtBRL(patFinal);
+
+            if (el('evolucao-var-reais')) {
+                el('evolucao-var-reais').textContent = `${sinalVar}${fmtBRL(varReais)}`;
+                el('evolucao-var-reais').className = `text-sm font-bold mt-0.5 ${corVar}`;
+            }
+            if (el('evolucao-var-pct')) {
+                el('evolucao-var-pct').textContent = `${sinalPct}${Math.abs(varPct).toFixed(2)}%`;
+                el('evolucao-var-pct').className = `text-sm font-bold mt-0.5 ${corVar}`;
+            }
+            if (el('evolucao-movimentacoes')) {
+                el('evolucao-movimentacoes').textContent = `${sinalMov}${fmtBRL(movimentacoes)}`;
+                el('evolucao-movimentacoes').className = `text-sm font-bold mt-0.5 ${corMov}`;
+            }
+            if (el('evolucao-proventos')) {
+                el('evolucao-proventos').textContent = `+ ${fmtBRL(proventosRecebidos)}`;
+                el('evolucao-proventos').className = 'text-sm font-bold mt-0.5 text-green-400';
+            }
+        }
+
+        // ── Período texto ──
+        function formatarPeriodoTexto(inicio, fim) {
+            const fmtData = (d) => {
+                const parts = d.split('-');
+                return `${MESES_PT[parseInt(parts[1]) - 1]}/${parts[0].slice(-2)}`;
+            };
+            return inicio === fim ? `Período de ${fmtData(inicio)}` : `Período de ${fmtData(inicio)} até ${fmtData(fim)}`;
+        }
+
+        // Stats do período inteiro
+        const periodoInicio = dadosMensais[0].date;
+        const periodoFim = dadosMensais[dadosMensais.length - 1].date;
+        const patInicial = dadosMensais.length > 1 ? dataValues[0] : 0;
+        const patFinal = dataValues[dataValues.length - 1];
+
+        atualizarStatsGrid(patInicial, patFinal, periodoInicio, periodoFim);
+
+        const elPeriodoTexto = document.getElementById('evolucao-periodo-texto');
+        if (elPeriodoTexto) elPeriodoTexto.textContent = formatarPeriodoTexto(periodoInicio, periodoFim);
+
+        // ── Bar Chart ──
+        const ctx = canvas.getContext('2d');
+
+        const barColors = dataValues.map((_, idx) => {
+            if (idx === dataValues.length - 1) return '#3b82f6'; // último = azul forte
+            return '#1e3a5f'; // anteriores = azul escuro
+        });
+
+        if (patrimonioChartInstance) {
+            patrimonioChartInstance.destroy();
+            patrimonioChartInstance = null;
+        }
+
+        // Year annotation plugin
+        const yearAnnotationPlugin = {
+            id: 'yearAnnotation',
+            afterDraw: (chart) => {
+                const ctx2 = chart.ctx;
+                const xScale = chart.scales.x;
+                ctx2.save();
+                ctx2.font = '10px Inter, sans-serif';
+                ctx2.fillStyle = '#6b7280';
+                ctx2.textAlign = 'center';
+
+                let lastYear = null;
+                const barMeta = chart.getDatasetMeta(0);
+
+                for (const [idxStr, year] of Object.entries(yearLabels)) {
+                    const idx = parseInt(idxStr);
+                    if (year === lastYear) continue;
+                    lastYear = year;
+
+                    // Find the range of bars for this year
+                    let endIdx = idx;
+                    for (let j = idx + 1; j < dadosMensais.length; j++) {
+                        if (dadosMensais[j].date.substring(0, 4) === year) endIdx = j;
+                        else break;
+                    }
+
+                    const startBar = barMeta.data[idx];
+                    const endBar = barMeta.data[endIdx];
+                    if (startBar && endBar) {
+                        const centerX = (startBar.x + endBar.x) / 2;
+                        ctx2.fillText(year, centerX, chart.scales.x.bottom + 14);
+                    }
+                }
+                ctx2.restore();
             }
         };
 
-        // Monta datasets dinamicamente
-        const chartDatasets = [
-            {
-                label: 'Patrimônio', data: dataValor, fill: true,
-                backgroundColor: gradientFill, borderColor: colorLinePatrimonio,
-                borderWidth: 1.5, tension: 0.4, pointRadius: 0,
-                pointHitRadius: 20, pointHoverRadius: 4,
-                pointHoverBackgroundColor: colorLinePatrimonio,
-                pointHoverBorderWidth: 0, order: 1
+        patrimonioChartInstance = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [{
+                    data: dataValues,
+                    backgroundColor: barColors,
+                    borderRadius: 3,
+                    borderSkipped: false,
+                    barPercentage: 0.7,
+                    categoryPercentage: 0.85
+                }]
             },
-            {
-                label: 'Investido', data: dataCusto, fill: false,
-                borderColor: colorLineInvestido, borderWidth: 1.2,
-                borderDash: [4, 4], tension: 0.4, pointRadius: 0,
-                pointHitRadius: 10, pointHoverRadius: 0, order: 2
-            },
-            {
-                label: 'Evolucao', data: dataValor, fill: false,
-                borderColor: 'transparent', borderWidth: 0,
-                pointRadius: 0, pointHitRadius: 0, pointHoverRadius: 0, order: 4
-            }
-        ];
-        if (dataCDI.length > 0) {
-            chartDatasets.push({
-                label: 'CDI', data: dataCDI, fill: false,
-                borderColor: colorLineCDI, borderWidth: 1, borderDash: [2, 3],
-                tension: 0.4, pointRadius: 0, pointHitRadius: 0, pointHoverRadius: 0, order: 3
-            });
-        }
-
-        if (patrimonioChartInstance) {
-            patrimonioChartInstance.data.labels = labels;
-            patrimonioChartInstance.data.datasets = chartDatasets;
-            patrimonioChartInstance.update();
-        } else {
-            patrimonioChartInstance = new Chart(ctx, {
-                type: 'line',
-                data: {
-                    labels: labels,
-                    datasets: chartDatasets
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                layout: { padding: { left: 4, right: 4, top: 8, bottom: 16 } },
+                plugins: {
+                    legend: { display: false },
+                    tooltip: { enabled: false }
                 },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    layout: { padding: { left: 16, right: 16, top: 20, bottom: 20 } },
-                    interaction: { mode: 'index', intersect: false },
-                    plugins: {
-                        legend: { display: false },
-                        tooltip: {
-                            enabled: true,
-                            mode: 'index',
-                            intersect: false,
-                            backgroundColor: 'rgba(28, 28, 30, 0.95)',
-                            titleColor: '#9CA3AF',
-                            bodyColor: '#FFF',
-                            borderColor: '#333',
-                            borderWidth: 1,
-                            padding: 8,
-                            cornerRadius: 6,
-                            displayColors: false,
-                            callbacks: {
-                                title: function () { return ''; },
-                                label: function (context) {
-                                    const currentIndex = context.dataIndex;
-                                    const fmtBRL = (v) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-
-                                    if (context.datasetIndex === 0) {
-                                        return `Patrimônio: ${fmtBRL(context.parsed.y)}`;
-                                    } else if (context.datasetIndex === 1) {
-                                        return `Investido: ${fmtBRL(context.parsed.y)}`;
-                                    } else if (context.dataset.label === 'Evolucao') {
-                                        const valP = context.chart.data.datasets[0].data[currentIndex];
-                                        const valI = context.chart.data.datasets[1].data[currentIndex];
-                                        const lucro = (valP ?? 0) - (valI ?? 0);
-                                        const sL = lucro >= 0 ? '+' : '';
-                                        const lines = [`L/P: ${sL}${fmtBRL(lucro)}`];
-
-                                        if (currentIndex > 0) {
-                                            const atual = context.parsed.y;
-                                            const anterior = context.dataset.data[currentIndex - 1];
-                                            if (anterior > 0) {
-                                                const pct = ((atual - anterior) / anterior) * 100;
-                                                const diffR = atual - anterior;
-                                                const s = pct > 0 ? '+' : '';
-                                                lines.push(`Var: ${s}${pct.toFixed(2)}% (${s}${fmtBRL(diffR)})`);
-                                            }
-                                        }
-                                        return lines;
-                                    } else if (context.dataset.label === 'CDI') {
-                                        return `CDI: ${fmtBRL(context.parsed.y)}`;
-                                    }
-                                    return null;
-                                },
-                                labelTextColor: function (context) {
-                                    if (context.datasetIndex === 0) return '#FFF';
-                                    if (context.datasetIndex === 1) return '#9ca3af';
-                                    if (context.dataset.label === 'CDI') return '#eab308';
-                                    if (context.dataset.label === 'Evolucao') {
-                                        const valP = context.chart.data.datasets[0].data[context.dataIndex] ?? 0;
-                                        const valI = context.chart.data.datasets[1].data[context.dataIndex] ?? 0;
-                                        return (valP - valI) >= 0 ? '#4ade80' : '#f87171';
-                                    }
-                                    return '#FFF';
-                                }
-                            }
+                scales: {
+                    y: {
+                        position: 'right',
+                        grid: { display: false },
+                        border: { display: false },
+                        ticks: {
+                            color: '#4b5563',
+                            font: { size: 9, family: 'Inter, sans-serif' },
+                            padding: 4,
+                            callback: (v) => v.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
+                            maxTicksLimit: 5
                         }
                     },
-                    scales: {
-                        y: { display: false },
-                        x: { display: false }
-                    },
-                    animation: { duration: 600, easing: 'easeOutQuart' }
+                    x: {
+                        grid: { display: false },
+                        border: { display: false },
+                        ticks: {
+                            color: '#6b7280',
+                            font: { size: 10, family: 'Inter, sans-serif' },
+                            padding: 2
+                        }
+                    }
                 },
-                plugins: [patrimonioCrosshairPlugin]
+                onClick: (evt, elements) => {
+                    if (elements.length > 0) {
+                        const idx = elements[0].index;
+                        const mesData = dadosMensais[idx];
+                        const mesAnterior = idx > 0 ? dadosMensais[idx - 1] : null;
+                        const patIni = mesAnterior ? mesAnterior.value : 0;
+
+                        // Highlight bar
+                        const newColors = dataValues.map((_, i) => i === idx ? '#3b82f6' : '#1e3a5f');
+                        patrimonioChartInstance.data.datasets[0].backgroundColor = newColors;
+                        patrimonioChartInstance.update('none');
+
+                        const mesKey = mesData.date.substring(0, 7);
+                        const mesInicio = mesKey + '-01';
+                        const mesFim = mesData.date;
+
+                        atualizarStatsGrid(patIni, mesData.value, mesInicio, mesFim);
+                        if (elPeriodoTexto) elPeriodoTexto.textContent = formatarPeriodoTexto(mesFim, mesFim);
+                    }
+                },
+                animation: { duration: 500, easing: 'easeOutQuart' }
+            },
+            plugins: [yearAnnotationPlugin]
+        });
+
+        // ── Bottom Sheet Events ──
+        const periodoBtn = document.getElementById('evolucao-periodo-btn');
+        const periodoSheet = document.getElementById('evolucao-periodo-sheet');
+        const periodoPanel = document.getElementById('evolucao-periodo-panel');
+        const periodoBackdrop = document.getElementById('evolucao-periodo-backdrop');
+        const periodoLabel = document.getElementById('evolucao-periodo-label');
+        const PERIODO_LABELS = { '1M': 'Mês atual', '3M': 'Últ. 3 meses', '6M': 'Últ. 6 meses', '1Y': 'Último ano', 'ALL': 'Máximo' };
+
+        function openPeriodoSheet() {
+            if (!periodoSheet) return;
+            periodoSheet.style.opacity = '1';
+            periodoSheet.style.pointerEvents = 'auto';
+            requestAnimationFrame(() => {
+                periodoPanel.style.transform = 'translateY(0)';
             });
         }
 
-        const lastTxId = transacoes.length > 0 ? transacoes[transacoes.length - 1].id : 'none';
-        const txCount = transacoes.length;
-        const currentSignature = `${currentPatrimonioRange}-${txCount}-${lastTxId}-${totalAtualLive.toFixed(2)}`;
-        lastPatrimonioCalcSignature = currentSignature;
+        function closePeriodoSheet() {
+            if (!periodoPanel) return;
+            periodoPanel.style.transform = 'translateY(100%)';
+            setTimeout(() => {
+                periodoSheet.style.opacity = '0';
+                periodoSheet.style.pointerEvents = 'none';
+            }, 300);
+        }
+
+        // Remove listeners antigos para evitar duplicação
+        if (periodoBtn && !periodoBtn._evolBound) {
+            periodoBtn.addEventListener('click', openPeriodoSheet);
+            periodoBtn._evolBound = true;
+        }
+        if (periodoBackdrop && !periodoBackdrop._evolBound) {
+            periodoBackdrop.addEventListener('click', closePeriodoSheet);
+            periodoBackdrop._evolBound = true;
+        }
+
+        document.querySelectorAll('.evol-period-opt').forEach(btn => {
+            if (btn._evolBound) return;
+            btn.addEventListener('click', () => {
+                const range = btn.dataset.range;
+                currentPatrimonioRange = range;
+                if (periodoLabel) periodoLabel.textContent = PERIODO_LABELS[range] || range;
+
+                // Atualiza visual dos botões
+                document.querySelectorAll('.evol-period-opt').forEach(b => {
+                    b.classList.remove('bg-[#1d4ed8]', 'border-[#1d4ed8]', 'text-white');
+                    b.classList.add('border-[#3a3a3c]', 'text-gray-400');
+                });
+                btn.classList.add('bg-[#1d4ed8]', 'border-[#1d4ed8]', 'text-white');
+                btn.classList.remove('border-[#3a3a3c]', 'text-gray-400');
+
+                closePeriodoSheet();
+                renderizarGraficoPatrimonio();
+            });
+            btn._evolBound = true;
+        });
     }
 
 

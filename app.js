@@ -4578,9 +4578,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                                     } else if (context.datasetIndex === 1) {
                                         return `Investido: ${fmtBRL(context.parsed.y)}`;
                                     } else if (context.dataset.label === 'Evolucao') {
-                                        const valP = dataValor[currentIndex];
-                                        const valI = dataCusto[currentIndex];
-                                        const lucro = valP - valI;
+                                        const valP = context.chart.data.datasets[0].data[currentIndex];
+                                        const valI = context.chart.data.datasets[1].data[currentIndex];
+                                        const lucro = (valP ?? 0) - (valI ?? 0);
                                         const sL = lucro >= 0 ? '+' : '';
                                         const lines = [`L/P: ${sL}${fmtBRL(lucro)}`];
 
@@ -4605,8 +4605,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                                     if (context.datasetIndex === 1) return '#9ca3af';
                                     if (context.dataset.label === 'CDI') return '#eab308';
                                     if (context.dataset.label === 'Evolucao') {
-                                        const lucro = dataValor[context.dataIndex] - dataCusto[context.dataIndex];
-                                        return lucro >= 0 ? '#4ade80' : '#f87171';
+                                        const valP = context.chart.data.datasets[0].data[context.dataIndex] ?? 0;
+                                        const valI = context.chart.data.datasets[1].data[context.dataIndex] ?? 0;
+                                        return (valP - valI) >= 0 ? '#4ade80' : '#f87171';
                                     }
                                     return '#FFF';
                                 }

@@ -179,13 +179,11 @@ body {
     color: #f3f4f6;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
-    transition: background-color 0.3s ease, color 0.3s ease;
+    transition: color 0.3s ease;
     overscroll-behavior-y: auto;
     scrollbar-width: none;
     margin: 0;
     padding: 0;
-    padding-top: env(safe-area-inset-top);
-    padding-bottom: env(safe-area-inset-bottom);
 }
 
 html::-webkit-scrollbar,

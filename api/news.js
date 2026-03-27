@@ -159,29 +159,33 @@ function extractArticles(feedItems) {
     return feedItems
         .map(item => {
             // --- Extrai nome da fonte ---
-            let rawSourceName = '';
+            let rawSourceName = item.__feedTitle || item.__feedLink || '';
             let cleanTitle = (item.title || 'Sem título').trim();
 
             if (item.sourceObj) {
-                rawSourceName = item.sourceObj._ || item.sourceObj.content || '';
+                rawSourceName = item.sourceObj._ || item.sourceObj.content || rawSourceName;
             }
 
-            if (!rawSourceName) {
+            if (!rawSourceName || (!item.__feedTitle && !item.__feedLink)) {
                 const match = cleanTitle.match(SOURCE_SUFFIX);
                 if (match) rawSourceName = match[1];
             }
 
-            if (!rawSourceName) return null;
+            // --- Resolve fonte conhecida (Tenta pelo nome extraído ou pela URL do Link) ---
+            let known = resolveSource(rawSourceName);
+            if (!known && item.link) {
+                 known = resolveSource(item.link); // Mapeamento flexível por domínio nativo
+            }
+            if (!known && item.__feedLink) {
+                 known = resolveSource(item.__feedLink);
+            }
+            if (!known) return null; // Ignora se a fonte não for confiável
 
-            // Remove o sufixo da fonte do título — RegExp criada uma vez por item
-            const suffixRegex = new RegExp(
-                `(?: - | \\| )\\s*${escapeRegExp(rawSourceName.trim())}$`
-            );
-            cleanTitle = cleanTitle.replace(suffixRegex, '').trim();
-
-            // --- Resolve fonte conhecida ---
-            const known = resolveSource(rawSourceName);
-            if (!known) return null;
+            // Remove o sufixo da fonte do título caso exista acoplado
+            if (rawSourceName) {
+                const suffixRegex = new RegExp(`(?: - | \\| )\\s*${escapeRegExp(rawSourceName.trim())}$`, 'i');
+                cleanTitle = cleanTitle.replace(suffixRegex, '').trim();
+            }
 
             // --- Deduplica por título limpo ---
             if (seenTitles.has(cleanTitle)) return null;
@@ -252,7 +256,15 @@ export default async function handler(request, response) {
         let allItems = [];
         for (const res of results) {
             if (res.status === 'fulfilled' && res.value?.items) {
-                allItems.push(...res.value.items);
+                // Injeta a URL do feed/canal e título mestre dentro de cada item
+                const sourceFeedLink = res.value.link || '';
+                const sourceFeedTitle = res.value.title || '';
+                const itemsWithSource = res.value.items.map(i => ({ 
+                    ...i, 
+                    __feedLink: sourceFeedLink,
+                    __feedTitle: sourceFeedTitle
+                }));
+                allItems.push(...itemsWithSource);
             } else if (res.status === 'rejected') {
                 log.warn('Falha individual no feed RSS', { rid, error: res.reason?.message });
             }

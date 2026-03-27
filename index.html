@@ -336,32 +336,25 @@
 
                         <div id="resumo-carteira-card">
                             <div class="premium-content">
-                                <div
-                                    class="flex flex-col items-center justify-center w-full mt-2 text-center relative z-20">
+                                <div class="flex flex-col w-full mt-2 relative z-20 px-1">
 
-                                    <div class="flex items-center justify-center gap-1.5 mb-1 opacity-80">
-                                        <span class="premium-label">Patrimônio Total</span>
-                                        <button onclick="mostrarDyCarteira()"
-                                            class="w-[14px] h-[14px] rounded-full border border-white/20 flex items-center justify-center text-[8px] font-bold text-gray-400 hover:text-white hover:bg-white/10 transition-colors"
-                                            title="Ver Performance da Carteira">
-                                            ?
-                                        </button>
-                                    </div>
+                                    <span class="text-[11px] uppercase tracking-[0.12em] font-semibold text-[#71717a] mb-2">Patrimônio Total</span>
 
-                                    <div id="skeleton-total-valor" class="h-12 w-48 skeleton rounded mt-2"></div>
+                                    <div id="skeleton-total-valor" class="h-8 w-40 skeleton rounded"></div>
 
-                                    <h2 id="total-carteira-valor" class="premium-value-lg hidden mt-1 mb-1">R$ 0,00</h2>
+                                    <h2 id="total-carteira-valor" class="text-[1.85rem] font-bold text-white tracking-tight leading-none hidden" style="font-feature-settings:'tnum'; font-variant-numeric:tabular-nums;">R$ 0,00</h2>
 
-                                    <div class="premium-badge mt-1 scale-90">
-                                        <div id="skeleton-total-pl" class="h-3 w-16 skeleton rounded"></div>
-                                        <p id="total-carteira-pl" class="text-xs font-bold text-gray-300 hidden">
+                                    <div class="flex items-center gap-3 mt-2">
+                                        <div id="skeleton-total-pl" class="h-3 w-20 skeleton rounded"></div>
+                                        <p id="total-carteira-pl" class="text-[13px] font-semibold text-gray-300 hidden">
                                             R$ 0,00 (0%)
                                         </p>
+                                        <span class="text-[#2a2a2a]">•</span>
+                                        <div id="skeleton-total-dia" class="h-3 w-24 skeleton rounded"></div>
+                                        <p id="total-carteira-dia" class="text-[11px] font-medium text-gray-500 hidden">
+                                            Hoje: R$ 0,00 (0.00%)
+                                        </p>
                                     </div>
-                                    <div id="skeleton-total-dia" class="h-3 w-28 skeleton rounded mt-1.5"></div>
-                                    <p id="total-carteira-dia" class="text-[11px] font-medium text-gray-500 mt-1 hidden">
-                                        Hoje: R$ 0,00 (0.00%)
-                                    </p>
                                 </div>
 
                                 <div class="flex-1 min-h-[10px]"></div>

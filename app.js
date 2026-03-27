@@ -4335,7 +4335,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         // Stats do período inteiro (default)
         const periodoInicio = dadosMensais[0].date;
-        const periodoFim = dadosMensais[dadosMensais.length - 1].date;
+        const periodoFim = hojeStr; // usa hoje para capturar todas as transações
         const patInicial = dadosMensais.length > 1 ? dataValues[0] : 0;
         const patFinal = dataValues[dataValues.length - 1];
 
@@ -4505,7 +4505,10 @@ document.addEventListener('DOMContentLoaded', async () => {
 
                         const mesKey = mesData.date.substring(0, 7);
                         const mesInicio = mesKey + '-01';
-                        const mesFim = mesData.date;
+                        // Usa o último dia DO MÊS (não o último dia com dado de preço)
+                        const [yy, mm] = mesKey.split('-').map(Number);
+                        const ultimoDia = new Date(yy, mm, 0).getDate(); // dia 0 do próximo mês = último do atual
+                        const mesFim = `${mesKey}-${String(ultimoDia).padStart(2, '0')}`;
 
                         atualizarStatsGrid(patIni, mesData.value, mesInicio, mesFim);
                         const elPeriodoTexto = document.getElementById('evolucao-periodo-texto');

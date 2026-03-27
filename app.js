@@ -13581,6 +13581,36 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     };
 
+    // --- SUPPORT PARA NAVEGAÇÃO DE GESTOS (SWIPE BACK) VIA HASH ROUTING ---
+    // Inserido NO MESMO ESCOPO das funções principais
+    window.addEventListener('hashchange', () => {
+        if (!window.location.hash || window.location.hash === '' || window.location.hash === '#') {
+            const possibleModals = [
+                { id: 'patrimonio-page-modal', cls: closePatrimonioModal },
+                { id: 'proventos-page-modal', cls: closeProventosModal },
+                { id: 'alocacao-page-modal', cls: closeAlocacaoModal },
+                { id: 'detalhes-page-modal', cls: hideDetalhesModal },
+                { id: 'comparador-page-modal', cls: closeRaioxModal },
+                { id: 'ipca-page-modal', cls: closeIpcaModal },
+                { id: 'pagamentos-page-modal', cls: window.closePagamentosModal },
+                { id: 'objetivos-page-modal', cls: closeObjetivosModal },
+                { id: 'profile-page-modal', cls: window.closeProfileModal }
+            ];
+
+            for (const mod of possibleModals) {
+                const el = document.getElementById(mod.id);
+                if (el && el.classList.contains('visible') && typeof mod.cls === 'function') {
+                    mod.cls();
+                }
+            }
+        }
+    });
+
+    // Limpa a hash pro app iniciar do zero
+    if (window.location.hash) {
+        history.replaceState(null, null, window.location.pathname);
+    }
+
     await init();
 });
 
@@ -13844,6 +13874,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
 
+    window.closeProfileModal = closeProfileModal;
+
     // ── Carregar perfil salvo ────────────────────────────────────────────────
     try {
         const stored = await profileDB.get('profilePicture');
@@ -13854,36 +13886,5 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     } catch (e) {
         console.log('[Profile] Sem foto salva ou DB indisponível.');
-    }
-
-    // --- SUPPORT PARA NAVEGAÇÃO DE GESTOS (SWIPE BACK) VIA HASH ROUTING ---
-    // Usar location.hash previne bugs em ambientes file:// locais e integra 100% com mobile back
-    window.addEventListener('hashchange', () => {
-        // Se a hash sumiu (o usuário apertou voltar), verificamos quem estava aberto e mandamos fechar.
-        if (!window.location.hash || window.location.hash === '' || window.location.hash === '#') {
-            const possibleModals = [
-                { id: 'patrimonio-page-modal', cls: closePatrimonioModal },
-                { id: 'proventos-page-modal', cls: closeProventosModal },
-                { id: 'alocacao-page-modal', cls: closeAlocacaoModal },
-                { id: 'detalhes-page-modal', cls: hideDetalhesModal },
-                { id: 'comparador-page-modal', cls: closeRaioxModal },
-                { id: 'ipca-page-modal', cls: closeIpcaModal },
-                { id: 'pagamentos-page-modal', cls: window.closePagamentosModal },
-                { id: 'objetivos-page-modal', cls: closeObjetivosModal },
-                { id: 'profile-page-modal', cls: window.closeProfileModal }
-            ];
-
-            for (const mod of possibleModals) {
-                const el = document.getElementById(mod.id);
-                if (el && el.classList.contains('visible') && typeof mod.cls === 'function') {
-                    mod.cls();
-                }
-            }
-        }
-    });
-
-    // Se o usuário carregar ou recarregar a página com Hash ligada, nós a limpamos pro app iniciar do zero
-    if (window.location.hash) {
-        history.replaceState(null, null, window.location.pathname);
     }
 });

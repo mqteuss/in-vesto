@@ -2677,14 +2677,13 @@ document.addEventListener('DOMContentLoaded', async () => {
                         <span class="text-[11px] font-bold text-gray-400">${sourceName}</span>
                     </div>
 
-                    <!-- Linha 2: Título + Imagem de Capa -->
+                    <!-- Linha 2: Título da Matéria -->
                     <div class="flex items-start gap-3">
                         <div class="flex-1 min-w-0">
                             <h4 class="${titleClass} pointer-events-auto">
                                 ${displayTitle}
                             </h4>
                         </div>
-                        ${hasImage ? `<div class="w-[72px] h-[72px] rounded-xl overflow-hidden flex-shrink-0 bg-[#1a1a1a]">${coverHtml}</div>` : ''}
                     </div>
 
                     <!-- Linha 3: Tempo + Botão Compartilhar -->

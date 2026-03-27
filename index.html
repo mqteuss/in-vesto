@@ -398,13 +398,13 @@
                         </div>
                     </div> <!-- FECHA O HERÓI NATIVO -->
 
-                    <!-- CONTEÚDO RESTANTE (COM PADDING PADRÃO) -->
-                    <div class="px-4">
+                    <!-- CONTEÚDO RESTANTE (EDGE-TO-EDGE FLUIDO) -->
+                    <div class="">
                         <div class="relative w-full mt-6">
                             <div id="dashboard-carousel"
-                                class="flex overflow-x-auto snap-x snap-mandatory hide-scrollbar gap-0 w-full pb-0">
+                                class="flex overflow-x-auto snap-x snap-mandatory hide-scrollbar gap-3 w-full pb-0 pl-4 pr-1">
 
-                                <div class="snap-center snap-always shrink-0 w-full px-1">
+                                <div class="snap-start snap-always shrink-0 w-[90vw]">
                                     <div id="btn-open-proventos"
                                         class="bg-[#151515] rounded-2xl p-4 pb-6 h-full cursor-pointer active:scale-[0.98] transition-all flex flex-col justify-center shadow-sm relative">
                                         <div class="flex items-center justify-between w-full">
@@ -427,7 +427,7 @@
                                     </div>
                                 </div>
 
-                                <div class="snap-center snap-always shrink-0 w-full px-1">
+                                <div class="snap-start snap-always shrink-0 w-[90vw]">
                                     <div id="btn-open-alocacao"
                                         class="bg-[#151515] rounded-2xl p-4 pb-6 h-full cursor-pointer active:scale-[0.98] transition-all flex flex-col justify-center shadow-sm relative">
                                         <div class="flex items-center justify-between w-full">
@@ -453,7 +453,7 @@
                                     </div>
                                 </div>
 
-                                <div class="snap-center snap-always shrink-0 w-full px-1">
+                                <div class="snap-start snap-always shrink-0 w-[90vw]">
                                     <div id="btn-open-ipca"
                                         class="bg-[#151515] rounded-2xl p-4 pb-6 h-full cursor-pointer active:scale-[0.98] transition-all flex flex-col justify-center shadow-sm relative">
                                         <div class="flex items-center justify-between w-full">
@@ -476,7 +476,7 @@
                                     </div>
                                 </div>
 
-                                <div class="snap-center snap-always shrink-0 w-full px-1">
+                                <div class="snap-start snap-always shrink-0 w-[90vw]">
                                     <div id="btn-open-objetivos" onclick="openObjetivosModal()"
                                         class="bg-[#151515] rounded-2xl p-4 pb-6 h-full cursor-pointer active:scale-[0.98] transition-all flex flex-col justify-center shadow-sm relative">
                                         <div class="flex items-center justify-between w-full">
@@ -497,6 +497,9 @@
                                         </div>
                                     </div>
                                 </div>
+
+                                <!-- Spacer end -->
+                                <div class="w-1 shrink-0"></div>
                             </div>
                             <!-- Bolinhas de Navegação Flutuantes -->
                             <div
@@ -507,7 +510,7 @@
                                 <div class="carousel-dot" data-index="3"></div>
                             </div>
                         </div>
-                        <div id="timeline-pagamentos-container" class="hidden">
+                        <div id="timeline-pagamentos-container" class="hidden px-4">
                             <div class="h-px bg-[#1F1F1F] mt-2 mb-6 -mx-4"></div>
                             <div id="timeline-skeleton" class="flex gap-3 px-1 mt-4">
                                 <div class="w-28 h-28 flex-shrink-0 bg-[#151515] rounded-3xl p-3.5 flex flex-col justify-between">
@@ -537,10 +540,10 @@
                         </div>
 
                         <div>
-                            <div class="h-px bg-[#1F1F1F] my-6 -mx-4"></div>
-                            <div id="carousel-wrapper" class="w-full overflow-x-auto pb-2 hide-scrollbar"
+                            <div class="h-px bg-[#1F1F1F] my-6"></div>
+                            <div id="carousel-wrapper" class="w-full overflow-x-auto pb-2 pl-4 pr-1 hide-scrollbar"
                                 style="-webkit-overflow-scrolling: touch;">
-                                <div id="dashboard-favorites-list" class="flex gap-4 px-1 min-w-max">
+                                <div id="dashboard-favorites-list" class="flex gap-4 min-w-max">
                                     <div class="fav-card-skeleton w-16 h-16 bg-[#151515] skeleton flex-shrink-0"
                                         style="border-radius:9999px"></div>
                                     <div class="fav-card-skeleton w-16 h-16 bg-[#151515] skeleton flex-shrink-0"
@@ -553,8 +556,8 @@
 
                         <!-- ── ÍNDICES DE MERCADO ── -->
                         <div id="market-indices-container" class="hidden mb-6">
-                            <div class="h-px bg-[#1F1F1F] my-6 -mx-4"></div>
-                            <div class="indices-marquee-wrapper overflow-hidden -mx-4">
+                            <div class="h-px bg-[#1F1F1F] my-6"></div>
+                            <div class="indices-marquee-wrapper overflow-hidden">
                                 <div class="indices-marquee-track flex gap-6" id="market-indices-list">
                                     <!-- Preenchido via JS -->
                                 </div>
@@ -564,10 +567,10 @@
                         <!-- ── RANKINGS (Variação do Dia) ── -->
                         <div id="rankings-container" class="hidden mt-2">
                             <!-- Horizontal Carousel -->
-                            <div class="flex overflow-x-auto snap-x snap-mandatory gap-0 w-full pb-4 no-scrollbar [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                            <div class="flex overflow-x-auto snap-x snap-mandatory gap-3 pl-4 pr-1 pb-4 no-scrollbar [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                                 
                                 <!-- Card: Maiores Altas -->
-                                <div class="snap-start snap-always shrink-0 w-[92%] px-1">
+                                <div class="snap-start snap-always shrink-0 w-[90vw]">
                                     <div class="rounded-2xl bg-gradient-to-br from-[#121212] hover:from-[#151515] via-[#101010] to-[rgba(16,185,129,0.12)] p-4 transition-all">
                                         <div class="flex items-center gap-2 mb-4">
                                             <svg class="w-5 h-5 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
@@ -582,7 +585,7 @@
                                 </div>
 
                                 <!-- Card: Maiores Baixas -->
-                                <div class="snap-start snap-always shrink-0 w-[92%] px-1">
+                                <div class="snap-start snap-always shrink-0 w-[90vw]">
                                     <div class="rounded-2xl bg-gradient-to-br from-[#121212] hover:from-[#151515] via-[#101010] to-[rgba(239,68,68,0.12)] p-4 transition-all">
                                         <div class="flex items-center gap-2 mb-4">
                                             <svg class="w-5 h-5 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
@@ -595,6 +598,9 @@
                                         </div>
                                     </div>
                                 </div>
+
+                                <!-- Spacer to ensure smooth scroll snapping at the end -->
+                                <div class="w-1 shrink-0"></div>
 
                             </div>
                         </div>

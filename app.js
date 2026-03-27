@@ -616,6 +616,15 @@ document.addEventListener('DOMContentLoaded', async () => {
     let currentNewsCategory = 'geral';
     let newsSearchTerm = '';
     let newsSearchDebounceTimer = null;
+    const CONFIG = {
+        allowedOrigin:  process.env.ALLOWED_ORIGIN || '*',
+        cacheTTL:       900,   // 15 min (s-maxage)
+        timeoutMs:      10000,
+        maxQueryLength: 800,
+        defaultQuery:   'FII OR "Fundos Imobiliários" OR IFIX OR "Dividendos FII"',
+        windowDays:     30,
+        newsSliceLimit: 30, // Increased slice limit
+    };
     const NEWS_CATEGORY_QUERIES = {
         geral: 'FII OR "Fundos Imobiliários" OR IFIX OR "Dividendos FII"',
         fiis: 'FII OR "Fundos Imobiliários" OR IFIX OR "fundo imobiliário"',
@@ -10659,17 +10668,17 @@ document.addEventListener('DOMContentLoaded', async () => {
         list.innerHTML = '';
         skeleton.classList.remove('hidden');
 
-        // Pega até 12 símbolos únicos ativos na carteira para não estourar o limite de caracteres da query
-        const symbols = [...new Set(carteiraCalculada.map(a => a.symbol))].slice(0, 12);
+        // Pega até 30 símbolos únicos ativos na carteira
+        const symbols = [...new Set(carteiraCalculada.map(a => a.symbol))].slice(0, 30);
         
         // Se a carteira estiver vazia, carrega notícias gerais sobre dividendos e fundos
         let queryTerm = symbols.length > 0 
             ? symbols.join(' OR ') 
             : 'FII OR "Fundos Imobiliários" OR IFIX OR "Dividendos FII"';
             
-        // Limite de segurança de 180 chars para não estourar o limite de URL no Backend
-        if (queryTerm.length > 180) {
-            queryTerm = queryTerm.substring(0, 180).replace(/ OR [A-Z0-9]+$/, '');
+        // Limite de segurança expandido (com o novo backend)
+        if (queryTerm.length > 750) {
+            queryTerm = queryTerm.substring(0, 750).replace(/ OR [A-Z0-9]+$/, '');
         }
 
         try {

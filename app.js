@@ -5942,12 +5942,18 @@ document.addEventListener('DOMContentLoaded', async () => {
 
                 const isAlta = tipo === 'altas';
 
-                el.innerHTML = items.slice(0, 6).map((item) => {
+                el.innerHTML = items.slice(0, 5).map((item) => {
                     const ticker = item.ticker || '';
                     const variacao = item.variacao || '';
                     const preco = item.preco || '';
                     const initials = ticker.substring(0, 2);
-                    const colorVar = isAlta ? 'text-emerald-400' : 'text-red-400';
+                    const colorVar = isAlta ? 'text-emerald-500' : 'text-red-500';
+                    const iconArrow = isAlta 
+                        ? `<svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 8l6 8H6z"/></svg>`
+                        : `<svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 16l-6-8h12z"/></svg>`;
+                    
+                    const varClean = variacao.replace(/[+-]/g, '').trim();
+
                     const logoUrlStr = `https://raw.githubusercontent.com/mqteuss/logos_b3/main/${ticker}.png`;
 
                     let iconeHtml = '';
@@ -5955,32 +5961,31 @@ document.addEventListener('DOMContentLoaded', async () => {
                         iconeHtml = `
                             <img src="${logoUrlStr}" alt="${ticker}" width="32" height="32" loading="lazy" decoding="async" class="w-full h-full object-contain relative z-10"
                                  onerror="this.style.display='none'; this.nextElementSibling.classList.remove('hidden')">
-                            <div class="hidden w-full h-full flex items-center justify-center bg-[#0a0a0a] rounded-xl text-[10px] font-bold text-gray-200 tracking-wider absolute inset-0 z-0">${initials}</div>
+                            <div class="hidden w-full h-full flex items-center justify-center bg-[#151515] rounded-lg text-[10px] font-bold text-gray-200 tracking-wider absolute inset-0 z-0">${initials}</div>
                         `;
                     } else {
                         iconeHtml = `
-                            <div class="w-full h-full flex items-center justify-center bg-[#0a0a0a] rounded-xl text-[10px] font-bold text-gray-200 tracking-wider absolute inset-0 z-0">${initials}</div>
+                            <div class="w-full h-full flex items-center justify-center bg-[#151515] rounded-lg text-[10px] font-bold text-gray-200 tracking-wider absolute inset-0 z-0">${initials}</div>
                         `;
                     }
 
                     return `
-                        <div class="py-2.5 px-0.5 hover:bg-white/[0.03] active:bg-white/[0.05] cursor-pointer transition-colors flex items-center justify-between group rounded-xl"
+                        <div class="py-3.5 px-1 border-b border-white/5 last:border-0 hover:bg-white/[0.02] active:bg-white/[0.04] cursor-pointer transition-colors flex items-center justify-between group"
                              onclick="window.abrirDetalhesAtivo('${ticker}')">
-                            <div class="flex items-center gap-2.5">
-                                <div class="w-7 h-7 rounded-[10px] flex items-center justify-center flex-shrink-0 relative overflow-hidden bg-[#0D0D0D] border border-white/5 shadow-inner group-hover:border-white/10 transition-colors">
+                            <div class="flex items-center gap-3">
+                                <div class="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 relative overflow-hidden bg-[#1A1A1A] border border-white/5 shadow-inner">
                                     ${iconeHtml}
-                                    </div>
-                                <span class="text-[12px] font-bold text-gray-200 tracking-tight">${ticker}</span>
+                                </div>
+                                <span class="text-[14px] font-bold text-gray-100 tracking-tight">${ticker}</span>
                             </div>
-                            <div class="flex flex-col items-end gap-0">
-                                <span class="text-[11px] font-bold ${colorVar} tabular-nums tracking-wide">${variacao}</span>
-                                <span class="text-[9px] font-medium text-gray-500 tabular-nums">${preco}</span>
+                            <div class="flex items-center gap-2.5">
+                                <span class="text-[13px] font-bold text-gray-200 tabular-nums">${preco}</span>
+                                <span class="flex items-center text-[13px] font-bold ${colorVar} tabular-nums tracking-wide">
+                                    ${iconArrow} ${varClean}
+                                </span>
                             </div>
                         </div>`;
                 }).join('');
-
-                // Apply the divide-y wrapper layout to the container dynamically
-                el.classList.add('space-y-0.5');
             };
 
             renderLista('rankings-altas', data.altas, 'altas');

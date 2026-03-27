@@ -616,15 +616,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     let currentNewsCategory = 'geral';
     let newsSearchTerm = '';
     let newsSearchDebounceTimer = null;
-    const CONFIG = {
-        allowedOrigin:  process.env.ALLOWED_ORIGIN || '*',
-        cacheTTL:       900,   // 15 min (s-maxage)
-        timeoutMs:      10000,
-        maxQueryLength: 800,
-        defaultQuery:   'FII OR "Fundos Imobiliários" OR IFIX OR "Dividendos FII"',
-        windowDays:     30,
-        newsSliceLimit: 30, // Increased slice limit
-    };
+
     const NEWS_CATEGORY_QUERIES = {
         geral: 'FII OR "Fundos Imobiliários" OR IFIX OR "Dividendos FII"',
         fiis: 'FII OR "Fundos Imobiliários" OR IFIX OR "fundo imobiliário"',

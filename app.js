@@ -4367,45 +4367,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             patrimonioChartInstance = null;
         }
 
-        // Year annotation plugin — alternating subtle background bands + year labels
+        // Year annotation plugin — year labels
         const yearAnnotationPlugin = {
             id: 'yearAnnotation',
-            beforeDatasetsDraw: (chart) => {
-                const ctx2 = chart.ctx;
-                ctx2.save();
-                const barMeta = chart.getDatasetMeta(0);
-                const topY = chart.scales.y.top;
-                const bottomY = chart.scales.x.bottom;
-
-                let yearIndex = 0;
-                let lastYear = null;
-                for (const [idxStr, year] of Object.entries(yearLabels)) {
-                    const idx = parseInt(idxStr);
-                    if (year === lastYear) continue;
-                    lastYear = year;
-
-                    let endIdx = idx;
-                    for (let j = idx + 1; j < dadosMensais.length; j++) {
-                        if (dadosMensais[j].date.substring(0, 4) === year) endIdx = j;
-                        else break;
-                    }
-
-                    const startBar = barMeta.data[idx];
-                    const endBar = barMeta.data[endIdx];
-                    if (!startBar || !endBar) continue;
-
-                    // Alternating subtle background band
-                    if (yearIndex % 2 === 1) {
-                        const halfGap = (startBar.width || 10) * 0.8;
-                        const x1 = startBar.x - halfGap;
-                        const x2 = endBar.x + halfGap;
-                        ctx2.fillStyle = 'rgba(255,255,255,0.02)';
-                        ctx2.fillRect(x1, topY, x2 - x1, bottomY - topY);
-                    }
-                    yearIndex++;
-                }
-                ctx2.restore();
-            },
             afterDraw: (chart) => {
                 const ctx2 = chart.ctx;
                 ctx2.save();

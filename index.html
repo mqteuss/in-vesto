@@ -601,6 +601,45 @@
                             </div>
                         </div>
 
+                        <!-- ── NOTÍCIAS (Radar) ── -->
+                        <div id="news-feed-container" class="mt-6 mb-4 hidden">
+                            <div class="flex items-center justify-between px-4 mb-3">
+                                <h2 class="text-[11px] font-bold text-gray-500 uppercase tracking-widest">Radar do Mercado</h2>
+                                <span class="text-[9px] text-gray-600 bg-[#1c1c1e] px-2 py-0.5 rounded-full uppercase tracking-widest font-bold">Portfólio</span>
+                            </div>
+                            
+                            <!-- Lista Vazia Que Será Preenchida Pelo JS -->
+                            <div id="news-feed-list" class="flex flex-col">
+                                <!-- JS Injeta os cartões aqui -->
+                            </div>
+
+                            <!-- Skeletons (Carregando) -->
+                            <div id="news-feed-skeleton" class="flex flex-col px-4">
+                                <div class="py-3 flex items-start gap-4">
+                                    <div class="flex-1 space-y-2">
+                                        <div class="flex items-center gap-2">
+                                            <div class="w-3 h-3 bg-white/10 rounded-sm animate-pulse"></div>
+                                            <div class="w-16 h-2.5 bg-white/10 rounded animate-pulse"></div>
+                                        </div>
+                                        <div class="w-full h-3 bg-white/10 rounded animate-pulse"></div>
+                                        <div class="w-3/4 h-3 bg-white/10 rounded animate-pulse"></div>
+                                    </div>
+                                    <div class="w-16 h-16 rounded-xl bg-white/10 animate-pulse flex-shrink-0"></div>
+                                </div>
+                                <div class="py-3 flex items-start gap-4 border-t border-white/5">
+                                    <div class="flex-1 space-y-2">
+                                        <div class="flex items-center gap-2">
+                                            <div class="w-3 h-3 bg-white/10 rounded-sm animate-pulse"></div>
+                                            <div class="w-16 h-2.5 bg-white/10 rounded animate-pulse"></div>
+                                        </div>
+                                        <div class="w-full h-3 bg-white/10 rounded animate-pulse"></div>
+                                        <div class="w-2/4 h-3 bg-white/10 rounded animate-pulse"></div>
+                                    </div>
+                                    <div class="w-16 h-16 rounded-xl bg-white/10 animate-pulse flex-shrink-0"></div>
+                                </div>
+                            </div>
+                        </div>
+
                         <div id="dashboard-status" class="text-center text-gray-500 mt-12 hidden">
                             <p id="dashboard-mensagem"> </p>
                             <div id="dashboard-loading" class="flex justify-center items-center py-4">
@@ -1764,34 +1803,34 @@
                     </div>
 
                     <!-- Stats Grid 2x3 -->
-                    <div class="grid grid-cols-2 gap-2">
+                    <div class="grid grid-cols-2 gap-4 mt-2">
 
-                        <div class="bg-[#111] p-3.5 rounded-xl">
+                        <div class="py-2 border-b border-white/5">
                             <span class="text-[10px] text-gray-500 font-medium">Patrimônio inicial</span>
                             <p id="evolucao-pat-inicial" class="text-sm font-bold text-white mt-0.5">R$ 0,00</p>
                         </div>
 
-                        <div class="bg-[#111] p-3.5 rounded-xl">
+                        <div class="py-2 border-b border-white/5">
                             <span class="text-[10px] text-gray-500 font-medium">Patrimônio final</span>
                             <p id="evolucao-pat-final" class="text-sm font-bold text-white mt-0.5">R$ 0,00</p>
                         </div>
 
-                        <div class="bg-[#111] p-3.5 rounded-xl">
+                        <div class="py-2 border-b border-white/5">
                             <span class="text-[10px] text-gray-500 font-medium">Variação em R$</span>
                             <p id="evolucao-var-reais" class="text-sm font-bold text-green-400 mt-0.5">R$ 0,00</p>
                         </div>
 
-                        <div class="bg-[#111] p-3.5 rounded-xl">
+                        <div class="py-2 border-b border-white/5">
                             <span class="text-[10px] text-gray-500 font-medium">Variação em %</span>
                             <p id="evolucao-var-pct" class="text-sm font-bold text-green-400 mt-0.5">0,00%</p>
                         </div>
 
-                        <div class="bg-[#111] p-3.5 rounded-xl">
+                        <div class="py-2">
                             <span class="text-[10px] text-gray-500 font-medium">Movimentações</span>
                             <p id="evolucao-movimentacoes" class="text-sm font-bold text-green-400 mt-0.5">R$ 0,00</p>
                         </div>
 
-                        <div class="bg-[#111] p-3.5 rounded-xl">
+                        <div class="py-2">
                             <span class="text-[10px] text-gray-500 font-medium">Proventos Recebidos</span>
                             <p id="evolucao-proventos" class="text-sm font-bold text-green-400 mt-0.5">R$ 0,00</p>
                         </div>

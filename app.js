@@ -10646,6 +10646,103 @@ document.addEventListener('DOMContentLoaded', async () => {
         signupSubmitBtn.classList.remove('hidden');
     }
 
+    // ── RADAR DE NOTÍCIAS (INÍCIO) ──
+    async function carregarRadarNoticias() {
+        const container = document.getElementById('news-feed-container');
+        const list = document.getElementById('news-feed-list');
+        const skeleton = document.getElementById('news-feed-skeleton');
+        
+        if (!container || !list || !skeleton) return;
+
+        // Revela a seção e o esqueleto
+        container.classList.remove('hidden');
+        list.innerHTML = '';
+        skeleton.classList.remove('hidden');
+
+        // Pega até 12 símbolos únicos ativos na carteira para não estourar o limite de caracteres da query
+        const symbols = [...new Set(carteiraCalculada.map(a => a.symbol))].slice(0, 12);
+        
+        // Se a carteira estiver vazia, carrega notícias gerais sobre dividendos e fundos
+        let queryTerm = symbols.length > 0 
+            ? symbols.join(' OR ') 
+            : 'FII OR "Fundos Imobiliários" OR IFIX OR "Dividendos FII"';
+            
+        // Limite de segurança de 180 chars para não estourar o limite de URL no Backend
+        if (queryTerm.length > 180) {
+            queryTerm = queryTerm.substring(0, 180).replace(/ OR [A-Z0-9]+$/, '');
+        }
+
+        try {
+            const url = `/api/news?q=${encodeURIComponent(queryTerm)}&t=${Date.now()}`;
+            const response = await fetch(url);
+            if (!response.ok) throw new Error('Falha ao buscar radar');
+            
+            const articles = await response.json();
+            
+            if (articles && articles.length > 0) {
+                // Separa entre 3 a 5 notícias baseadas na qualidade da imagem
+                const topArticles = articles.slice(0, 5);
+                
+                let html = '';
+                topArticles.forEach((article, index) => {
+                    const horaPub = article.publicationDate ? new Date(article.publicationDate) : new Date();
+                    let tempoRelativo = '';
+                    const diffMs = Date.now() - horaPub.getTime();
+                    const diffMin = Math.floor(diffMs / 60000);
+                    const diffH = Math.floor(diffMin / 60);
+                    
+                    if (diffMin < 60) {
+                        tempoRelativo = `${diffMin}m`;
+                    } else if (diffH < 24) {
+                        tempoRelativo = `${diffH}h`;
+                    } else {
+                        const diffD = Math.floor(diffH / 24);
+                        tempoRelativo = `${diffD}d`;
+                    }
+
+                    const favicon = article.favicon || `https://www.google.com/s2/favicons?domain=${article.sourceHostname}&sz=64`;
+                    const hasImage = !!article.imageUrl;
+                    const isLast = index === topArticles.length - 1;
+                    const borderClass = isLast ? '' : 'border-b border-white/5';
+                    
+                    html += `
+                    <a href="${article.link || '#'}" target="_blank" rel="noopener noreferrer" class="block py-4 px-4 ${borderClass} hover:bg-white/5 active:bg-white/10 transition-colors">
+                        <div class="flex gap-4 items-start">
+                            <div class="flex-1 min-w-0 flex flex-col justify-between">
+                                <div>
+                                    <div class="flex items-center gap-2 mb-2">
+                                        <div class="w-4 h-4 rounded-full flex-shrink-0 overflow-hidden bg-white/10">
+                                            <img src="${favicon}" loading="lazy" class="w-full h-full object-contain" onerror="this.src='/icons/icon-72x72.png';" />
+                                        </div>
+                                        <span class="text-[10px] font-bold text-gray-400 truncate uppercase tracking-widest">${article.sourceName || 'Notícia'}</span>
+                                        <div class="w-1 h-1 rounded-full bg-gray-600"></div>
+                                        <span class="text-[10px] font-bold text-gray-500">${tempoRelativo}</span>
+                                    </div>
+                                    <h3 class="text-[13px] font-bold text-gray-200 leading-snug line-clamp-3">${article.title}</h3>
+                                </div>
+                            </div>
+                            
+                            ${hasImage ? `
+                            <div class="w-20 h-20 flex-shrink-0 bg-[#1c1c1e] rounded-xl overflow-hidden border border-white/5 relative">
+                                <img src="${article.imageUrl}" loading="lazy" class="w-full h-full object-cover absolute inset-0" onerror="this.parentElement.style.display='none';"/>
+                            </div>
+                            ` : ''}
+                        </div>
+                    </a>`;
+                });
+                
+                list.innerHTML = html;
+            } else {
+                list.innerHTML = `<p class="text-xs text-gray-500 px-4 py-4">Nenhuma notícia fresca no seu horizonte agora.</p>`;
+            }
+        } catch (e) {
+            console.error('Erro ao buscar News Feed pro Radar:', e);
+            list.innerHTML = `<p class="text-xs text-gray-500 px-4 py-4">Não foi possível sintonizar o radar de mercado no momento.</p>`;
+        } finally {
+            skeleton.classList.add('hidden');
+        }
+    }
+
     async function carregarDadosIniciais() {
         try {
             // Exibe skeletons imediatamente para evitar flash de valores zerados
@@ -10685,9 +10782,13 @@ document.addEventListener('DOMContentLoaded', async () => {
             // Usa force=true no load inicial para ativar os skeletons de carregamento
             atualizarTodosDados(true);
             handleAtualizarNoticias(false);
+            carregarRadarNoticias();
 
             // Refresh periódico com force=false (sem skeletons, silencioso)
-            setInterval(() => atualizarTodosDados(false), REFRESH_INTERVAL);
+            setInterval(() => {
+                atualizarTodosDados(false);
+                carregarRadarNoticias();
+            }, REFRESH_INTERVAL);
 
         } catch (e) {
             // Garante que os skeletons sejam removidos mesmo em caso de erro,

@@ -308,7 +308,18 @@ function renderProventosHtml(proventosParaExibir, quantidade) {
 
         return `<div class="flex justify-between items-center py-2 border-b border-[#2C2C2E] last:border-0 text-xs">
             <div class="flex items-center gap-2">
-                <div class="w-1.5 h-1.5 rounded-full ${isPago ? 'bg-green-500' : 'bg-yellow-500'}"></div>
+                <div class="w-6 h-6 rounded-full bg-[#1C1C1E] flex items-center justify-center flex-shrink-0 relative" style="overflow:visible">
+                    <svg class="w-3.5 h-3.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <div class="absolute -bottom-0.5 -right-0.5 w-[12px] h-[12px] ${isPago ? 'bg-green-500' : 'bg-yellow-500'} rounded-full flex items-center justify-center border-[1.5px] border-black">
+                        <svg class="w-2 h-2 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">
+                            ${isPago
+                                ? '<path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />'
+                                : '<path stroke-linecap="round" stroke-linejoin="round" d="M19 14l-7 7m0 0l-7-7m7 7V3" />'}
+                        </svg>
+                    </div>
+                </div>
                 <span class="text-gray-400 font-medium">${dataFormatada}</span>
                 <span class="text-[10px] px-1.5 rounded bg-[#222] text-gray-500 border border-[#333] uppercase">${p.type || 'DIV'}</span>
             </div>
@@ -1679,6 +1690,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         detalhesPageContent.classList.remove('closing');
         detalhesPageModal.classList.add('visible');
         document.body.style.overflow = 'hidden';
+        history.pushState({ modal: 'detalhes' }, '');
         detalhesConteudoScroll.scrollTop = 0;
         handleMostrarDetalhes(symbol);
     }
@@ -2220,10 +2232,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             const isFundo = typeof isFII === 'function' ? isFII(t.symbol) : t.symbol.endsWith('11');
 
             const iconSvg = isFundo
-                ? `<svg class="w-[22px] h-[22px] text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+                ? `<svg class="w-[24px] h-[24px] text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
                      <path stroke-linecap="round" stroke-linejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
                    </svg>`
-                : `<svg class="w-[22px] h-[22px] text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+                : `<svg class="w-[24px] h-[24px] text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
                      <path stroke-linecap="round" stroke-linejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0h6" />
                    </svg>`;
 
@@ -2243,7 +2255,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             <div class="history-card flex items-center justify-between py-2 px-0 mb-1 rounded-xl relative group h-full w-full bg-black border border-transparent" data-action="edit-row" data-id="${t.id}">
                 <div class="flex items-center gap-3 flex-1 min-w-0">
 
-                    <div class="w-10 h-10 rounded-full bg-[#1C1C1E] flex items-center justify-center flex-shrink-0 relative" style="overflow:visible">
+                    <div class="w-11 h-11 rounded-full bg-[#1C1C1E] flex items-center justify-center flex-shrink-0 relative" style="overflow:visible">
                         ${iconSvg}
                         ${badge}
                     </div>
@@ -2359,10 +2371,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             const isFundo = typeof isFII === 'function' ? isFII(p.symbol) : p.symbol.endsWith('11');
 
             const iconSvg = isFundo
-                ? `<svg class="w-[22px] h-[22px] text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+                ? `<svg class="w-[24px] h-[24px] text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
                      <path stroke-linecap="round" stroke-linejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
                    </svg>`
-                : `<svg class="w-[22px] h-[22px] text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+                : `<svg class="w-[24px] h-[24px] text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
                      <path stroke-linecap="round" stroke-linejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0h6" />
                    </svg>`;
 
@@ -2384,7 +2396,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             <div class="history-card flex items-center justify-between py-2 px-0 mb-1 rounded-xl relative group h-full w-full bg-black border border-transparent">
                 <div class="flex items-center gap-3 flex-1 min-w-0">
 
-                    <div class="w-10 h-10 rounded-full bg-[#1C1C1E] flex items-center justify-center flex-shrink-0 shadow-sm relative" style="overflow:visible">
+                    <div class="w-11 h-11 rounded-full bg-[#1C1C1E] flex items-center justify-center flex-shrink-0 shadow-sm relative" style="overflow:visible">
                         ${iconSvg}
                         ${greenBadge}
                     </div>
@@ -3903,6 +3915,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         patrimonioPageContent.classList.remove('closing');
         document.body.style.overflow = 'hidden';
 
+        history.pushState({ modal: 'patrimonio' }, '');
+
         requestAnimationFrame(() => {
             setTimeout(() => {
                 if (patrimonioChartInstance) {
@@ -3918,16 +3932,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     function closePatrimonioModal() {
         if (!patrimonioPageContent) return;
 
-        // 1. Remove qualquer transformação manual feita pelo dedo (reset)
         patrimonioPageContent.style.transform = '';
-
-        // 2. Adiciona a classe que faz a animação de descer (definida no CSS)
         patrimonioPageContent.classList.add('closing');
-
-        // 3. Remove a visibilidade do fundo escuro
         patrimonioPageModal.classList.remove('visible');
-
-        // 4. Libera o scroll da página principal
         document.body.style.overflow = '';
     }
 
@@ -3939,6 +3946,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         proventosPageContent.style.transform = '';
         proventosPageContent.classList.remove('closing');
         document.body.style.overflow = 'hidden';
+
+        history.pushState({ modal: 'proventos' }, '');
 
         // 2. Renderiza ou atualiza o gráfico
         requestAnimationFrame(() => {
@@ -3978,6 +3987,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         alocacaoPageContent.style.transform = '';
         alocacaoPageContent.classList.remove('closing');
         document.body.style.overflow = 'hidden';
+
+        history.pushState({ modal: 'alocacao' }, '');
 
         // Redimensiona o gráfico de Rosca
         requestAnimationFrame(() => {
@@ -11910,6 +11921,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             comparadorPageContent.classList.remove('closing');
         }
         document.body.style.overflow = 'hidden';
+        history.pushState({ modal: 'raiox' }, '');
     }
 
     function closeRaioxModal() {
@@ -12120,6 +12132,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         ipcaPageContent.style.transform = '';
         ipcaPageContent.classList.remove('closing');
         document.body.style.overflow = 'hidden';
+
+        history.pushState({ modal: 'ipca' }, '');
 
         // Garante que a matriz de patrimônio foi calculada e populada
         if (!window.cachedPatrimonioHistorico) {
@@ -12547,28 +12561,22 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     if (patrimonioPageContent) {
-        const scrollContainer = patrimonioPageContent.querySelector('.overflow-y-auto');
-
         patrimonioPageContent.addEventListener('touchstart', (e) => {
-            // CORREÇÃO: Se tocar no gráfico, não inicia o arrasto do modal
             if (e.target.tagName === 'CANVAS') return;
-
-            if (scrollContainer && scrollContainer.scrollTop === 0) {
-                touchStartPatrimonioY = e.touches[0].clientY;
-                touchMovePatrimonioY = touchStartPatrimonioY;
-                isDraggingPatrimonio = true;
-                patrimonioPageContent.style.transition = 'none';
-            }
+            touchStartPatrimonioY = e.touches[0].clientX;
+            touchMovePatrimonioY = touchStartPatrimonioY;
+            isDraggingPatrimonio = true;
+            patrimonioPageContent.style.transition = 'none';
         }, { passive: true });
 
         patrimonioPageContent.addEventListener('touchmove', (e) => {
             if (!isDraggingPatrimonio) return;
-            touchMovePatrimonioY = e.touches[0].clientY;
+            touchMovePatrimonioY = e.touches[0].clientX;
             const diff = touchMovePatrimonioY - touchStartPatrimonioY;
 
             if (diff > 0) {
                 if (e.cancelable) e.preventDefault();
-                patrimonioPageContent.style.transform = `translateY(${diff}px)`;
+                patrimonioPageContent.style.transform = `translateX(${diff}px)`;
             }
         }, { passive: false });
 
@@ -12577,10 +12585,11 @@ document.addEventListener('DOMContentLoaded', async () => {
             isDraggingPatrimonio = false;
             const diff = touchMovePatrimonioY - touchStartPatrimonioY;
 
-            patrimonioPageContent.style.transition = 'transform 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94)';
+            patrimonioPageContent.style.transition = 'transform 0.3s cubic-bezier(0.32, 0.72, 0, 1)';
 
-            if (diff > 120) {
+            if (diff > 100) {
                 closePatrimonioModal();
+                if (history.state && history.state.modal === 'patrimonio') history.back();
             } else {
                 patrimonioPageContent.style.transform = '';
             }
@@ -12998,6 +13007,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         content.classList.remove('closing');
         content.style.transform = '';
         document.body.style.overflow = 'hidden';
+
+        history.pushState({ modal: 'pagamentos' }, '');
     }
 
     window.closePagamentosModal = function () {
@@ -13133,6 +13144,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         }, 50); // Pequeno delay para o navegador renderizar a animação
 
         document.body.style.overflow = 'hidden';
+
+        history.pushState({ modal: 'objetivos' }, '');
 
         renderizarObjetivos();
     }
@@ -13852,4 +13865,36 @@ document.addEventListener('DOMContentLoaded', async () => {
     } catch (e) {
         console.log('[Profile] Sem foto salva ou DB indisponível.');
     }
+
+    // --- SUPPORT PARA NAVEGAÇÃO DE GESTOS (SWIPE BACK) VIA HISTORY API ---
+    // Esta maravilha intercepta o "Gesto de voltar" nativo (Android/iOS)
+    // ao invés do usuário sair do PWA/Site, nós fechamos o modal!
+    window.addEventListener('popstate', (event) => {
+        // Checamos a assinatura de um possível modal aberto
+        // (Isso é muito útil quando há pushState vazios que apenas retiram estado)
+        const possibleModals = [
+            { id: 'patrimonio-page-modal', cls: closePatrimonioModal },
+            { id: 'proventos-page-modal', cls: closeProventosModal },
+            { id: 'alocacao-page-modal', cls: closeAlocacaoModal },
+            { id: 'detalhes-page-modal', cls: hideDetalhesModal },
+            { id: 'comparador-page-modal', cls: closeRaioxModal },
+            { id: 'ipca-page-modal', cls: closeIpcaModal },
+            { id: 'pagamentos-page-modal', cls: window.closePagamentosModal },
+            { id: 'objetivos-page-modal', cls: closeObjetivosModal },
+            { id: 'profile-page-modal', cls: closeProfileModal }
+        ];
+
+        let closedSomething = false;
+
+        // Itera para descobrir se algum modal está visível
+        for (const mod of possibleModals) {
+            const el = document.getElementById(mod.id);
+            if (el && el.classList.contains('visible') && typeof mod.cls === 'function') {
+                mod.cls();
+                closedSomething = true;
+                break;
+            }
+        }
+    });
+
 });

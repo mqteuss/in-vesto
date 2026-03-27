@@ -941,6 +941,27 @@ input:-webkit-autofill:active {
     transform: translateY(100%);
 }
 
+/* Side Panel (Evolução) — entra da direita, sai pela direita */
+.side-panel-content {
+    transition: transform 0.3s cubic-bezier(0.32, 0.72, 0, 1);
+    transform: translateX(100%);
+    background-color: #000000;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 80;
+}
+
+.page-modal.visible .side-panel-content {
+    transform: translateX(0);
+}
+
+.side-panel-content.closing {
+    transform: translateX(100%);
+}
+
 /* Drawers & Setas */
 .card-drawer {
     display: grid;

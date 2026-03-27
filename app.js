@@ -4861,7 +4861,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     function renderizarDashboardSkeletons(show) {
         const skeletons = [skeletonTotalValor, skeletonTotalCusto, skeletonTotalPL, skeletonTotalMercado, skeletonTotalCaixa, skeletonTotalDia];
-        const dataElements = [totalCarteiraValor, totalCarteiraCusto, totalCarteiraPL, totalCarteiraMercado, totalCaixaValor, totalCarteiraDia];
+        const dataElements = [totalCarteiraValor, totalCarteiraCusto, totalCarteiraPL, totalCarteiraMercado, totalCaixaValor, totalCarteiraDia, document.getElementById('btn-open-patrimonio-hero')];
 
         if (show) {
             skeletons.forEach(el => { if (el) el.classList.remove('hidden'); });

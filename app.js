@@ -5942,7 +5942,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
                 const isAlta = tipo === 'altas';
 
-                el.innerHTML = items.slice(0, 5).map((item) => {
+                el.innerHTML = items.slice(0, 6).map((item) => {
                     const ticker = item.ticker || '';
                     const variacao = item.variacao || '';
                     const preco = item.preco || '';
@@ -5970,7 +5970,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     }
 
                     return `
-                        <div class="py-3.5 px-1 border-b border-white/5 last:border-0 hover:bg-white/[0.02] active:bg-white/[0.04] cursor-pointer transition-colors flex items-center justify-between group"
+                        <div class="py-2.5 px-1 hover:bg-white/[0.02] active:bg-white/[0.04] cursor-pointer transition-colors flex items-center justify-between group"
                              onclick="window.abrirDetalhesAtivo('${ticker}')">
                             <div class="flex items-center gap-3">
                                 <div class="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 relative overflow-hidden bg-[#1A1A1A] border border-white/5 shadow-inner">

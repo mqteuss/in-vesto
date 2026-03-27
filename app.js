@@ -611,7 +611,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         acoes: 'Ações OR Ibovespa OR "Bolsa de Valores" OR B3 OR "mercado de ações"',
         economia: 'Economia OR Selic OR IPCA OR "Taxa de juros" OR Inflação OR PIB'
     };
-    const btnOpenPatrimonio = document.getElementById('btn-open-patrimonio');
     const patrimonioPageModal = document.getElementById('patrimonio-page-modal');
     const patrimonioPageContent = document.getElementById('tab-patrimonio-content');
     const patrimonioVoltarBtn = document.getElementById('patrimonio-voltar-btn');
@@ -12559,8 +12558,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
 
-    if (btnOpenPatrimonio) {
-        btnOpenPatrimonio.addEventListener('click', openPatrimonioModal);
+    const btnOpenPatrimonioHero = document.getElementById('btn-open-patrimonio-hero');
+    if (btnOpenPatrimonioHero) {
+        btnOpenPatrimonioHero.addEventListener('click', openPatrimonioModal);
     }
 
     if (patrimonioVoltarBtn) {

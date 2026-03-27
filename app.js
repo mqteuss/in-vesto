@@ -1690,7 +1690,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         detalhesPageContent.classList.remove('closing');
         detalhesPageModal.classList.add('visible');
         document.body.style.overflow = 'hidden';
-        history.pushState({ modal: 'detalhes' }, '');
+        window.location.hash = 'modal-detalhes';
         detalhesConteudoScroll.scrollTop = 0;
         handleMostrarDetalhes(symbol);
     }
@@ -3863,9 +3863,28 @@ document.addEventListener('DOMContentLoaded', async () => {
             const foiRecebido = dataPagamentoObj <= hoje;
             const valorUnitario = item.valorTotal / (item.qtd || 1);
 
-            const colorIcon = foiRecebido ? 'text-green-500' : 'text-yellow-500';
-            const iconGraph = `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 ${colorIcon}" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" /></svg>`;
+            const isFundo = typeof isFII === 'function' ? isFII(item.symbol) : item.symbol.endsWith('11');
+
+            const iconGraph = isFundo
+                ? `<svg class="w-[24px] h-[24px] text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+                     <path stroke-linecap="round" stroke-linejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                   </svg>`
+                : `<svg class="w-[24px] h-[24px] text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+                     <path stroke-linecap="round" stroke-linejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0h6" />
+                   </svg>`;
+
             const bgIcone = 'bg-[#1C1C1E]';
+            
+            const badgeColor = foiRecebido ? 'bg-green-500' : 'bg-yellow-500';
+            const badgeArrow = foiRecebido
+                ? `<path stroke-linecap="round" stroke-linejoin="round" d="M19 14l-7 7m0 0l-7-7m7 7V3" />` // Recebido (entrou)
+                : `<path stroke-linecap="round" stroke-linejoin="round" d="M5 10l7-7m0 0l7 7m-7-7v18" />`; // A receber (programado)
+
+            const badgeElement = `<div class="absolute -bottom-0.5 -right-0.5 w-[18px] h-[18px] ${badgeColor} rounded-full flex items-center justify-center border-2 border-black">
+                <svg class="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">
+                    ${badgeArrow}
+                </svg>
+            </div>`;
 
             const badgeHtml = `<span class="text-[9px] font-extrabold text-gray-300 bg-gray-700/40 border border-gray-600/50 px-1.5 py-[1px] rounded-[4px] uppercase tracking-wider leading-none">${foiRecebido ? 'RECEBIDO' : 'A RECEBER'}</span>`;
 
@@ -3873,8 +3892,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             <div class="flex items-center justify-between py-3 px-2 relative group w-full bg-transparent">
                 <div class="flex items-center gap-3 flex-1 min-w-0">
 
-                    <div class="w-10 h-10 rounded-full ${bgIcone} flex items-center justify-center flex-shrink-0 shadow-sm relative overflow-hidden">
+                    <div class="w-11 h-11 rounded-full ${bgIcone} flex items-center justify-center flex-shrink-0 shadow-sm relative" style="overflow:visible">
                         ${iconGraph}
+                        ${badgeElement}
                     </div>
 
                     <div class="flex-1 min-w-0">
@@ -3915,7 +3935,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         patrimonioPageContent.classList.remove('closing');
         document.body.style.overflow = 'hidden';
 
-        history.pushState({ modal: 'patrimonio' }, '');
+        window.location.hash = 'modal-patrimonio';
 
         requestAnimationFrame(() => {
             setTimeout(() => {
@@ -3947,7 +3967,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         proventosPageContent.classList.remove('closing');
         document.body.style.overflow = 'hidden';
 
-        history.pushState({ modal: 'proventos' }, '');
+        window.location.hash = 'modal-proventos';
 
         // 2. Renderiza ou atualiza o gráfico
         requestAnimationFrame(() => {
@@ -3988,7 +4008,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         alocacaoPageContent.classList.remove('closing');
         document.body.style.overflow = 'hidden';
 
-        history.pushState({ modal: 'alocacao' }, '');
+        window.location.hash = 'modal-alocacao';
 
         // Redimensiona o gráfico de Rosca
         requestAnimationFrame(() => {
@@ -11921,7 +11941,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             comparadorPageContent.classList.remove('closing');
         }
         document.body.style.overflow = 'hidden';
-        history.pushState({ modal: 'raiox' }, '');
+        window.location.hash = 'modal-raiox';
     }
 
     function closeRaioxModal() {
@@ -12133,7 +12153,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         ipcaPageContent.classList.remove('closing');
         document.body.style.overflow = 'hidden';
 
-        history.pushState({ modal: 'ipca' }, '');
+        window.location.hash = 'modal-ipca';
 
         // Garante que a matriz de patrimônio foi calculada e populada
         if (!window.cachedPatrimonioHistorico) {
@@ -12561,41 +12581,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     if (patrimonioPageContent) {
-        patrimonioPageContent.addEventListener('touchstart', (e) => {
-            if (e.target.tagName === 'CANVAS') return;
-            touchStartPatrimonioY = e.touches[0].clientX;
-            touchMovePatrimonioY = touchStartPatrimonioY;
-            isDraggingPatrimonio = true;
-            patrimonioPageContent.style.transition = 'none';
-        }, { passive: true });
+        // Removido Swipe customizado a pedido do usuário (estava ativando no scroll).
 
-        patrimonioPageContent.addEventListener('touchmove', (e) => {
-            if (!isDraggingPatrimonio) return;
-            touchMovePatrimonioY = e.touches[0].clientX;
-            const diff = touchMovePatrimonioY - touchStartPatrimonioY;
 
-            if (diff > 0) {
-                if (e.cancelable) e.preventDefault();
-                patrimonioPageContent.style.transform = `translateX(${diff}px)`;
-            }
-        }, { passive: false });
 
-        patrimonioPageContent.addEventListener('touchend', (e) => {
-            if (!isDraggingPatrimonio) return;
-            isDraggingPatrimonio = false;
-            const diff = touchMovePatrimonioY - touchStartPatrimonioY;
 
-            patrimonioPageContent.style.transition = 'transform 0.3s cubic-bezier(0.32, 0.72, 0, 1)';
-
-            if (diff > 100) {
-                closePatrimonioModal();
-                if (history.state && history.state.modal === 'patrimonio') history.back();
-            } else {
-                patrimonioPageContent.style.transform = '';
-            }
-            touchStartPatrimonioY = 0;
-            touchMovePatrimonioY = 0;
-        });
     }
 
 
@@ -13008,7 +12998,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         content.style.transform = '';
         document.body.style.overflow = 'hidden';
 
-        history.pushState({ modal: 'pagamentos' }, '');
+        window.location.hash = 'modal-pagamentos';
     }
 
     window.closePagamentosModal = function () {
@@ -13145,7 +13135,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         document.body.style.overflow = 'hidden';
 
-        history.pushState({ modal: 'objetivos' }, '');
+        window.location.hash = 'modal-objetivos';
 
         renderizarObjetivos();
     }
@@ -13866,35 +13856,34 @@ document.addEventListener('DOMContentLoaded', async () => {
         console.log('[Profile] Sem foto salva ou DB indisponível.');
     }
 
-    // --- SUPPORT PARA NAVEGAÇÃO DE GESTOS (SWIPE BACK) VIA HISTORY API ---
-    // Esta maravilha intercepta o "Gesto de voltar" nativo (Android/iOS)
-    // ao invés do usuário sair do PWA/Site, nós fechamos o modal!
-    window.addEventListener('popstate', (event) => {
-        // Checamos a assinatura de um possível modal aberto
-        // (Isso é muito útil quando há pushState vazios que apenas retiram estado)
-        const possibleModals = [
-            { id: 'patrimonio-page-modal', cls: closePatrimonioModal },
-            { id: 'proventos-page-modal', cls: closeProventosModal },
-            { id: 'alocacao-page-modal', cls: closeAlocacaoModal },
-            { id: 'detalhes-page-modal', cls: hideDetalhesModal },
-            { id: 'comparador-page-modal', cls: closeRaioxModal },
-            { id: 'ipca-page-modal', cls: closeIpcaModal },
-            { id: 'pagamentos-page-modal', cls: window.closePagamentosModal },
-            { id: 'objetivos-page-modal', cls: closeObjetivosModal },
-            { id: 'profile-page-modal', cls: closeProfileModal }
-        ];
+    // --- SUPPORT PARA NAVEGAÇÃO DE GESTOS (SWIPE BACK) VIA HASH ROUTING ---
+    // Usar location.hash previne bugs em ambientes file:// locais e integra 100% com mobile back
+    window.addEventListener('hashchange', () => {
+        // Se a hash sumiu (o usuário apertou voltar), verificamos quem estava aberto e mandamos fechar.
+        if (!window.location.hash || window.location.hash === '' || window.location.hash === '#') {
+            const possibleModals = [
+                { id: 'patrimonio-page-modal', cls: closePatrimonioModal },
+                { id: 'proventos-page-modal', cls: closeProventosModal },
+                { id: 'alocacao-page-modal', cls: closeAlocacaoModal },
+                { id: 'detalhes-page-modal', cls: hideDetalhesModal },
+                { id: 'comparador-page-modal', cls: closeRaioxModal },
+                { id: 'ipca-page-modal', cls: closeIpcaModal },
+                { id: 'pagamentos-page-modal', cls: window.closePagamentosModal },
+                { id: 'objetivos-page-modal', cls: closeObjetivosModal },
+                { id: 'profile-page-modal', cls: window.closeProfileModal }
+            ];
 
-        let closedSomething = false;
-
-        // Itera para descobrir se algum modal está visível
-        for (const mod of possibleModals) {
-            const el = document.getElementById(mod.id);
-            if (el && el.classList.contains('visible') && typeof mod.cls === 'function') {
-                mod.cls();
-                closedSomething = true;
-                break;
+            for (const mod of possibleModals) {
+                const el = document.getElementById(mod.id);
+                if (el && el.classList.contains('visible') && typeof mod.cls === 'function') {
+                    mod.cls();
+                }
             }
         }
     });
 
+    // Se o usuário carregar ou recarregar a página com Hash ligada, nós a limpamos pro app iniciar do zero
+    if (window.location.hash) {
+        history.replaceState(null, null, window.location.pathname);
+    }
 });

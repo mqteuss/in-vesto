@@ -1202,7 +1202,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     function _getDefaultThemeColor() {
-        return localStorage.getItem('vesto_theme') === 'light' ? '#f2f2f7' : '#000000';
+        return localStorage.getItem('vesto_theme') === 'light' ? '#f2f2f7' : '#010101';
     }
 
     function _getHeroThemeColor() {

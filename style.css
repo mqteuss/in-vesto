@@ -943,8 +943,8 @@ input:-webkit-autofill:active {
 
 /* Side Panel (Evolução) — entra da direita, sai pela direita */
 .side-panel-content {
-    transition: transform 0.3s cubic-bezier(0.32, 0.72, 0, 1);
-    transform: translateX(100%);
+    transition: transform 0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    transform: translateX(-100%);
     background-color: #000000;
     position: fixed;
     top: 0;
@@ -959,7 +959,7 @@ input:-webkit-autofill:active {
 }
 
 .side-panel-content.closing {
-    transform: translateX(100%);
+    transform: translateX(-100%);
 }
 
 /* Drawers & Setas */

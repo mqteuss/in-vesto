@@ -7,7 +7,7 @@ const CONFIG = {
     allowedOrigin:  process.env.ALLOWED_ORIGIN || '*',
     cacheTTL:       900,   // 15 min (s-maxage)
     timeoutMs:      10000,
-    maxQueryLength: 200,
+    maxQueryLength: 800,
     defaultQuery:   'FII OR "Fundos Imobiliários" OR IFIX OR "Dividendos FII"',
     windowDays:     30,
     RSS_URLS: [

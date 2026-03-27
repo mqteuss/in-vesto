@@ -258,17 +258,30 @@ export default async function handler(request, response) {
             }
         }
 
-        // Se o usuário mandou um filtro (q), nós filtramos os itens (PETR4 OR BTLG11...)
-        let targetItems = allItems;
+        // Filtra os itens com sistema de fallback híbrido garantido ("Radar Híbrido")
+        let specificItems = [];
+        
         if (rawQ) {
             const allowedTickers = sanitizeQuery(rawQ).split(' OR ').map(t => t.trim().toUpperCase()).filter(Boolean);
             if (allowedTickers.length > 0) {
-                targetItems = allItems.filter(item => {
+                specificItems = allItems.filter(item => {
                     const textContent = `${item.title || ''} ${item.contentSnippet || item.content || ''}`.toUpperCase();
-                    // Checa se pelo menos 1 ticker aparece livremente no texto (com regex de borda de palavra)
                     return allowedTickers.some(ticker => new RegExp(`\\b${ticker}\\b`).test(textContent));
                 });
             }
+        }
+
+        let targetItems = specificItems;
+
+        // Se a busca cirúrgica da carteira rendeu poucas matérias na semana (ex: < 4),
+        // preenchemos o resto do feed com matérias importantes do mercado financeiro que citam "FII, Dividendos, etc"
+        if (specificItems.length < 5) {
+            const genericRegex = /\b(FII|FIIS|FUNDO|IMOBILIÁRIO|DIVIDENDO|DIVIDENDOS|AÇÕES|IBOVESPA|SELIC|RENDIMENTO)\b/i;
+            const genericItems = allItems.filter(item => {
+                const textContent = `${item.title || ''} ${item.contentSnippet || item.content || ''}`;
+                return genericRegex.test(textContent) && !specificItems.includes(item);
+            });
+            targetItems = [...specificItems, ...genericItems];
         }
 
         const articles = extractArticles(targetItems);

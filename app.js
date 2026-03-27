@@ -1218,6 +1218,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             const defColor = _getDefaultThemeColor();
             _metaThemeColor.setAttribute('content', defColor);
             document.body.style.backgroundColor = defColor;
+            document.documentElement.style.backgroundColor = defColor;
             return;
         }
 
@@ -1226,6 +1227,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             const heroColor = _getHeroThemeColor();
             _metaThemeColor.setAttribute('content', heroColor);
             document.body.style.backgroundColor = heroColor;
+            document.documentElement.style.backgroundColor = heroColor;
             return;
         }
 
@@ -1247,6 +1249,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const color = _lerpColor(_getHeroThemeColor(), _getDefaultThemeColor(), t);
         _metaThemeColor.setAttribute('content', color);
         document.body.style.backgroundColor = color;
+        document.documentElement.style.backgroundColor = color;
     }
 
     if (_dashboardTab) {

@@ -4431,7 +4431,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 
                     const centerX = (startBar.x + endBar.x) / 2;
                     ctx2.font = 'bold 10px Inter, sans-serif';
-                    ctx2.fillStyle = '#9ca3af';
+                    // Destaca o ano da barra selecionada
+                    const selectedYear = _evolSelectedBarIdx >= 0 ? dadosMensais[_evolSelectedBarIdx]?.date.substring(0, 4) : null;
+                    ctx2.fillStyle = (selectedYear && selectedYear === year) ? '#ffffff' : '#9ca3af';
                     ctx2.textAlign = 'center';
                     ctx2.fillText(year, centerX, bottomY + 14);
                 }

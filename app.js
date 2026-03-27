@@ -4346,7 +4346,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (elPeriodoTexto) elPeriodoTexto.textContent = formatarPeriodoTexto(primeiraCompra, hojeStr);
             // Reset bar colors
             if (patrimonioChartInstance) {
-                const defaultColors = dataValues.map((_, i) => i === dataValues.length - 1 ? '#3b82f6' : '#1e3a5f');
+                const defaultColors = dataValues.map((_, i) => i === dataValues.length - 1 ? '#8b5cf6' : '#2e1065');
                 patrimonioChartInstance.data.datasets[0].backgroundColor = defaultColors;
                 patrimonioChartInstance.update();
             }
@@ -4359,8 +4359,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         const ctx = canvas.getContext('2d');
 
         const barColors = dataValues.map((_, idx) => {
-            if (idx === dataValues.length - 1) return '#3b82f6';
-            return '#1e3a5f';
+            if (idx === dataValues.length - 1) return '#8b5cf6';
+            return '#2e1065';
         });
 
         if (patrimonioChartInstance) {
@@ -4499,7 +4499,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                         const patIni = mesAnterior ? mesAnterior.value : 0;
 
                         // Highlight only selected bar
-                        const newColors = dataValues.map((_, i) => i === idx ? '#3b82f6' : '#1e3a5f');
+                        const newColors = dataValues.map((_, i) => i === idx ? '#8b5cf6' : '#2e1065');
                         patrimonioChartInstance.data.datasets[0].backgroundColor = newColors;
                         patrimonioChartInstance.update('none');
 
@@ -4563,11 +4563,11 @@ document.addEventListener('DOMContentLoaded', async () => {
 
                 // Atualiza visual dos botões
                 document.querySelectorAll('.evol-period-opt').forEach(b => {
-                    b.classList.remove('bg-[#1d4ed8]', 'border-[#1d4ed8]', 'text-white');
-                    b.classList.add('border-[#3a3a3c]', 'text-gray-400');
+                    b.classList.remove('bg-[#3a3a3c]', 'text-white');
+                    b.classList.add('text-gray-400');
                 });
-                btn.classList.add('bg-[#1d4ed8]', 'border-[#1d4ed8]', 'text-white');
-                btn.classList.remove('border-[#3a3a3c]', 'text-gray-400');
+                btn.classList.add('bg-[#3a3a3c]', 'text-white');
+                btn.classList.remove('text-gray-400');
 
                 closePeriodoSheet();
                 renderizarGraficoPatrimonio();

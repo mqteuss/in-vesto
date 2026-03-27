@@ -5160,10 +5160,11 @@ document.addEventListener('DOMContentLoaded', async () => {
             // FINTECH MODE: Patrimônio Total = Ativos + Caixa
             const patrimonioTotalGeral = patrimonioTotalAtivos + saldoCaixa;
             
-            // Rentabilidade agora sobre o Total Geral
-            // Lucro Real = (Ativos + Caixa) - Custo
-            const totalLucroPrejuizo = patrimonioTotalGeral - totalCustoCarteira;
-            const totalLucroPrejuizoPercent = (totalCustoCarteira === 0) ? 0 : (totalLucroPrejuizo / totalCustoCarteira) * 100;
+            // O "Custo" do caixa é o próprio valor histórico dele (ele não gera lucro inerente sem juros)
+            // Lucro Real = Valorização Exclusiva dos Ativos!
+            const custoTotalGeral = totalCustoCarteira + saldoCaixa;
+            const totalLucroPrejuizo = patrimonioTotalAtivos - totalCustoCarteira; // Matemáticamente equivalente a: patrimonioTotalGeral - custoTotalGeral
+            const totalLucroPrejuizoPercent = (custoTotalGeral === 0) ? 0 : (totalLucroPrejuizo / custoTotalGeral) * 100;
 
             let corPLTotal = 'text-gray-500';
             if (totalLucroPrejuizo > 0.01) corPLTotal = 'text-green-500';
@@ -5183,8 +5184,11 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             // Variação do dia
             if (totalCarteiraDia) {
-                const prevTotal = totalValorCarteira - totalVariacaoDia;
-                const varDiaPercent = prevTotal > 0 ? (totalVariacaoDia / prevTotal) * 100 : 0;
+                // A variação monetária vem inteiramente dos ativos. Mas a porcentagem afeta o bolo todo (Ativos + Caixa).
+                const prevTotalAtivos = totalValorCarteira - totalVariacaoDia;
+                const prevTotalGeral = prevTotalAtivos + saldoCaixa;
+                
+                const varDiaPercent = prevTotalGeral > 0 ? (totalVariacaoDia / prevTotalGeral) * 100 : 0;
                 const sinal = totalVariacaoDia >= 0 ? '+' : '';
                 const cor = totalVariacaoDia > 0.01 ? 'text-green-400' : (totalVariacaoDia < -0.01 ? 'text-red-400' : 'text-gray-500');
                 totalCarteiraDia.innerHTML = `Hoje: <span class="${cor}">${sinal}${formatBRL(totalVariacaoDia)} (${sinal}${varDiaPercent.toFixed(2)}%)</span>`;

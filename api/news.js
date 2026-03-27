@@ -9,7 +9,14 @@ const CONFIG = {
     timeoutMs:      10000,
     maxQueryLength: 200,
     defaultQuery:   'FII OR "Fundos Imobiliários" OR IFIX OR "Dividendos FII"',
-    windowDays:     30,     // when:Nd no Google News
+    windowDays:     30,
+    RSS_URLS: [
+        'https://www.infomoney.com.br/feed/',
+        'https://suno.com.br/noticias/feed/',
+        'https://www.moneytimes.com.br/feed/',
+        'https://einvestidor.estadao.com.br/feed/',
+        'https://www.seudinheiro.com/feed/'
+    ]
 };
 
 // ---------------------------------------------------------
@@ -227,24 +234,44 @@ export default async function handler(request, response) {
     }
 
     const queryTerm  = rawQ ? sanitizeQuery(rawQ) : CONFIG.defaultQuery;
-    const fullQuery  = `${queryTerm} when:${CONFIG.windowDays}d`;
-    const feedUrl    = `https://news.google.com/rss/search?q=${encodeURIComponent(fullQuery)}&hl=pt-BR&gl=BR&ceid=BR:pt-419`;
-
-    log.info('News request', { rid, query: queryTerm });
-
     try {
-        // Timeout via Promise.race — rss-parser não expõe AbortController,
-        // então competimos com uma Promise que rejeita após o limite.
         const timeoutPromise = new Promise((_, reject) =>
             setTimeout(() => reject(new Error('TIMEOUT')), CONFIG.timeoutMs)
         );
 
-        const feed = await Promise.race([
-            rssParser.parseURL(feedUrl),
+        // Fetch all feeds in parallel with a timeout
+        const fetchFeedsPromise = Promise.allSettled(
+            CONFIG.RSS_URLS.map(url => rssParser.parseURL(url))
+        );
+
+        const results = await Promise.race([
+            fetchFeedsPromise,
             timeoutPromise,
         ]);
 
-        const articles = extractArticles(feed.items);
+        let allItems = [];
+        for (const res of results) {
+            if (res.status === 'fulfilled' && res.value?.items) {
+                allItems.push(...res.value.items);
+            } else if (res.status === 'rejected') {
+                log.warn('Falha individual no feed RSS', { rid, error: res.reason?.message });
+            }
+        }
+
+        // Se o usuário mandou um filtro (q), nós filtramos os itens (PETR4 OR BTLG11...)
+        let targetItems = allItems;
+        if (rawQ) {
+            const allowedTickers = sanitizeQuery(rawQ).split(' OR ').map(t => t.trim().toUpperCase()).filter(Boolean);
+            if (allowedTickers.length > 0) {
+                targetItems = allItems.filter(item => {
+                    const textContent = `${item.title || ''} ${item.contentSnippet || item.content || ''}`.toUpperCase();
+                    // Checa se pelo menos 1 ticker aparece livremente no texto (com regex de borda de palavra)
+                    return allowedTickers.some(ticker => new RegExp(`\\b${ticker}\\b`).test(textContent));
+                });
+            }
+        }
+
+        const articles = extractArticles(targetItems);
 
         // Cache definido aqui: nunca será enviado em resposta a OPTIONS ou erros
         response.setHeader(

@@ -7,16 +7,9 @@ const CONFIG = {
     allowedOrigin:  process.env.ALLOWED_ORIGIN || '*',
     cacheTTL:       900,   // 15 min (s-maxage)
     timeoutMs:      10000,
-    maxQueryLength: 800,
+    maxQueryLength: 200,
     defaultQuery:   'FII OR "Fundos Imobiliários" OR IFIX OR "Dividendos FII"',
-    windowDays:     30,
-    RSS_URLS: [
-        'https://www.infomoney.com.br/feed/',
-        'https://suno.com.br/noticias/feed/',
-        'https://www.moneytimes.com.br/feed/',
-        'https://einvestidor.estadao.com.br/feed/',
-        'https://www.seudinheiro.com/feed/'
-    ]
+    windowDays:     30,     // when:Nd no Google News
 };
 
 // ---------------------------------------------------------
@@ -159,33 +152,31 @@ function extractArticles(feedItems) {
     return feedItems
         .map(item => {
             // --- Extrai nome da fonte ---
-            let rawSourceName = item.__feedTitle || item.__feedLink || '';
+            let rawSourceName = '';
             let cleanTitle = (item.title || 'Sem título').trim();
 
             if (item.sourceObj) {
-                rawSourceName = item.sourceObj._ || item.sourceObj.content || rawSourceName;
+                rawSourceName = item.sourceObj._ || item.sourceObj.content || '';
             }
 
-            if (!rawSourceName || (!item.__feedTitle && !item.__feedLink)) {
+            // Se não encontrou o nome da fonte na tag, tenta extrair do final do título
+            if (!rawSourceName) {
                 const match = cleanTitle.match(SOURCE_SUFFIX);
                 if (match) rawSourceName = match[1];
             }
 
-            // --- Resolve fonte conhecida (Tenta pelo nome extraído ou pela URL do Link) ---
-            let known = resolveSource(rawSourceName);
-            if (!known && item.link) {
-                 known = resolveSource(item.link); // Mapeamento flexível por domínio nativo
-            }
-            if (!known && item.__feedLink) {
-                 known = resolveSource(item.__feedLink);
-            }
-            if (!known) return null; // Ignora se a fonte não for confiável
+            // Se ainda não encontrou (ou não conseguiu extrair), aborta
+            if (!rawSourceName) return null;
 
-            // Remove o sufixo da fonte do título caso exista acoplado
-            if (rawSourceName) {
-                const suffixRegex = new RegExp(`(?: - | \\| )\\s*${escapeRegExp(rawSourceName.trim())}$`, 'i');
-                cleanTitle = cleanTitle.replace(suffixRegex, '').trim();
-            }
+            // Remove o sufixo da fonte do título — RegExp criada uma vez por item
+            const suffixRegex = new RegExp(
+                `(?: - | \\| )\\s*${escapeRegExp(rawSourceName.trim())}$`
+            );
+            cleanTitle = cleanTitle.replace(suffixRegex, '').trim();
+
+            // --- Resolve fonte conhecida ---
+            const known = resolveSource(rawSourceName);
+            if (!known) return null; // Ignora se a fonte não for confiável
 
             // --- Deduplica por título limpo ---
             if (seenTitles.has(cleanTitle)) return null;
@@ -238,65 +229,24 @@ export default async function handler(request, response) {
     }
 
     const queryTerm  = rawQ ? sanitizeQuery(rawQ) : CONFIG.defaultQuery;
+    const fullQuery  = `${queryTerm} when:${CONFIG.windowDays}d`;
+    const feedUrl    = `https://news.google.com/rss/search?q=${encodeURIComponent(fullQuery)}&hl=pt-BR&gl=BR&ceid=BR:pt-419`;
+
+    log.info('News request', { rid, query: queryTerm });
+
     try {
+        // Timeout via Promise.race — rss-parser não expõe AbortController,
+        // então competimos com uma Promise que rejeita após o limite.
         const timeoutPromise = new Promise((_, reject) =>
             setTimeout(() => reject(new Error('TIMEOUT')), CONFIG.timeoutMs)
         );
 
-        // Fetch all feeds in parallel with a timeout
-        const fetchFeedsPromise = Promise.allSettled(
-            CONFIG.RSS_URLS.map(url => rssParser.parseURL(url))
-        );
-
-        const results = await Promise.race([
-            fetchFeedsPromise,
+        const feed = await Promise.race([
+            rssParser.parseURL(feedUrl),
             timeoutPromise,
         ]);
 
-        let allItems = [];
-        for (const res of results) {
-            if (res.status === 'fulfilled' && res.value?.items) {
-                // Injeta a URL do feed/canal e título mestre dentro de cada item
-                const sourceFeedLink = res.value.link || '';
-                const sourceFeedTitle = res.value.title || '';
-                const itemsWithSource = res.value.items.map(i => ({ 
-                    ...i, 
-                    __feedLink: sourceFeedLink,
-                    __feedTitle: sourceFeedTitle
-                }));
-                allItems.push(...itemsWithSource);
-            } else if (res.status === 'rejected') {
-                log.warn('Falha individual no feed RSS', { rid, error: res.reason?.message });
-            }
-        }
-
-        // Filtra os itens com sistema de fallback híbrido garantido ("Radar Híbrido")
-        let specificItems = [];
-        
-        if (rawQ) {
-            const allowedTickers = sanitizeQuery(rawQ).split(' OR ').map(t => t.trim().toUpperCase()).filter(Boolean);
-            if (allowedTickers.length > 0) {
-                specificItems = allItems.filter(item => {
-                    const textContent = `${item.title || ''} ${item.contentSnippet || item.content || ''}`.toUpperCase();
-                    return allowedTickers.some(ticker => new RegExp(`\\b${ticker}\\b`).test(textContent));
-                });
-            }
-        }
-
-        let targetItems = specificItems;
-
-        // Se a busca cirúrgica da carteira rendeu poucas matérias na semana (ex: < 4),
-        // preenchemos o resto do feed com matérias importantes do mercado financeiro que citam "FII, Dividendos, etc"
-        if (specificItems.length < 5) {
-            const genericRegex = /\b(FII|FIIS|FUNDO|IMOBILIÁRIO|DIVIDENDO|DIVIDENDOS|AÇÕES|IBOVESPA|SELIC|RENDIMENTO)\b/i;
-            const genericItems = allItems.filter(item => {
-                const textContent = `${item.title || ''} ${item.contentSnippet || item.content || ''}`;
-                return genericRegex.test(textContent) && !specificItems.includes(item);
-            });
-            targetItems = [...specificItems, ...genericItems];
-        }
-
-        const articles = extractArticles(targetItems);
+        const articles = extractArticles(feed.items);
 
         // Cache definido aqui: nunca será enviado em resposta a OPTIONS ou erros
         response.setHeader(

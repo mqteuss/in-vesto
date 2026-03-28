@@ -5992,13 +5992,13 @@ document.addEventListener('DOMContentLoaded', async () => {
                     let iconeHtml = '';
                     if (logoUrlStr && isAcao(ticker)) {
                         iconeHtml = `
-                            <img src="${logoUrlStr}" alt="${ticker}" width="20" height="20" loading="lazy" decoding="async" class="w-[85%] h-[85%] object-contain relative z-10"
+                            <img src="${logoUrlStr}" alt="${ticker}" width="24" height="24" loading="lazy" decoding="async" class="w-full h-full object-contain relative z-10 drop-shadow-sm"
                                  onerror="this.style.display='none'; this.nextElementSibling.classList.remove('hidden')">
-                            <div class="hidden w-full h-full flex items-center justify-center bg-[#151515] text-[8px] font-bold text-white tracking-wider absolute inset-0 z-0">${initials}</div>
+                            <div class="hidden w-full h-full flex items-center justify-center bg-[#1a1a1e] rounded-[4px] text-[10px] font-bold text-white tracking-wider absolute inset-0 z-0">${initials}</div>
                         `;
                     } else {
                         iconeHtml = `
-                            <div class="w-full h-full flex items-center justify-center bg-[#151515] text-[8px] font-bold text-white tracking-wider absolute inset-0 z-0">${initials}</div>
+                            <div class="w-full h-full flex items-center justify-center bg-[#1a1a1e] rounded-[4px] text-[10px] font-bold text-white tracking-wider absolute inset-0 z-0">${initials}</div>
                         `;
                     }
 
@@ -6008,7 +6008,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                         <div class="py-2.5 px-1 hover:bg-white/[0.015] active:bg-white/[0.03] cursor-pointer transition-colors flex items-center justify-between group border-b border-white/[0.04] last:border-0"
                              onclick="window.abrirDetalhesAtivo('${ticker}')">
                             <div class="flex items-center gap-2.5">
-                                <div class="w-5 h-5 rounded-[4px] bg-white flex items-center justify-center flex-shrink-0 relative overflow-hidden shadow-sm">
+                                <div class="w-6 h-6 flex items-center justify-center flex-shrink-0 relative">
                                     ${iconeHtml}
                                 </div>
                                 <span class="text-[12px] font-bold text-gray-200 tracking-wide uppercase">${ticker}</span>

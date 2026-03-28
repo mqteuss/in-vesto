@@ -618,10 +618,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     let newsSearchDebounceTimer = null;
 
     const NEWS_CATEGORY_QUERIES = {
-        geral: 'FII OR "Fundos Imobiliários" OR IFIX OR "Dividendos FII"',
-        fiis: 'FII OR "Fundos Imobiliários" OR IFIX OR "fundo imobiliário"',
-        acoes: 'Ações OR Ibovespa OR "Bolsa de Valores" OR B3 OR "mercado de ações"',
-        economia: 'Economia OR Selic OR IPCA OR "Taxa de juros" OR Inflação OR PIB'
+        geral: 'intitle:("FII" OR "FIIs" OR "Dividendos" OR "Ações" OR "Ibovespa" OR "Mercado Financeiro")',
+        fiis: 'intitle:("FII" OR "FIIs" OR "Fundos Imobiliários" OR "IFIX" OR "Imobiliário")',
+        acoes: 'intitle:("Ações" OR "Ibovespa" OR "Bolsa de Valores" OR "B3" OR "Balanço")',
+        economia: 'intitle:("Economia" OR "Selic" OR "IPCA" OR "Inflação" OR "PIB" OR "Copom" OR "Juros")'
     };
     const patrimonioPageModal = document.getElementById('patrimonio-page-modal');
     const patrimonioPageContent = document.getElementById('tab-patrimonio-content');
@@ -10663,10 +10663,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         // Pega até 12 símbolos únicos ativos na carteira para não estourar o limite de URL da API do Google News
         const symbols = [...new Set(carteiraCalculada.map(a => a.symbol))].slice(0, 12);
         
-        // Se a carteira estiver vazia, carrega notícias gerais sobre dividendos e fundos
+        // Se a carteira estiver vazia, carrega notícias gerais afiadas
         let queryTerm = symbols.length > 0 
-            ? symbols.join(' OR ') 
-            : 'FII OR "Fundos Imobiliários" OR IFIX OR "Dividendos FII"';
+            ? symbols.map(s => `"${s}"`).join(' OR ') 
+            : 'intitle:("FII" OR "FIIs" OR "Fundos Imobiliários" OR "IFIX" OR "Dividendos")';
             
         // Limite de segurança (200 chars pra não dar 400 Bad Request no Google)
         if (queryTerm.length > 180) {

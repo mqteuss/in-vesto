@@ -5981,8 +5981,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                     const initials = ticker.substring(0, 2);
                     const colorVar = isAlta ? 'text-emerald-500' : 'text-red-500';
                     const iconArrow = isAlta 
-                        ? `<svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 8l6 8H6z"/></svg>`
-                        : `<svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 16l-6-8h12z"/></svg>`;
+                        ? `<svg class="w-2.5 h-2.5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 8l6 8H6z"/></svg>`
+                        : `<svg class="w-2.5 h-2.5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 16l-6-8h12z"/></svg>`;
                     
                     const varClean = variacao.replace(/[+-]/g, '').trim();
                     const precoDisplay = preco.includes('R$') ? preco : `R$ ${preco}`;
@@ -5992,28 +5992,28 @@ document.addEventListener('DOMContentLoaded', async () => {
                     let iconeHtml = '';
                     if (logoUrlStr && isAcao(ticker)) {
                         iconeHtml = `
-                            <img src="${logoUrlStr}" alt="${ticker}" width="26" height="26" loading="lazy" decoding="async" class="w-[80%] h-[80%] object-contain relative z-10"
+                            <img src="${logoUrlStr}" alt="${ticker}" width="20" height="20" loading="lazy" decoding="async" class="w-[85%] h-[85%] object-contain relative z-10"
                                  onerror="this.style.display='none'; this.nextElementSibling.classList.remove('hidden')">
-                            <div class="hidden w-full h-full flex items-center justify-center bg-[#151515] text-[10px] font-bold text-white tracking-wider absolute inset-0 z-0">${initials}</div>
+                            <div class="hidden w-full h-full flex items-center justify-center bg-[#151515] text-[8px] font-bold text-white tracking-wider absolute inset-0 z-0">${initials}</div>
                         `;
                     } else {
                         iconeHtml = `
-                            <div class="w-full h-full flex items-center justify-center bg-[#151515] text-[10px] font-bold text-white tracking-wider absolute inset-0 z-0">${initials}</div>
+                            <div class="w-full h-full flex items-center justify-center bg-[#151515] text-[8px] font-bold text-white tracking-wider absolute inset-0 z-0">${initials}</div>
                         `;
                     }
 
                     return `
-                        <div class="py-[14px] px-1 hover:bg-white/[0.015] active:bg-white/[0.03] cursor-pointer transition-colors flex items-center justify-between group border-b border-white/[0.04] last:border-0"
+                        <div class="py-[6px] px-1 hover:bg-white/[0.015] active:bg-white/[0.03] cursor-pointer transition-colors flex items-center justify-between group border-b border-white/[0.04] last:border-0"
                              onclick="window.abrirDetalhesAtivo('${ticker}')">
-                            <div class="flex items-center gap-3.5">
-                                <div class="w-7 h-7 rounded-[6px] bg-white flex items-center justify-center flex-shrink-0 relative overflow-hidden shadow-sm">
+                            <div class="flex items-center gap-2.5">
+                                <div class="w-5 h-5 rounded-[4px] bg-white flex items-center justify-center flex-shrink-0 relative overflow-hidden shadow-sm">
                                     ${iconeHtml}
                                 </div>
-                                <span class="text-[15px] font-bold text-white tracking-wide uppercase">${ticker}</span>
+                                <span class="text-[12px] font-bold text-gray-200 tracking-wide uppercase">${ticker}</span>
                             </div>
-                            <div class="flex items-center gap-4">
-                                <span class="text-[14px] font-bold text-white tabular-nums">${precoDisplay}</span>
-                                <span class="flex items-center gap-1 text-[14px] font-bold ${colorVar} tabular-nums tracking-wide">
+                            <div class="flex items-center gap-2.5">
+                                <span class="text-[11px] font-bold text-gray-300 tabular-nums">${precoDisplay}</span>
+                                <span class="flex items-center gap-0.5 text-[11px] font-bold ${colorVar} tabular-nums tracking-wide">
                                     ${iconArrow} ${varClean}
                                 </span>
                             </div>

@@ -248,6 +248,7 @@ export default async function handler(request, response) {
 
     // Validação e sanitização do parâmetro q
     const rawQ = request.query?.q;
+    const isRadar = request.query?.radar === 'true';
     if (rawQ !== undefined && typeof rawQ !== 'string') {
         return response.status(400).json({ error: "Parâmetro 'q' inválido." });
     }
@@ -274,7 +275,7 @@ export default async function handler(request, response) {
         // no Título ou no Resumo da matéria, prevenindo "matérias lixo" que só citam de relance no rodapé.
         let targetItems = feed.items;
         
-        if (rawQ && !rawQ.includes('intitle:')) {
+        if (rawQ && isRadar) {
             const allowedTickers = sanitizeQuery(rawQ).split(' OR ').map(t => t.replace(/"/g, '').trim().toUpperCase()).filter(Boolean);
             if (allowedTickers.length > 0) {
                 targetItems = feed.items.filter(item => {

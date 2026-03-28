@@ -618,10 +618,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     let newsSearchDebounceTimer = null;
 
     const NEWS_CATEGORY_QUERIES = {
-        geral: 'intitle:("FII" OR "FIIs" OR "Dividendos" OR "Ações" OR "Ibovespa" OR "Mercado Financeiro")',
-        fiis: 'intitle:("FII" OR "FIIs" OR "Fundos Imobiliários" OR "IFIX" OR "Imobiliário")',
-        acoes: 'intitle:("Ações" OR "Ibovespa" OR "Bolsa de Valores" OR "B3" OR "Balanço")',
-        economia: 'intitle:("Economia" OR "Selic" OR "IPCA" OR "Inflação" OR "PIB" OR "Copom" OR "Juros")'
+        geral: '("Ações" OR "FIIs" OR "Bolsa de Valores" OR "Dividendos")',
+        fiis: '("Fundo Imobiliário" OR "Fundos Imobiliários" OR "IFIX")',
+        acoes: '("Ibovespa" OR "B3" OR "Balanço" OR "Ações")',
+        economia: '("Economia" OR "Selic" OR "IPCA" OR "Inflação" OR "Copom")'
     };
     const patrimonioPageModal = document.getElementById('patrimonio-page-modal');
     const patrimonioPageContent = document.getElementById('tab-patrimonio-content');
@@ -10726,7 +10726,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
 
         try {
-            const url = `/api/news?q=${encodeURIComponent(queryTerm)}&t=${Date.now()}`;
+            const url = `/api/news?q=${encodeURIComponent(queryTerm)}&t=${Date.now()}&radar=true`;
             const response = await fetch(url);
             if (!response.ok) throw new Error('Falha ao buscar radar');
             
@@ -10786,8 +10786,17 @@ document.addEventListener('DOMContentLoaded', async () => {
                 
                 list.innerHTML = html;
             } else {
-                // Usuário pediu para Ocultar se não existir
-                container.classList.add('hidden');
+                // Usuário pediu para Ocultar se não existir, mas agora vamos mostrar a mensagem elegante 
+                container.classList.remove('hidden');
+                list.innerHTML = `
+                <div class="px-4 py-8 text-center flex flex-col items-center">
+                    <div class="w-12 h-12 rounded-full bg-white/5 flex items-center justify-center mb-3">
+                        <svg class="w-6 h-6 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                    </div>
+                    <p class="text-[13px] text-gray-400 font-medium">O radar não identificou notícias fresquinhas sobre seus ativos hoje.</p>
+                </div>`;
             }
         } catch (e) {
             console.error('Erro ao buscar News Feed pro Radar:', e);

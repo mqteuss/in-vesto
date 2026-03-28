@@ -6002,8 +6002,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                         `;
                     }
 
+                    const iconGap = isAlta ? 'gap-[2px]' : 'gap-1';
+
                     return `
-                        <div class="py-[6px] px-1 hover:bg-white/[0.015] active:bg-white/[0.03] cursor-pointer transition-colors flex items-center justify-between group border-b border-white/[0.04] last:border-0"
+                        <div class="py-2.5 px-1 hover:bg-white/[0.015] active:bg-white/[0.03] cursor-pointer transition-colors flex items-center justify-between group border-b border-white/[0.04] last:border-0"
                              onclick="window.abrirDetalhesAtivo('${ticker}')">
                             <div class="flex items-center gap-2.5">
                                 <div class="w-5 h-5 rounded-[4px] bg-white flex items-center justify-center flex-shrink-0 relative overflow-hidden shadow-sm">
@@ -6013,7 +6015,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                             </div>
                             <div class="flex items-center gap-2.5">
                                 <span class="text-[11px] font-bold text-gray-300 tabular-nums">${precoDisplay}</span>
-                                <span class="flex items-center gap-0.5 text-[11px] font-bold ${colorVar} tabular-nums tracking-wide">
+                                <span class="flex items-center ${iconGap} text-[11px] font-bold ${colorVar} tabular-nums tracking-wide">
                                     ${iconArrow} ${varClean}
                                 </span>
                             </div>

@@ -5992,7 +5992,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     let iconeHtml = '';
                     if (logoUrlStr && isAcao(ticker)) {
                         iconeHtml = `
-                            <img src="${logoUrlStr}" alt="${ticker}" width="22" height="22" loading="lazy" decoding="async" class="w-[90%] h-[90%] object-contain relative z-10 drop-shadow-[0_1px_1px_rgba(0,0,0,0.3)]"
+                            <img src="${logoUrlStr}" alt="${ticker}" width="22" height="22" loading="lazy" decoding="async" class="w-[90%] h-[90%] rounded-[3px] object-contain relative z-10 drop-shadow-[0_1px_1px_rgba(0,0,0,0.3)]"
                                  onerror="this.style.display='none'; this.nextElementSibling.classList.remove('hidden')">
                             <div class="hidden w-full h-full flex items-center justify-center bg-[#1a1a1e] rounded-[3px] text-[10px] font-bold text-white tracking-wider absolute inset-0 z-0">${initials}</div>
                         `;

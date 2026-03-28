@@ -10663,17 +10663,26 @@ document.addEventListener('DOMContentLoaded', async () => {
         list.innerHTML = '';
         skeleton.classList.remove('hidden');
 
-        // Pega até 12 símbolos únicos ativos na carteira para não estourar o limite de URL da API do Google News
-        const symbols = [...new Set(carteiraCalculada.map(a => a.symbol))].slice(0, 12);
+        // Pega símbolos únicos ativos na carteira
+        const symbols = [...new Set(carteiraCalculada.map(a => a.symbol))];
         
-        // Se a carteira estiver vazia, carrega notícias gerais afiadas
-        let queryTerm = symbols.length > 0 
-            ? symbols.map(s => `"${s}"`).join(' OR ') 
-            : 'intitle:("FII" OR "FIIs" OR "Fundos Imobiliários" OR "IFIX" OR "Dividendos")';
-            
-        // Limite de segurança (200 chars pra não dar 400 Bad Request no Google)
-        if (queryTerm.length > 180) {
-            queryTerm = queryTerm.substring(0, 180).replace(/ OR [A-Z0-9]+$/, '');
+        // Se a carteira estiver vazia, o Radar nem aparece (ordem do usuário: mostrar apenas se existir ativo)
+        if (symbols.length === 0) {
+            container.classList.add('hidden');
+            return;
+        }
+        
+        // Monta a restrição cirúrgica exata para a API (limitado a ~180 caracteres finais)
+        let queryTerm = '';
+        for (const symbol of symbols) {
+            const part = `"${symbol}"`;
+            if (queryTerm.length === 0) {
+                queryTerm = part;
+            } else if ((queryTerm + ' OR ' + part).length <= 180) {
+                queryTerm += ' OR ' + part;
+            } else {
+                break; // Atingiu limite de segurança da URL
+            }
         }
 
         try {
@@ -10737,11 +10746,12 @@ document.addEventListener('DOMContentLoaded', async () => {
                 
                 list.innerHTML = html;
             } else {
-                list.innerHTML = `<p class="text-xs text-gray-500 px-4 py-4">Nenhuma notícia fresca no seu horizonte agora.</p>`;
+                // Usuário pediu para Ocultar se não existir
+                container.classList.add('hidden');
             }
         } catch (e) {
             console.error('Erro ao buscar News Feed pro Radar:', e);
-            list.innerHTML = `<p class="text-xs text-gray-500 px-4 py-4">Não foi possível sintonizar o radar de mercado no momento.</p>`;
+            container.classList.add('hidden');
         } finally {
             skeleton.classList.add('hidden');
         }

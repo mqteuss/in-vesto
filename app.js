@@ -2677,13 +2677,14 @@ document.addEventListener('DOMContentLoaded', async () => {
                         <span class="text-[11px] font-bold text-gray-400">${sourceName}</span>
                     </div>
 
-                    <!-- Linha 2: Título da Matéria -->
+                    <!-- Linha 2: Título + Imagem de Capa -->
                     <div class="flex items-start gap-3">
                         <div class="flex-1 min-w-0">
                             <h4 class="${titleClass} pointer-events-auto">
                                 ${displayTitle}
                             </h4>
                         </div>
+                        ${hasImage ? `<div class="w-[72px] h-[72px] rounded-xl overflow-hidden flex-shrink-0 bg-[#1a1a1a]">${coverHtml}</div>` : ''}
                     </div>
 
                     <!-- Linha 3: Tempo + Botão Compartilhar -->
@@ -10659,17 +10660,17 @@ document.addEventListener('DOMContentLoaded', async () => {
         list.innerHTML = '';
         skeleton.classList.remove('hidden');
 
-        // Pega até 30 símbolos únicos ativos na carteira
-        const symbols = [...new Set(carteiraCalculada.map(a => a.symbol))].slice(0, 30);
+        // Pega até 12 símbolos únicos ativos na carteira para não estourar o limite de URL da API do Google News
+        const symbols = [...new Set(carteiraCalculada.map(a => a.symbol))].slice(0, 12);
         
         // Se a carteira estiver vazia, carrega notícias gerais sobre dividendos e fundos
         let queryTerm = symbols.length > 0 
             ? symbols.join(' OR ') 
             : 'FII OR "Fundos Imobiliários" OR IFIX OR "Dividendos FII"';
             
-        // Limite de segurança expandido (com o novo backend)
-        if (queryTerm.length > 750) {
-            queryTerm = queryTerm.substring(0, 750).replace(/ OR [A-Z0-9]+$/, '');
+        // Limite de segurança (200 chars pra não dar 400 Bad Request no Google)
+        if (queryTerm.length > 180) {
+            queryTerm = queryTerm.substring(0, 180).replace(/ OR [A-Z0-9]+$/, '');
         }
 
         try {

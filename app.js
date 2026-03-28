@@ -10663,8 +10663,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         list.innerHTML = '';
         skeleton.classList.remove('hidden');
 
-        // Pega símbolos únicos ativos na carteira
-        const symbols = [...new Set(carteiraCalculada.map(a => a.symbol))];
+        // Pega símbolos únicos e ATIVOS na carteira (quantidade > 0)
+        const symbols = [...new Set(
+            carteiraCalculada
+                .filter(a => (a.quantidade || 0) > 0)
+                .map(a => a.symbol)
+        )].slice(0, 15);
         
         // Se a carteira estiver vazia, o Radar nem aparece (ordem do usuário: mostrar apenas se existir ativo)
         if (symbols.length === 0) {

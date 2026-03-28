@@ -4439,6 +4439,38 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         };
 
+        const patrimonioCrosshairPlugin = {
+            id: 'patrimonioCrosshair',
+            afterDatasetsDraw: (chart) => {
+                // Desenha a linha-guia caso tenha uma barra selecionada via clique (ao invés de hover)
+                let activeIdx = _evolSelectedBarIdx;
+                
+                // Mas também mostra a linha no hover para melhorar o feedback tátil antes de clicar!
+                if (chart.tooltip?._active?.length) {
+                    activeIdx = chart.tooltip._active[0].index;
+                }
+
+                if (activeIdx >= 0) {
+                    const meta = chart.getDatasetMeta(0);
+                    const bar = meta.data[activeIdx];
+                    if (bar) {
+                        const x = bar.x;
+                        const yAxis = chart.scales.y;
+                        const ctx2 = chart.ctx;
+                        ctx2.save();
+                        ctx2.beginPath();
+                        ctx2.moveTo(x, yAxis.top);
+                        ctx2.lineTo(x, yAxis.bottom);
+                        ctx2.lineWidth = 1;
+                        ctx2.strokeStyle = 'rgba(255, 255, 255, 0.15)';
+                        ctx2.setLineDash([4, 4]);
+                        ctx2.stroke();
+                        ctx2.restore();
+                    }
+                }
+            }
+        };
+
         patrimonioChartInstance = new Chart(ctx, {
             type: 'bar',
             data: {
@@ -4448,13 +4480,17 @@ document.addEventListener('DOMContentLoaded', async () => {
                     backgroundColor: barColors,
                     borderRadius: 3,
                     borderSkipped: false,
-                    barPercentage: 0.7,
-                    categoryPercentage: 0.85
+                    barPercentage: 0.82,
+                    categoryPercentage: 0.90
                 }]
             },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
+                interaction: {
+                    mode: 'index',
+                    intersect: false
+                },
                 layout: { padding: { left: 4, right: 4, top: 8, bottom: 16 } },
                 plugins: {
                     legend: { display: false },
@@ -4517,7 +4553,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 },
                 animation: { duration: 500, easing: 'easeOutQuart' }
             },
-            plugins: [yearAnnotationPlugin]
+            plugins: [yearAnnotationPlugin, patrimonioCrosshairPlugin]
         });
 
         // ── Bottom Sheet Events ──

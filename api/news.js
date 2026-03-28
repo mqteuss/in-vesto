@@ -8,7 +8,7 @@ const CONFIG = {
     cacheTTL:       900,   // 15 min (s-maxage)
     timeoutMs:      10000,
     maxQueryLength: 200,
-    defaultQuery:   'FII OR "Fundos Imobiliários" OR IFIX OR "Dividendos FII"',
+    defaultQuery:   'intitle:("FII" OR "FIIs" OR "Fundos Imobiliários" OR "IFIX" OR "Dividendos")',
     windowDays:     30,     // when:Nd no Google News
 };
 

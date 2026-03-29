@@ -10759,7 +10759,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         // Pega símbolos únicos e ATIVOS na carteira (quantidade > 0)
         const symbols = [...new Set(
             carteiraCalculada
-                .filter(a => (a.quantidade || 0) > 0)
+                .filter(a => (a.quantity || 0) > 0)
                 .map(a => a.symbol)
         )].slice(0, 15);
         

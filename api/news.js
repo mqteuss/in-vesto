@@ -241,7 +241,7 @@ export default async function handler(request, response) {
     }
 
     const queryTerm  = rawQ ? sanitizeQuery(rawQ) : CONFIG.defaultQuery;
-    const fullQuery  = `${queryTerm} when:${CONFIG.windowDays}d`;
+    const fullQuery  = `(${queryTerm}) when:${CONFIG.windowDays}d`;
     const feedUrl    = `https://news.google.com/rss/search?q=${encodeURIComponent(fullQuery)}&hl=pt-BR&gl=BR&ceid=BR:pt-419`;
 
     log.info('News request', { rid, query: queryTerm });
@@ -258,10 +258,23 @@ export default async function handler(request, response) {
             timeoutPromise,
         ]);
 
-        // Para o Radar, a query já contém os tickers exatos ("MXRF11" OR "PETR4"),
-        // então o Google News já filtra. Não aplicamos filtro extra aqui.
+        let targetItems = feed.items;
+        
+        // Filtro estrito para o Radar: Garante que as matérias trazidas pelo Google citam explicitamente o ticker
+        // no Título ou no Resumo da matéria, prevenindo "matérias lixo" que só citam de relance.
+        // BUGFIX IMPORTANTE: RegExp('\\b') requer DUAS barras no literal de string, '\\b' é backspace.
+        if (rawQ && isRadar) {
+            const allowedTickers = sanitizeQuery(rawQ).split(' OR ').map(t => t.replace(/"/g, '').trim().toUpperCase()).filter(Boolean);
+            if (allowedTickers.length > 0) {
+                targetItems = feed.items.filter(item => {
+                    const textContent = `${item.title || ''} ${item.contentSnippet || item.content || ''}`.toUpperCase();
+                    // Exige a palavra exata usando word boundaries
+                    return allowedTickers.some(ticker => new RegExp(`\\b${ticker}\\b`).test(textContent));
+                });
+            }
+        }
 
-        const articles = extractArticles(feed.items);
+        const articles = extractArticles(targetItems);
 
         // Cache definido aqui: nunca será enviado em resposta a OPTIONS ou erros
         response.setHeader(

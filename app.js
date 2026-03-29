@@ -10790,6 +10790,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                 break; // Atingiu limite de segurança da URL
             }
         }
+        
+        // Envolve em parênteses para garantir que o modificador when:30d do backend se aplique a todo o grupo
+        queryTerm = `(${queryTerm})`;
 
         try {
             const url = `/api/news?q=${encodeURIComponent(queryTerm)}&t=${Date.now()}&radar=true`;

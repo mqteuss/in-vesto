@@ -258,22 +258,10 @@ export default async function handler(request, response) {
             timeoutPromise,
         ]);
 
-        // Filtro estrito: Garante que as matérias trazidas pelo Google citam explicitamente o ticker
-        // no Título ou no Resumo da matéria, prevenindo "matérias lixo" que só citam de relance no rodapé.
-        let targetItems = feed.items;
-        
-        if (rawQ && isRadar) {
-            const allowedTickers = sanitizeQuery(rawQ).split(' OR ').map(t => t.replace(/"/g, '').trim().toUpperCase()).filter(Boolean);
-            if (allowedTickers.length > 0) {
-                targetItems = feed.items.filter(item => {
-                    const textContent = `${item.title || ''} ${item.contentSnippet || item.content || ''}`.toUpperCase();
-                    // Require strict word boundary match
-                    return allowedTickers.some(ticker => new RegExp(`\b${ticker}\b`).test(textContent));
-                });
-            }
-        }
+        // Para o Radar, a query já contém os tickers exatos ("MXRF11" OR "PETR4"),
+        // então o Google News já filtra. Não aplicamos filtro extra aqui.
 
-        const articles = extractArticles(targetItems);
+        const articles = extractArticles(feed.items);
 
         // Cache definido aqui: nunca será enviado em resposta a OPTIONS ou erros
         response.setHeader(

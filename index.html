@@ -1837,6 +1837,22 @@
 
                     </div>
 
+                    <!-- Drawdown Máximo -->
+                    <div id="evolucao-drawdown-card" class="bg-[#111] rounded-xl p-4 mt-4 flex items-center gap-4">
+                        <div class="w-10 h-10 rounded-full bg-red-500/10 flex items-center justify-center flex-shrink-0">
+                            <svg class="w-5 h-5 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M13 17h8m0 0V9m0 8l-8-8-4 4-6-6"/>
+                            </svg>
+                        </div>
+                        <div class="flex-1 min-w-0">
+                            <span class="text-[10px] text-gray-500 font-medium uppercase tracking-wider">Drawdown Máximo</span>
+                            <div class="flex items-baseline gap-2 mt-0.5">
+                                <p id="evolucao-drawdown-pct" class="text-lg font-bold text-red-400">--</p>
+                                <span id="evolucao-drawdown-periodo" class="text-[10px] text-gray-600 font-medium truncate"></span>
+                            </div>
+                        </div>
+                    </div>
+
                     <!-- Separador -->
                     <div class="h-px bg-[#1a1a1a] my-5"></div>
 

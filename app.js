@@ -4386,8 +4386,44 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         }
 
+        // ── Drawdown Máximo ──
+        function calcularDrawdownMaximo() {
+            let peak = 0;
+            let maxDrawdown = 0;
+            let maxDrawdownMonth = '';
+
+            for (let i = 0; i < dadosMensais.length; i++) {
+                const val = dadosMensais[i].value;
+                if (val > peak) peak = val;
+                if (peak > 0) {
+                    const dd = (val - peak) / peak;
+                    if (dd < maxDrawdown) {
+                        maxDrawdown = dd;
+                        const parts = dadosMensais[i].date.split('-');
+                        maxDrawdownMonth = `${MESES_PT[parseInt(parts[1]) - 1]}/${parts[0]}`;
+                    }
+                }
+            }
+
+            const elPct = document.getElementById('evolucao-drawdown-pct');
+            const elPeriodo = document.getElementById('evolucao-drawdown-periodo');
+            if (elPct) {
+                if (maxDrawdown < 0) {
+                    elPct.textContent = `${(maxDrawdown * 100).toFixed(2)}%`;
+                    elPct.className = 'text-lg font-bold text-red-400';
+                } else {
+                    elPct.textContent = '0,00%';
+                    elPct.className = 'text-lg font-bold text-green-400';
+                }
+            }
+            if (elPeriodo) {
+                elPeriodo.textContent = maxDrawdown < 0 ? `Fundo em ${maxDrawdownMonth}` : 'Sem quedas no período';
+            }
+        }
+
         // Inicializa stats
         mostrarStatsCompleto();
+        calcularDrawdownMaximo();
 
         // ── Bar Chart ──
         const ctx = canvas.getContext('2d');

@@ -4390,27 +4390,27 @@ document.addEventListener('DOMContentLoaded', async () => {
         function calcularDrawdownMaximo() {
             let peak = 0;
             let maxDrawdown = 0;
-            let peakDate = '';
+            let maxDrawdownReais = 0;
             let troughDate = '';
 
             // Usa dados DIÁRIOS para capturar quedas intra-mês
             for (let i = 0; i < dadosFiltrados.length; i++) {
                 const val = dadosFiltrados[i].value;
-                if (val > peak) {
-                    peak = val;
-                    peakDate = dadosFiltrados[i].date;
-                }
+                if (val > peak) peak = val;
                 if (peak > 0) {
                     const dd = (val - peak) / peak;
                     if (dd < maxDrawdown) {
                         maxDrawdown = dd;
+                        maxDrawdownReais = val - peak;
                         troughDate = dadosFiltrados[i].date;
                     }
                 }
             }
 
             const elPct = document.getElementById('evolucao-drawdown-pct');
+            const elReais = document.getElementById('evolucao-drawdown-reais');
             const elPeriodo = document.getElementById('evolucao-drawdown-periodo');
+
             if (elPct) {
                 if (maxDrawdown < 0) {
                     elPct.textContent = `${(maxDrawdown * 100).toFixed(2)}%`;
@@ -4418,6 +4418,14 @@ document.addEventListener('DOMContentLoaded', async () => {
                 } else {
                     elPct.textContent = '0,00%';
                     elPct.className = 'text-lg font-bold text-green-400';
+                }
+            }
+            if (elReais) {
+                if (maxDrawdown < 0) {
+                    elReais.textContent = `— ${fmtBRL(Math.abs(maxDrawdownReais))}`;
+                    elReais.className = 'text-[11px] font-semibold text-red-400/70';
+                } else {
+                    elReais.textContent = '';
                 }
             }
             if (elPeriodo) {

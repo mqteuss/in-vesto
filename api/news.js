@@ -241,7 +241,7 @@ export default async function handler(request, response) {
     }
 
     const queryTerm  = rawQ ? sanitizeQuery(rawQ) : CONFIG.defaultQuery;
-    const fullQuery  = `(${queryTerm}) when:${CONFIG.windowDays}d`;
+    const fullQuery  = `${queryTerm} when:${CONFIG.windowDays}d`;
     const feedUrl    = `https://news.google.com/rss/search?q=${encodeURIComponent(fullQuery)}&hl=pt-BR&gl=BR&ceid=BR:pt-419`;
 
     log.info('News request', { rid, query: queryTerm });
@@ -264,7 +264,9 @@ export default async function handler(request, response) {
         // no Título ou no Resumo da matéria, prevenindo "matérias lixo" que só citam de relance.
         // BUGFIX IMPORTANTE: RegExp('\\b') requer DUAS barras no literal de string, '\\b' é backspace.
         if (rawQ && isRadar) {
-            const allowedTickers = sanitizeQuery(rawQ).split(' OR ').map(t => t.replace(/"/g, '').trim().toUpperCase()).filter(Boolean);
+            // Remove aspas e parênteses antes de extrair os tickers
+            const cleanRawQ = sanitizeQuery(rawQ).replace(/["()]/g, '');
+            const allowedTickers = cleanRawQ.split(' OR ').map(t => t.trim().toUpperCase()).filter(Boolean);
             if (allowedTickers.length > 0) {
                 targetItems = feed.items.filter(item => {
                     const textContent = `${item.title || ''} ${item.contentSnippet || item.content || ''}`.toUpperCase();

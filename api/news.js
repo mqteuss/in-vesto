@@ -8,7 +8,7 @@ const CONFIG = {
     cacheTTL:       900,   // 15 min (s-maxage)
     timeoutMs:      10000,
     maxQueryLength: 200,
-    defaultQuery:   'intitle:("FII" OR "FIIs" OR "Fundos Imobiliários" OR "IFIX" OR "Dividendos")',
+    defaultQuery:   '("FII" OR "Fundos Imobiliários" OR "Dividendos" OR "Ações" OR "Ibovespa")',
     windowDays:     30,     // when:Nd no Google News
 };
 
@@ -105,7 +105,12 @@ function resolveSource(rawName) {
     for (const [k, v] of SOURCE_INDEX) {
         if (key.includes(k)) return v;
     }
-    return null;
+    // Fontes desconhecidas: gera entrada dinâmica a partir do nome cru.
+    // Antes retornava null e MATAVA o artigo — era o principal gargalo de volume.
+    const cleanName = rawName.trim();
+    if (!cleanName) return null;
+    const domain = cleanName.toLowerCase().replace(/\s+/g, '').replace(/[^a-z0-9]/g, '') + '.com';
+    return { name: cleanName, domain };
 }
 
 // ---------------------------------------------------------
@@ -281,7 +286,7 @@ export default async function handler(request, response) {
                 targetItems = feed.items.filter(item => {
                     const textContent = `${item.title || ''} ${item.contentSnippet || item.content || ''}`.toUpperCase();
                     // Require strict word boundary match
-                    return allowedTickers.some(ticker => new RegExp(`\\b${ticker}\\b`).test(textContent));
+                    return allowedTickers.some(ticker => new RegExp(`\b${ticker}\b`).test(textContent));
                 });
             }
         }

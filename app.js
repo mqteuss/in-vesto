@@ -10728,11 +10728,14 @@ document.addEventListener('DOMContentLoaded', async () => {
         try {
             const url = `/api/news?q=${encodeURIComponent(queryTerm)}&t=${Date.now()}&radar=true`;
             const response = await fetch(url);
-            if (!response.ok) throw new Error('Falha ao buscar radar');
             
-            const articles = await response.json();
+            let articles = [];
+            if (response.ok) {
+                const data = await response.json();
+                articles = Array.isArray(data) ? data : [];
+            }
             
-            if (articles && articles.length > 0) {
+            if (articles.length > 0) {
                 // Separa entre 3 a 5 notícias baseadas na qualidade da imagem
                 const topArticles = articles.slice(0, 5);
                 
@@ -10800,7 +10803,16 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         } catch (e) {
             console.error('Erro ao buscar News Feed pro Radar:', e);
-            container.classList.add('hidden');
+            container.classList.remove('hidden');
+            list.innerHTML = `
+            <div class="px-4 py-8 text-center flex flex-col items-center">
+                <div class="w-12 h-12 rounded-full bg-white/5 flex items-center justify-center mb-3">
+                    <svg class="w-6 h-6 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                </div>
+                <p class="text-[13px] text-gray-400 font-medium">O radar não identificou notícias fresquinhas sobre seus ativos hoje.</p>
+            </div>`;
         } finally {
             skeleton.classList.add('hidden');
         }

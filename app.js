@@ -4376,6 +4376,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         function mostrarStatsCompleto() {
             _evolSelectedBarIdx = -1;
             atualizarStatsGrid(patInicial, patFinal, periodoInicio, periodoFim);
+            calcularDrawdownMaximo();
             const elPeriodoTexto = document.getElementById('evolucao-periodo-texto');
             if (elPeriodoTexto) elPeriodoTexto.textContent = formatarPeriodoTexto(primeiraCompra, hojeStr);
             // Reset bar colors
@@ -4387,54 +4388,49 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
 
         // ── Drawdown Máximo ──
-        function calcularDrawdownMaximo() {
+        function calcularDrawdownMaximo(dataInicio = null, dataFim = null) {
             let peak = 0;
             let maxDrawdown = 0;
             let maxDrawdownReais = 0;
-            let troughDate = '';
+
+            // Filtra os dados se um período foi fornecido
+            let dadosAlvo = dadosFiltrados;
+            if (dataInicio && dataFim) {
+                dadosAlvo = dadosFiltrados.filter(p => p.date >= dataInicio && p.date <= dataFim);
+            }
 
             // Usa dados DIÁRIOS para capturar quedas intra-mês
-            for (let i = 0; i < dadosFiltrados.length; i++) {
-                const val = dadosFiltrados[i].value;
+            for (let i = 0; i < dadosAlvo.length; i++) {
+                const val = dadosAlvo[i].value;
                 if (val > peak) peak = val;
                 if (peak > 0) {
                     const dd = (val - peak) / peak;
                     if (dd < maxDrawdown) {
                         maxDrawdown = dd;
                         maxDrawdownReais = val - peak;
-                        troughDate = dadosFiltrados[i].date;
                     }
                 }
             }
 
             const elPct = document.getElementById('evolucao-drawdown-pct');
             const elReais = document.getElementById('evolucao-drawdown-reais');
-            const elPeriodo = document.getElementById('evolucao-drawdown-periodo');
-
+            
             if (elPct) {
                 if (maxDrawdown < 0) {
                     elPct.textContent = `${(maxDrawdown * 100).toFixed(2)}%`;
-                    elPct.className = 'text-lg font-bold text-red-400';
+                    elPct.className = 'text-sm font-bold mt-0.5 text-red-500';
                 } else {
                     elPct.textContent = '0,00%';
-                    elPct.className = 'text-lg font-bold text-green-400';
+                    elPct.className = 'text-sm font-bold mt-0.5 text-green-400';
                 }
             }
             if (elReais) {
                 if (maxDrawdown < 0) {
                     elReais.textContent = `— ${fmtBRL(Math.abs(maxDrawdownReais))}`;
-                    elReais.className = 'text-[11px] font-semibold text-red-400/70';
+                    elReais.className = 'text-sm font-bold mt-0.5 text-red-500';
                 } else {
-                    elReais.textContent = '';
-                }
-            }
-            if (elPeriodo) {
-                if (maxDrawdown < 0 && troughDate) {
-                    const parts = troughDate.split('-');
-                    const mesNome = MESES_PT[parseInt(parts[1]) - 1];
-                    elPeriodo.textContent = `Fundo em ${mesNome}/${parts[0]}`;
-                } else {
-                    elPeriodo.textContent = 'Sem quedas no período';
+                    elReais.textContent = 'R$ 0,00';
+                    elReais.className = 'text-sm font-bold mt-0.5 text-green-400';
                 }
             }
         }
@@ -4601,6 +4597,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                         const mesFim = `${mesKey}-${String(ultimoDia).padStart(2, '0')}`;
 
                         atualizarStatsGrid(patIni, mesData.value, mesInicio, mesFim);
+                        calcularDrawdownMaximo(mesInicio, mesFim);
                         const elPeriodoTexto = document.getElementById('evolucao-periodo-texto');
                         if (elPeriodoTexto) elPeriodoTexto.textContent = formatarPeriodoTexto(mesFim, mesFim);
                     }

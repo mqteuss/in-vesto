@@ -49,49 +49,36 @@ const rssParser = new Parser({
 // Definidas fora do handler: alocadas uma vez, nunca recriadas.
 // ---------------------------------------------------------
 const KNOWN_SOURCES_RAW = {
-    'clube fii':                 { name: 'Clube FII',                domain: 'clubefii.com.br' },
-    'funds explorer':            { name: 'Funds Explorer',           domain: 'fundsexplorer.com.br' },
-    'status invest':             { name: 'Status Invest',            domain: 'statusinvest.com.br' },
-    'fiis.com.br':               { name: 'FIIs.com.br',              domain: 'fiis.com.br' },
-    'suno':                      { name: 'Suno Notícias',            domain: 'suno.com.br' },
-    'investidor10':              { name: 'Investidor10',             domain: 'investidor10.com.br' },
-    'money times':               { name: 'Money Times',              domain: 'moneytimes.com.br' },
     'infomoney':                 { name: 'InfoMoney',                domain: 'infomoney.com.br' },
+    'money times':               { name: 'Money Times',              domain: 'moneytimes.com.br' },
+    'suno':                      { name: 'Suno',                     domain: 'suno.com.br' },
+    'investidor10':              { name: 'Investidor10',             domain: 'investidor10.com.br' },
+    'seu dinheiro':              { name: 'Seu Dinheiro',             domain: 'seudinheiro.com' },
     'investing.com':             { name: 'Investing.com',            domain: 'br.investing.com' },
-    'mais retorno':              { name: 'Mais Retorno',             domain: 'maisretorno.com' },
     'valor investe':             { name: 'Valor Investe',            domain: 'valorinveste.globo.com' },
     'valor':                     { name: 'Valor Econômico',          domain: 'valor.globo.com' },
+    'valor econômico':           { name: 'Valor Econômico',          domain: 'valor.globo.com' },
     'exame':                     { name: 'Exame',                    domain: 'exame.com' },
-    'brazil journal':            { name: 'Brazil Journal',           domain: 'braziljournal.com' },
-    'seu dinheiro':              { name: 'Seu Dinheiro',             domain: 'seudinheiro.com' },
+    'bloomberg':                 { name: 'Bloomberg Línea',          domain: 'bloomberglinea.com.br' },
+    'forbes':                    { name: 'Forbes Brasil',            domain: 'forbes.com.br' },
     'neofeed':                   { name: 'NeoFeed',                  domain: 'neofeed.com.br' },
-    'bmc news':                  { name: 'BMC News',                 domain: 'bmcnews.com.br' },
-    'the cap':                   { name: 'The Cap',                  domain: 'thecap.com.br' },
-    'inteligencia financeira':   { name: 'Inteligência Financeira',  domain: 'inteligenciafinanceira.com.br' },
+    'brazil journal':            { name: 'Brazil Journal',           domain: 'braziljournal.com' },
     'inteligência financeira':   { name: 'Inteligência Financeira',  domain: 'inteligenciafinanceira.com.br' },
+    'inteligencia financeira':   { name: 'Inteligência Financeira',  domain: 'inteligenciafinanceira.com.br' },
     'e-investidor':              { name: 'E-Investidor',             domain: 'einvestidor.estadao.com.br' },
+    'cnn brasil':                { name: 'CNN Brasil',               domain: 'cnnbrasil.com.br' },
     'estadao':                   { name: 'Estadão',                  domain: 'estadao.com.br' },
     'estadão':                   { name: 'Estadão',                  domain: 'estadao.com.br' },
-    'g1':                        { name: 'G1 Economia',              domain: 'g1.globo.com' },
-    'o globo':                   { name: 'O Globo',                  domain: 'oglobo.globo.com' },
     'folha':                     { name: 'Folha de S.Paulo',         domain: 'folha.uol.com.br' },
+    'g1':                        { name: 'G1',                       domain: 'g1.globo.com' },
+    'o globo':                   { name: 'O Globo',                  domain: 'oglobo.globo.com' },
     'uol':                       { name: 'UOL Economia',             domain: 'economia.uol.com.br' },
-    'cnn brasil':                { name: 'CNN Brasil',               domain: 'cnnbrasil.com.br' },
-    'bloomberg':                 { name: 'Bloomberg Línea',          domain: 'bloomberglinea.com.br' },
     'istoé dinheiro':            { name: 'IstoÉ Dinheiro',           domain: 'istoedinheiro.com.br' },
     'istoe dinheiro':            { name: 'IstoÉ Dinheiro',           domain: 'istoedinheiro.com.br' },
-    'forbes':                    { name: 'Forbes Brasil',            domain: 'forbes.com.br' },
-    'guia do investidor':        { name: 'Guia do Investidor',       domain: 'guiadoinvestidor.com.br' },
-    'spacemoney':                { name: 'SpaceMoney',               domain: 'spacemoney.com.br' },
-    'finance news':              { name: 'Finance News',             domain: 'financenews.com.br' },
-    'advfn':                     { name: 'ADVFN Brasil',             domain: 'br.advfn.com' },
-    'canal rural':               { name: 'Canal Rural',              domain: 'canalrural.com.br' },
-    'metrópoles':                { name: 'Metrópoles',               domain: 'metropoles.com' },
-    'metropoles':                { name: 'Metrópoles',               domain: 'metropoles.com' },
-    'terra':                     { name: 'Terra',                    domain: 'terra.com.br' },
-    'tc':                        { name: 'TC',                       domain: 'tc.com.br' },
-    'bpmoney':                   { name: 'BP Money',                 domain: 'bpmoney.com.br' },
-    'monitor do mercado':        { name: 'Monitor do Mercado',       domain: 'monitordomercado.com.br' }
+    'mais retorno':              { name: 'Mais Retorno',             domain: 'maisretorno.com' },
+    'monitor do mercado':        { name: 'Monitor do Mercado',       domain: 'monitordomercado.com.br' },
+    'investnews':                { name: 'InvestNews',               domain: 'investnews.com.br' },
+    'invest news':               { name: 'InvestNews',               domain: 'investnews.com.br' },
 };
 
 // Índice invertido pré-computado: O(1) para lookup exato, O(k) para parcial.
@@ -105,12 +92,7 @@ function resolveSource(rawName) {
     for (const [k, v] of SOURCE_INDEX) {
         if (key.includes(k)) return v;
     }
-    // Fontes desconhecidas: gera entrada dinâmica a partir do nome cru.
-    // Antes retornava null e MATAVA o artigo — era o principal gargalo de volume.
-    const cleanName = rawName.trim();
-    if (!cleanName) return null;
-    const domain = cleanName.toLowerCase().replace(/\s+/g, '').replace(/[^a-z0-9]/g, '') + '.com';
-    return { name: cleanName, domain };
+    return null; // Rejeita fontes não-financeiras
 }
 
 // ---------------------------------------------------------

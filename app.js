@@ -6604,6 +6604,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (typeof verificarNotificacoesFinanceiras === 'function') {
                 verificarNotificacoesFinanceiras();
             }
+
+            // Radar de notícias — só roda aqui porque depende de carteiraCalculada
+            carregarRadarNoticias();
         }
     }
 
@@ -10760,9 +10763,18 @@ document.addEventListener('DOMContentLoaded', async () => {
                 .map(a => a.symbol)
         )].slice(0, 15);
         
-        // Se a carteira estiver vazia, o Radar nem aparece (ordem do usuário: mostrar apenas se existir ativo)
+        // Se a carteira estiver vazia, mostra mensagem amigável
         if (symbols.length === 0) {
-            container.classList.add('hidden');
+            skeleton.classList.add('hidden');
+            list.innerHTML = `
+            <div class="px-4 py-8 text-center flex flex-col items-center">
+                <div class="w-12 h-12 rounded-full bg-white/5 flex items-center justify-center mb-3">
+                    <svg class="w-6 h-6 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z" />
+                    </svg>
+                </div>
+                <p class="text-[13px] text-gray-400 font-medium">Adicione ativos à carteira para ativar o radar de notícias.</p>
+            </div>`;
             return;
         }
         
@@ -10911,12 +10923,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             // Usa force=true no load inicial para ativar os skeletons de carregamento
             atualizarTodosDados(true);
             handleAtualizarNoticias(false);
-            carregarRadarNoticias();
 
             // Refresh periódico com force=false (sem skeletons, silencioso)
             setInterval(() => {
                 atualizarTodosDados(false);
-                carregarRadarNoticias();
             }, REFRESH_INTERVAL);
 
         } catch (e) {

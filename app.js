@@ -4390,17 +4390,21 @@ document.addEventListener('DOMContentLoaded', async () => {
         function calcularDrawdownMaximo() {
             let peak = 0;
             let maxDrawdown = 0;
-            let maxDrawdownMonth = '';
+            let peakDate = '';
+            let troughDate = '';
 
-            for (let i = 0; i < dadosMensais.length; i++) {
-                const val = dadosMensais[i].value;
-                if (val > peak) peak = val;
+            // Usa dados DIÁRIOS para capturar quedas intra-mês
+            for (let i = 0; i < dadosFiltrados.length; i++) {
+                const val = dadosFiltrados[i].value;
+                if (val > peak) {
+                    peak = val;
+                    peakDate = dadosFiltrados[i].date;
+                }
                 if (peak > 0) {
                     const dd = (val - peak) / peak;
                     if (dd < maxDrawdown) {
                         maxDrawdown = dd;
-                        const parts = dadosMensais[i].date.split('-');
-                        maxDrawdownMonth = `${MESES_PT[parseInt(parts[1]) - 1]}/${parts[0]}`;
+                        troughDate = dadosFiltrados[i].date;
                     }
                 }
             }
@@ -4417,7 +4421,13 @@ document.addEventListener('DOMContentLoaded', async () => {
                 }
             }
             if (elPeriodo) {
-                elPeriodo.textContent = maxDrawdown < 0 ? `Fundo em ${maxDrawdownMonth}` : 'Sem quedas no período';
+                if (maxDrawdown < 0 && troughDate) {
+                    const parts = troughDate.split('-');
+                    const mesNome = MESES_PT[parseInt(parts[1]) - 1];
+                    elPeriodo.textContent = `Fundo em ${mesNome}/${parts[0]}`;
+                } else {
+                    elPeriodo.textContent = 'Sem quedas no período';
+                }
             }
         }
 

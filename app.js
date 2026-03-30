@@ -55,6 +55,85 @@ function checkEmptyState() {
     }
 }
 
+function drawHeroSparkline(startValue, endValue) {
+    const canvas = document.getElementById('hero-sparkline-canvas');
+    if (!canvas) return;
+
+    // Ajuste de precisão para telas Retina
+    const dpr = window.devicePixelRatio || 1;
+    const rect = canvas.getBoundingClientRect();
+    if (rect.width === 0 || rect.height === 0) return;
+
+    canvas.width = rect.width * dpr;
+    canvas.height = rect.height * dpr;
+    const ctx = canvas.getContext('2d');
+    ctx.scale(dpr, dpr);
+
+    const w = rect.width;
+    const h = rect.height;
+    ctx.clearRect(0, 0, w, h);
+
+    // Se tiver dados intradiários reais (calculados pela carteira) usa eles
+    let path = [];
+    if (window.valoresIntradiarioGlobal && window.valoresIntradiarioGlobal.length > 5) {
+        const minVal = Math.min(...window.valoresIntradiarioGlobal);
+        const maxVal = Math.max(...window.valoresIntradiarioGlobal);
+        const range = (maxVal - minVal) || 1;
+        path = window.valoresIntradiarioGlobal.map((v, i) => {
+            const x = (i / (window.valoresIntradiarioGlobal.length - 1)) * w;
+            const y = h - (((v - minVal) / range) * (h * 0.8)); // 80% do teto
+            return {x, y};
+        });
+    } else {
+        // Curve fake que dá sensação de "movimento do dia" baseado em Custo x Atual
+        const isUp = endValue >= startValue;
+        path = [
+            { x: 0, y: isUp ? h * 0.8 : h * 0.2 },
+            { x: w * 0.25, y: h * 0.5 },
+            { x: w * 0.5, y: isUp ? h * 0.6 : h * 0.4 },
+            { x: w * 0.75, y: isUp ? h * 0.3 : h *0.7 },
+            { x: w, y: isUp ? h * 0.1 : h * 0.9 }
+        ];
+    }
+
+    if (path.length === 0) return;
+
+    const isUp = endValue >= startValue;
+    // Roxo suave vibrante na alta, levemente apagado na baixa
+    const colorLine = isUp ? 'rgba(192, 132, 252, 0.9)' : 'rgba(209, 213, 219, 0.4)'; 
+    const colorFillTop = isUp ? 'rgba(168, 85, 247, 0.25)' : 'rgba(156, 163, 175, 0.1)';
+
+    ctx.beginPath();
+    ctx.moveTo(path[0].x, path[0].y);
+    
+    // Smooth Catmull-Rom
+    for (let i = 0; i < path.length - 1; i++) {
+        const p0 = i > 0 ? path[i - 1] : path[0];
+        const p1 = path[i];
+        const p2 = path[i + 1];
+        const p3 = i !== path.length - 2 ? path[i + 2] : p2;
+        const cp1x = p1.x + (p2.x - p0.x) / 6;
+        const cp1y = p1.y + (p2.y - p0.y) / 6;
+        const cp2x = p2.x - (p3.x - p1.x) / 6;
+        const cp2y = p2.y - (p3.y - p1.y) / 6;
+        ctx.bezierCurveTo(cp1x, cp1y, cp2x, cp2y, p2.x, p2.y);
+    }
+
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = colorLine;
+    ctx.stroke();
+
+    ctx.lineTo(w, h);
+    ctx.lineTo(0, h);
+    ctx.closePath();
+
+    const gradient = ctx.createLinearGradient(0, 0, 0, h);
+    gradient.addColorStop(0, colorFillTop);
+    gradient.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = gradient;
+    ctx.fill();
+}
+
 function limparTodasNotificacoes() {
     const list = document.getElementById('notifications-list');
     if (!list) return;
@@ -5336,6 +5415,66 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             // Remove os skeletons somente após os valores já estarem no DOM.
             renderizarDashboardSkeletons(false);
+
+            // -- NEW: Populating Resumo do Dia --
+            const resumoVariacaoValor = document.getElementById('resumo-variacao-valor');
+            const resumoVariacaoPct = document.getElementById('resumo-variacao-pct');
+            if (resumoVariacaoValor && resumoVariacaoPct) {
+                const prevTotal = totalValorCarteira - totalVariacaoDia;
+                const varDiaPercent = prevTotal > 0 ? (totalVariacaoDia / prevTotal) * 100 : 0;
+                const sinal = totalVariacaoDia >= 0 ? '+' : '';
+                const corText = totalVariacaoDia > 0.01 ? 'text-emerald-500' : (totalVariacaoDia < -0.01 ? 'text-red-500' : 'text-gray-500');
+                const corBg = totalVariacaoDia > 0.01 ? 'bg-emerald-500/10' : (totalVariacaoDia < -0.01 ? 'bg-red-500/10' : 'bg-gray-500/10');
+                
+                resumoVariacaoValor.textContent = formatBRL(totalVariacaoDia);
+                // Keep the original classes + the new dynamic color
+                resumoVariacaoValor.className = `text-lg font-bold ${corText}`;
+                resumoVariacaoPct.textContent = `${sinal}${varDiaPercent.toFixed(2)}%`;
+                resumoVariacaoPct.className = `text-[10px] font-semibold ${corText} ${corBg} px-1.5 py-0.5 rounded whitespace-nowrap`;
+            }
+
+            let maxVariation = -Infinity;
+            let topAsset = null;
+            carteiraOrdenada.forEach(ativo => {
+                const dp = precosMap.get(ativo.symbol);
+                if (dp && dp.regularMarketChangePercent !== undefined) {
+                    if (dp.regularMarketChangePercent > maxVariation) {
+                        maxVariation = dp.regularMarketChangePercent;
+                        topAsset = ativo.symbol;
+                    }
+                }
+            });
+            const resumoDestaqueAtivo = document.getElementById('resumo-destaque-ativo');
+            const resumoDestaquePct = document.getElementById('resumo-destaque-pct');
+            if (resumoDestaqueAtivo && resumoDestaquePct && topAsset) {
+                resumoDestaqueAtivo.textContent = topAsset;
+                const corText = maxVariation > 0.01 ? 'text-emerald-500' : (maxVariation < -0.01 ? 'text-red-500' : 'text-gray-500');
+                const corBg = maxVariation > 0.01 ? 'bg-emerald-500/10' : (maxVariation < -0.01 ? 'bg-red-500/10' : 'bg-gray-500/10');
+                const sinal = maxVariation >= 0 ? '+' : '';
+                
+                resumoDestaqueAtivo.className = `text-lg font-bold text-white`; // symbol is always white
+                resumoDestaquePct.textContent = `${sinal}${maxVariation.toFixed(2)}%`;
+                resumoDestaquePct.className = `text-[10px] font-semibold ${corText} ${corBg} px-1.5 py-0.5 rounded whitespace-nowrap`;
+            }
+
+            let proventosRecebidosMes = 0;
+            const hm = new Date();
+            const mesAtualStr = `${hm.getFullYear()}-${String(hm.getMonth() + 1).padStart(2, '0')}`;
+            Array.from(proventosMap.values()).forEach(lista => {
+                lista.forEach(p => {
+                    // Check if payment is in this month AND it's already paid or to be paid this month
+                    if (p.paymentDate && p.paymentDate.startsWith(mesAtualStr)) {
+                        proventosRecebidosMes += p.value; // Total expected/received this month
+                    }
+                });
+            });
+            const resumoProventosValor = document.getElementById('resumo-proventos-valor');
+            if (resumoProventosValor) {
+                resumoProventosValor.textContent = formatBRL(proventosRecebidosMes);
+            }
+
+            // Draw sparkline into canvas (if exists) based on totalVariacaoDia
+            drawHeroSparkline(totalValorCarteira - totalVariacaoDia, totalValorCarteira);
 
             const patrimonioRealParaSnapshot = patrimonioTotalAtivos + saldoCaixa;
             renderizarTimelinePagamentos(); // Mantido pois é a timeline visual no dashboard, não o gráfico pesado
@@ -13073,65 +13212,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Iniciar a busca silenciosa do IPCA ao carregar o app (para preencher o widget)
     setTimeout(buscarDadosIpca, 2000);
 
-    const carousel = document.getElementById('dashboard-carousel');
-    const dots = document.querySelectorAll('.carousel-dot');
 
-    if (carousel) {
-        carousel.addEventListener('scroll', () => {
-            const index = Math.round(carousel.scrollLeft / carousel.offsetWidth);
-
-            dots.forEach((dot, i) => {
-                if (i === index) {
-                    dot.classList.add('active', 'bg-purple-600');
-                    dot.classList.remove('bg-gray-700', 'w-1.5');
-                    dot.style.width = '16px'; // Efeito pílula
-                } else {
-                    dot.classList.remove('active', 'bg-purple-600');
-                    dot.classList.add('bg-gray-700');
-                    dot.style.width = '6px';
-                }
-            });
-        });
-    }
-
-    function initCarouselSwipeBridge() {
-        const carousel = document.getElementById('dashboard-carousel');
-        if (!carousel) return;
-
-        let startX = 0;
-        let isAtEnd = false;
-
-        carousel.addEventListener('touchstart', (e) => {
-            startX = e.touches[0].clientX;
-            // Verifica se está visualmente no final (com pequena tolerância)
-            const maxScroll = carousel.scrollWidth - carousel.clientWidth;
-            isAtEnd = carousel.scrollLeft >= (maxScroll - 5);
-        }, { passive: true });
-
-        carousel.addEventListener('touchend', (e) => {
-            // Se não estava no final, deixa o scroll normal acontecer e sai
-            if (!isAtEnd) return;
-
-            const endX = e.changedTouches[0].clientX;
-            const diff = startX - endX;
-
-            // Se arrastou para a esquerda (tentando avançar)
-            if (diff > 50) {
-                // *** O SEGREDO ESTÁ AQUI ***
-                // Impede que o 'tab-dashboard' perceba esse gesto, evitando o pulo duplo
-                e.stopPropagation();
-
-
-                // Força a ida APENAS para a aba Carteira
-                const btnCarteira = document.querySelector('button[data-tab="tab-carteira"]');
-                if (btnCarteira) btnCarteira.click();
-            }
-        });
-    }
-
-    document.addEventListener('DOMContentLoaded', initCarouselSwipeBridge);
-    // Caso o DOM já tenha carregado (recarregamento via SPA/Módulo)
-    initCarouselSwipeBridge();
 
     function openPagamentosModal(todosPagamentos) {
         const modal = document.getElementById('pagamentos-page-modal');

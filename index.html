@@ -374,6 +374,9 @@
 
                         <div id="resumo-carteira-card">
                             <div class="premium-content">
+                                <!-- Background Canvas for Intraday Chart -->
+                                <canvas id="hero-sparkline-canvas" class="absolute inset-x-0 bottom-0 w-full h-[60%] z-[1]" style="opacity: 0.15; pointer-events: none;"></canvas>
+                                
                                 <div class="flex flex-col w-full mt-2 relative z-20 px-1">
 
                                     <span class="text-[11px] uppercase tracking-[0.12em] font-semibold text-[#71717a] mb-2">Patrimônio Total</span>
@@ -435,118 +438,114 @@
                             </div>
                         </div>
                     </div> <!-- FECHA O HERÓI NATIVO -->
-
                     <!-- CONTEÚDO RESTANTE (EDGE-TO-EDGE FLUIDO) -->
                     <div class="">
-                        <div class="relative w-full mt-6">
-                            <div id="dashboard-carousel"
-                                class="flex overflow-x-auto snap-x snap-mandatory hide-scrollbar gap-0 w-full pb-0">
 
-                                <div class="snap-center snap-always shrink-0 w-full px-5">
-                                    <div id="btn-open-proventos"
-                                        class="bg-[#151515] rounded-2xl p-3 pb-5 h-full cursor-pointer active:scale-[0.98] transition-all flex flex-col justify-center shadow-sm relative">
-                                        <div class="flex items-center justify-between w-full">
-                                            <div class="flex items-center gap-3">
-                                                <div class="w-10 h-10 flex items-center justify-center text-white">
-                                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none"
-                                                        viewBox="0 0 24 24" stroke="currentColor">
-                                                        <path stroke-linecap="round" stroke-linejoin="round"
-                                                            stroke-width="1.5"
-                                                            d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                                    </svg>
-                                                </div>
-                                                <span
-                                                    class="text-sm font-bold text-white tracking-wide leading-tight">Proventos</span>
-                                            </div>
-                                            <svg class="w-5 h-5 text-gray-600">
-                                                <use href="#ico-chevron-r" />
-                                            </svg>
-                                        </div>
+                        <!-- ── RESUMO DO DIA ── -->
+                        <div class="mt-6" id="resumo-dia-container">
+                            <h2 class="text-[11px] font-bold text-gray-500 uppercase tracking-widest px-5 mb-3">Resumo do Dia</h2>
+                            <div class="flex overflow-x-auto snap-x snap-mandatory gap-3 pl-5 pr-5 hide-scrollbar pb-2">
+                                
+                                <!-- Card 1: Variação Hoje -->
+                                <div class="snap-start shrink-0 w-[60%] bg-[#151515] rounded-2xl p-4 flex flex-col justify-between relative overflow-hidden">
+                                    <h3 class="text-[11px] text-gray-500 font-medium uppercase tracking-wider mb-1">Variação (Hoje)</h3>
+                                    <div class="flex items-baseline gap-2 mt-1">
+                                        <span id="resumo-variacao-valor" class="text-lg font-bold text-gray-400">R$ 0,00</span>
+                                        <span id="resumo-variacao-pct" class="text-[10px] font-semibold text-gray-400 bg-gray-500/10 px-1.5 py-0.5 rounded whitespace-nowrap">0.00%</span>
+                                    </div>
+                                    <div class="absolute right-[-15px] bottom-[-15px] opacity-[0.03]">
+                                        <svg class="w-20 h-20 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                                        </svg>
                                     </div>
                                 </div>
 
-                                <div class="snap-center snap-always shrink-0 w-full px-5">
-                                    <div id="btn-open-alocacao"
-                                        class="bg-[#151515] rounded-2xl p-3 pb-5 h-full cursor-pointer active:scale-[0.98] transition-all flex flex-col justify-center shadow-sm relative">
-                                        <div class="flex items-center justify-between w-full">
-                                            <div class="flex items-center gap-3">
-                                                <div class="w-10 h-10 flex items-center justify-center text-white">
-                                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none"
-                                                        viewBox="0 0 24 24" stroke="currentColor">
-                                                        <path stroke-linecap="round" stroke-linejoin="round"
-                                                            stroke-width="1.5"
-                                                            d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z" />
-                                                        <path stroke-linecap="round" stroke-linejoin="round"
-                                                            stroke-width="1.5"
-                                                            d="M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z" />
-                                                    </svg>
-                                                </div>
-                                                <span
-                                                    class="text-sm font-bold text-white tracking-wide leading-tight">Alocação</span>
-                                            </div>
-                                            <svg class="w-5 h-5 text-gray-600">
-                                                <use href="#ico-chevron-r" />
-                                            </svg>
-                                        </div>
+                                <!-- Card 2: Proventos do Mês -->
+                                <div class="snap-start shrink-0 w-[60%] bg-[#151515] rounded-2xl p-4 flex flex-col justify-between relative overflow-hidden">
+                                    <h3 class="text-[11px] text-gray-500 font-medium uppercase tracking-wider mb-1">Proventos Mês</h3>
+                                    <div class="flex items-baseline gap-2 mt-1">
+                                        <span id="resumo-proventos-valor" class="text-lg font-bold text-white">R$ 0,00</span>
+                                    </div>
+                                    <div class="absolute right-[-15px] bottom-[-15px] opacity-[0.03]">
+                                        <svg class="w-20 h-20 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                        </svg>
                                     </div>
                                 </div>
 
-                                <div class="snap-center snap-always shrink-0 w-full px-5">
-                                    <div id="btn-open-ipca"
-                                        class="bg-[#151515] rounded-2xl p-3 pb-5 h-full cursor-pointer active:scale-[0.98] transition-all flex flex-col justify-center shadow-sm relative">
-                                        <div class="flex items-center justify-between w-full">
-                                            <div class="flex items-center gap-3">
-                                                <div class="w-10 h-10 flex items-center justify-center text-white">
-                                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none"
-                                                        viewBox="0 0 24 24" stroke="currentColor">
-                                                        <path stroke-linecap="round" stroke-linejoin="round"
-                                                            stroke-width="1.5" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
-                                                    </svg>
-                                                </div>
-                                                <span
-                                                    class="text-sm font-bold text-white tracking-wide leading-tight">IPCA
-                                                    +</span>
-                                            </div>
-                                            <svg class="w-5 h-5 text-gray-600">
-                                                <use href="#ico-chevron-r" />
-                                            </svg>
-                                        </div>
+                                <!-- Card 3: Destaque -->
+                                <div class="snap-start shrink-0 w-[60%] bg-[#151515] rounded-2xl p-4 flex flex-col justify-between relative overflow-hidden">
+                                    <h3 class="text-[11px] text-gray-500 font-medium uppercase tracking-wider mb-1">Maior Alta</h3>
+                                    <div class="flex items-baseline gap-2 mt-1">
+                                        <span id="resumo-destaque-ativo" class="text-lg font-bold text-gray-400">-</span>
+                                        <span id="resumo-destaque-pct" class="text-[10px] font-semibold text-gray-400 bg-gray-500/10 px-1.5 py-0.5 rounded whitespace-nowrap">0.00%</span>
                                     </div>
                                 </div>
 
-                                <div class="snap-center snap-always shrink-0 w-full px-5">
-                                    <div id="btn-open-objetivos" onclick="openObjetivosModal()"
-                                        class="bg-[#151515] rounded-2xl p-3 pb-5 h-full cursor-pointer active:scale-[0.98] transition-all flex flex-col justify-center shadow-sm relative">
-                                        <div class="flex items-center justify-between w-full">
-                                            <div class="flex items-center gap-3">
-                                                <div class="w-10 h-10 flex items-center justify-center text-white">
-                                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-7 w-7" fill="none"
-                                                        viewBox="0 0 24 24" stroke="currentColor">
-                                                        <path stroke-linecap="round" stroke-linejoin="round"
-                                                            stroke-width="1.5" d="M13 10V3L4 14h7v7l9-11h-7z" />
-                                                    </svg>
-                                                </div>
-                                                <span
-                                                    class="text-sm font-bold text-white tracking-wide leading-tight">Objetivos</span>
-                                            </div>
-                                            <svg class="w-5 h-5 text-gray-600">
-                                                <use href="#ico-chevron-r" />
-                                            </svg>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            <!-- Bolinhas de Navegação Flutuantes -->
-                            <div
-                                class="flex justify-center flex-wrap gap-2 absolute bottom-[10px] left-0 right-0 z-10 pointer-events-none">
-                                <div class="carousel-dot active" data-index="0"></div>
-                                <div class="carousel-dot" data-index="1"></div>
-                                <div class="carousel-dot" data-index="2"></div>
-                                <div class="carousel-dot" data-index="3"></div>
                             </div>
                         </div>
+
+                        <!-- ── ATALHOS ── -->
+                        <div class="mt-8">
+                            <h2 class="text-[11px] font-bold text-gray-500 uppercase tracking-widest px-5 mb-3">Atalhos</h2>
+                            <div class="grid grid-cols-2 gap-3 px-5">
+                            
+                            <!-- Proventos -->
+                            <div id="btn-open-proventos" class="bg-[#151515] rounded-2xl p-3 cursor-pointer active:scale-[0.98] transition-all flex justify-between items-center shadow-sm">
+                                <div class="flex items-center gap-3">
+                                    <div class="w-8 h-8 flex items-center justify-center text-white">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                        </svg>
+                                    </div>
+                                    <span class="text-[13px] font-bold text-white tracking-wide">Proventos</span>
+                                </div>
+                                <svg class="w-4 h-4 text-gray-600"><use href="#ico-chevron-r" /></svg>
+                            </div>
+
+                            <!-- Alocação -->
+                            <div id="btn-open-alocacao" class="bg-[#151515] rounded-2xl p-3 cursor-pointer active:scale-[0.98] transition-all flex justify-between items-center shadow-sm">
+                                <div class="flex items-center gap-3">
+                                    <div class="w-8 h-8 flex items-center justify-center text-white">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z" />
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z" />
+                                        </svg>
+                                    </div>
+                                    <span class="text-[13px] font-bold text-white tracking-wide">Alocação</span>
+                                </div>
+                                <svg class="w-4 h-4 text-gray-600"><use href="#ico-chevron-r" /></svg>
+                            </div>
+
+                            <!-- IPCA+ -->
+                            <div id="btn-open-ipca" class="bg-[#151515] rounded-2xl p-3 cursor-pointer active:scale-[0.98] transition-all flex justify-between items-center shadow-sm">
+                                <div class="flex items-center gap-3">
+                                    <div class="w-8 h-8 flex items-center justify-center text-white">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                                        </svg>
+                                    </div>
+                                    <span class="text-[13px] font-bold text-white tracking-wide">IPCA+</span>
+                                </div>
+                                <svg class="w-4 h-4 text-gray-600"><use href="#ico-chevron-r" /></svg>
+                            </div>
+
+                            <!-- Objetivos -->
+                            <div id="btn-open-objetivos" onclick="openObjetivosModal()" class="bg-[#151515] rounded-2xl p-3 cursor-pointer active:scale-[0.98] transition-all flex justify-between items-center shadow-sm">
+                                <div class="flex items-center gap-3">
+                                    <div class="w-8 h-8 flex items-center justify-center text-white">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                                        </svg>
+                                    </div>
+                                    <span class="text-[13px] font-bold text-white tracking-wide">Objetivos</span>
+                                </div>
+                                <svg class="w-4 h-4 text-gray-600"><use href="#ico-chevron-r" /></svg>
+                            </div>
+
+                        </div>
                         <div id="timeline-pagamentos-container" class="hidden px-4">
-                            <div class="h-px bg-[#1F1F1F] my-6 -mx-4"></div>
+                            <h2 class="text-[11px] font-bold text-gray-500 uppercase tracking-widest mt-8 mb-3">Próximos Pagamentos</h2>
                             <div id="timeline-skeleton" class="flex gap-3 px-1 mt-0">
                                 <div class="w-28 h-28 flex-shrink-0 bg-[#151515] rounded-3xl p-3.5 flex flex-col justify-between">
                                     <div class="w-6 h-6 skeleton" style="border-radius:8px"></div>
@@ -575,8 +574,8 @@
                         </div>
 
                         <div>
-                            <div class="h-px bg-[#1F1F1F] my-6"></div>
-                            <div id="carousel-wrapper" class="w-full overflow-x-auto pb-2 pl-4 pr-1 hide-scrollbar"
+                            <h2 class="text-[11px] font-bold text-gray-500 uppercase tracking-widest px-5 mt-8 mb-3">Acesso Rápido</h2>
+                            <div id="carousel-wrapper" class="w-full overflow-x-auto pb-2 pl-5 pr-1 hide-scrollbar"
                                 style="-webkit-overflow-scrolling: touch;">
                                 <div id="dashboard-favorites-list" class="flex gap-4 min-w-max">
                                     <div class="fav-card-skeleton w-16 h-16 bg-[#151515] skeleton flex-shrink-0"
@@ -587,22 +586,23 @@
                                         style="border-radius:9999px"></div>
                                 </div>
                             </div>
-                            <div class="h-px bg-[#1F1F1F] my-6"></div>
                         </div>
 
-                        <!-- ── ÍNDICES DE MERCADO ── -->
-                        <div id="market-indices-container" class="hidden mb-6">
-                            <div class="indices-marquee-wrapper overflow-hidden">
-                                <div class="indices-marquee-track flex gap-6" id="market-indices-list">
-                                    <!-- Preenchido via JS -->
+                        <!-- ── MERCADO HOJE (Índices + Rankings) ── -->
+                        <div id="mercado-hoje-container" class="hidden mt-8">
+                            <h2 class="text-[11px] font-bold text-gray-500 uppercase tracking-widest px-5 mb-3">Mercado Hoje</h2>
+                            
+                            <!-- Índices de Mercado -->
+                            <div id="market-indices-container" class="mb-4">
+                                <div class="indices-marquee-wrapper overflow-hidden">
+                                    <div class="indices-marquee-track flex gap-6" id="market-indices-list">
+                                        <!-- Preenchido via JS -->
+                                    </div>
                                 </div>
                             </div>
-                        </div>
 
-                        <!-- ── RANKINGS (Variação do Dia) ── -->
-                        <div id="rankings-container" class="hidden mt-2">
-                            <h2 class="text-[11px] font-bold text-gray-500 uppercase tracking-widest px-5 mb-3">Ranking</h2>
-                            <div class="bg-[#141414] py-4">
+                            <!-- Rankings -->
+                            <div id="rankings-container" class="bg-[#141414] py-4">
                                 <!-- Horizontal Carousel -->
                                 <div class="flex overflow-x-auto snap-x snap-mandatory gap-10 pl-6 pr-2 scroll-pl-6 no-scrollbar [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                                     
@@ -640,8 +640,8 @@
                         </div>
 
                         <!-- ── NOTÍCIAS (Radar) ── -->
-                        <div id="news-feed-container" class="mt-6 mb-4 hidden">
-                            <div class="flex items-center justify-between px-4 mb-3">
+                        <div id="news-feed-container" class="mt-8 mb-4 hidden">
+                            <div class="flex items-center justify-between px-5 mb-3">
                                 <h2 class="text-[11px] font-bold text-gray-500 uppercase tracking-widest">Radar do Mercado</h2>
                                 <span class="text-[9px] text-gray-600 bg-[#1c1c1e] px-2 py-0.5 rounded-full uppercase tracking-widest font-bold">Portfólio</span>
                             </div>

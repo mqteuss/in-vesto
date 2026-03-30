@@ -444,42 +444,27 @@
                         <!-- ── RESUMO DO DIA ── -->
                         <div class="mt-6" id="resumo-dia-container">
                             <h2 class="text-[11px] font-bold text-gray-500 uppercase tracking-widest px-5 mb-3">Resumo do Dia</h2>
-                            <div class="flex overflow-x-auto snap-x snap-mandatory gap-3 pl-5 pr-5 hide-scrollbar pb-2">
+                            <div class="grid grid-cols-3 gap-3 px-5">
                                 
-                                <!-- Card 1: Variação Hoje -->
-                                <div class="snap-start shrink-0 w-[60%] bg-[#151515] rounded-2xl p-4 flex flex-col justify-between relative overflow-hidden">
-                                    <h3 class="text-[11px] text-gray-500 font-medium uppercase tracking-wider mb-1">Variação (Hoje)</h3>
-                                    <div class="flex items-baseline gap-2 mt-1">
-                                        <span id="resumo-variacao-valor" class="text-lg font-bold text-gray-400">R$ 0,00</span>
-                                        <span id="resumo-variacao-pct" class="text-[10px] font-semibold text-gray-400 bg-gray-500/10 px-1.5 py-0.5 rounded whitespace-nowrap">0.00%</span>
-                                    </div>
-                                    <div class="absolute right-[-15px] bottom-[-15px] opacity-[0.03]">
-                                        <svg class="w-20 h-20 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
-                                        </svg>
-                                    </div>
+                                <!-- Variação -->
+                                <div class="bg-[#151515] rounded-xl p-3 flex flex-col justify-between relative shadow-sm">
+                                    <h3 class="text-[10px] text-gray-500 font-bold uppercase tracking-widest mb-1.5 flex items-center gap-1">Variação</h3>
+                                    <span id="resumo-variacao-valor" class="text-[13px] font-bold text-gray-300 tabular-nums">R$ 0,00</span>
+                                    <span id="resumo-variacao-pct" class="text-[10px] font-bold mt-0.5 whitespace-nowrap text-gray-500">0.00%</span>
                                 </div>
 
-                                <!-- Card 2: Proventos do Mês -->
-                                <div class="snap-start shrink-0 w-[60%] bg-[#151515] rounded-2xl p-4 flex flex-col justify-between relative overflow-hidden">
-                                    <h3 class="text-[11px] text-gray-500 font-medium uppercase tracking-wider mb-1">Proventos Mês</h3>
-                                    <div class="flex items-baseline gap-2 mt-1">
-                                        <span id="resumo-proventos-valor" class="text-lg font-bold text-white">R$ 0,00</span>
-                                    </div>
-                                    <div class="absolute right-[-15px] bottom-[-15px] opacity-[0.03]">
-                                        <svg class="w-20 h-20 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                        </svg>
-                                    </div>
+                                <!-- Maior Alta -->
+                                <div class="bg-[#151515] rounded-xl p-3 flex flex-col justify-between relative shadow-sm">
+                                    <h3 class="text-[10px] text-gray-500 font-bold uppercase tracking-widest mb-1.5 flex items-center gap-1 overflow-hidden truncate">Destaque</h3>
+                                    <span id="resumo-destaque-ativo" class="text-[13px] font-bold text-gray-300">-</span>
+                                    <span id="resumo-destaque-pct" class="text-[10px] font-bold mt-0.5 whitespace-nowrap text-gray-500">0.00%</span>
                                 </div>
 
-                                <!-- Card 3: Destaque -->
-                                <div class="snap-start shrink-0 w-[60%] bg-[#151515] rounded-2xl p-4 flex flex-col justify-between relative overflow-hidden">
-                                    <h3 class="text-[11px] text-gray-500 font-medium uppercase tracking-wider mb-1">Maior Alta</h3>
-                                    <div class="flex items-baseline gap-2 mt-1">
-                                        <span id="resumo-destaque-ativo" class="text-lg font-bold text-gray-400">-</span>
-                                        <span id="resumo-destaque-pct" class="text-[10px] font-semibold text-gray-400 bg-gray-500/10 px-1.5 py-0.5 rounded whitespace-nowrap">0.00%</span>
-                                    </div>
+                                <!-- Proventos do Mês -->
+                                <div class="bg-[#151515] rounded-xl p-3 flex flex-col justify-between relative shadow-sm">
+                                    <h3 class="text-[10px] text-gray-500 font-bold uppercase tracking-widest mb-1.5 flex items-center gap-1 overflow-hidden truncate">No Mês</h3>
+                                    <span id="resumo-proventos-valor" class="text-[13px] font-bold text-white tabular-nums">R$ 0,00</span>
+                                    <span class="text-[10px] font-medium text-gray-500 mt-0.5 whitespace-nowrap">Proventos</span>
                                 </div>
 
                             </div>

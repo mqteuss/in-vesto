@@ -5424,13 +5424,11 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const varDiaPercent = prevTotal > 0 ? (totalVariacaoDia / prevTotal) * 100 : 0;
                 const sinal = totalVariacaoDia >= 0 ? '+' : '';
                 const corText = totalVariacaoDia > 0.01 ? 'text-emerald-500' : (totalVariacaoDia < -0.01 ? 'text-red-500' : 'text-gray-500');
-                const corBg = totalVariacaoDia > 0.01 ? 'bg-emerald-500/10' : (totalVariacaoDia < -0.01 ? 'bg-red-500/10' : 'bg-gray-500/10');
                 
                 resumoVariacaoValor.textContent = formatBRL(totalVariacaoDia);
-                // Keep the original classes + the new dynamic color
-                resumoVariacaoValor.className = `text-lg font-bold ${corText}`;
+                resumoVariacaoValor.className = `text-[13px] font-bold tabular-nums ${corText}`;
                 resumoVariacaoPct.textContent = `${sinal}${varDiaPercent.toFixed(2)}%`;
-                resumoVariacaoPct.className = `text-[10px] font-semibold ${corText} ${corBg} px-1.5 py-0.5 rounded whitespace-nowrap`;
+                resumoVariacaoPct.className = `text-[10px] font-bold mt-0.5 whitespace-nowrap ${corText}`;
             }
 
             let maxVariation = -Infinity;
@@ -5449,22 +5447,25 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (resumoDestaqueAtivo && resumoDestaquePct && topAsset) {
                 resumoDestaqueAtivo.textContent = topAsset;
                 const corText = maxVariation > 0.01 ? 'text-emerald-500' : (maxVariation < -0.01 ? 'text-red-500' : 'text-gray-500');
-                const corBg = maxVariation > 0.01 ? 'bg-emerald-500/10' : (maxVariation < -0.01 ? 'bg-red-500/10' : 'bg-gray-500/10');
                 const sinal = maxVariation >= 0 ? '+' : '';
                 
-                resumoDestaqueAtivo.className = `text-lg font-bold text-white`; // symbol is always white
+                resumoDestaqueAtivo.className = `text-[13px] font-bold text-gray-300`;
                 resumoDestaquePct.textContent = `${sinal}${maxVariation.toFixed(2)}%`;
-                resumoDestaquePct.className = `text-[10px] font-semibold ${corText} ${corBg} px-1.5 py-0.5 rounded whitespace-nowrap`;
+                resumoDestaquePct.className = `text-[10px] font-bold mt-0.5 whitespace-nowrap ${corText}`;
             }
 
             let proventosRecebidosMes = 0;
             const hm = new Date();
             const mesAtualStr = `${hm.getFullYear()}-${String(hm.getMonth() + 1).padStart(2, '0')}`;
-            Array.from(proventosMap.values()).forEach(lista => {
+            Array.from(proventosMap.keys()).forEach(symbol => {
+                const lista = proventosMap.get(symbol);
                 lista.forEach(p => {
-                    // Check if payment is in this month AND it's already paid or to be paid this month
                     if (p.paymentDate && p.paymentDate.startsWith(mesAtualStr)) {
-                        proventosRecebidosMes += p.value; // Total expected/received this month
+                        const dataReferencia = p.dataCom || p.paymentDate;
+                        const qtdElegivel = getQuantidadeNaData(symbol, dataReferencia);
+                        if (qtdElegivel > 0) {
+                            proventosRecebidosMes += (qtdElegivel * p.value);
+                        }
                     }
                 });
             });
@@ -6269,6 +6270,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             renderLista('rankings-altas', data.altas, 'altas');
             renderLista('rankings-baixas', data.baixas, 'baixas');
             container.classList.remove('hidden');
+            const mtContainer = document.getElementById('mercado-hoje-container');
+            if (mtContainer) mtContainer.classList.remove('hidden');
 
         } catch (e) {
             console.error('Erro ao carregar rankings:', e);
@@ -6302,6 +6305,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             };
 
             container.classList.remove('hidden');
+            const mtContainer = document.getElementById('mercado-hoje-container');
+            if (mtContainer) mtContainer.classList.remove('hidden');
             let data = await getCache(cacheKey);
 
             if (!data || force) {

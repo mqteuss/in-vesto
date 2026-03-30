@@ -5416,63 +5416,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             // Remove os skeletons somente após os valores já estarem no DOM.
             renderizarDashboardSkeletons(false);
 
-            // -- NEW: Populating Resumo do Dia --
-            const resumoVariacaoValor = document.getElementById('resumo-variacao-valor');
-            const resumoVariacaoPct = document.getElementById('resumo-variacao-pct');
-            if (resumoVariacaoValor && resumoVariacaoPct) {
-                const prevTotal = totalValorCarteira - totalVariacaoDia;
-                const varDiaPercent = prevTotal > 0 ? (totalVariacaoDia / prevTotal) * 100 : 0;
-                const sinal = totalVariacaoDia >= 0 ? '+' : '';
-                const corText = totalVariacaoDia > 0.01 ? 'text-emerald-500' : (totalVariacaoDia < -0.01 ? 'text-red-500' : 'text-gray-500');
-                
-                resumoVariacaoValor.textContent = formatBRL(totalVariacaoDia);
-                resumoVariacaoValor.className = `text-[13px] font-bold tabular-nums ${corText}`;
-                resumoVariacaoPct.textContent = `${sinal}${varDiaPercent.toFixed(2)}%`;
-                resumoVariacaoPct.className = `text-[10px] font-bold mt-0.5 whitespace-nowrap ${corText}`;
-            }
 
-            let maxVariation = -Infinity;
-            let topAsset = null;
-            carteiraOrdenada.forEach(ativo => {
-                const dp = precosMap.get(ativo.symbol);
-                if (dp && dp.regularMarketChangePercent !== undefined) {
-                    if (dp.regularMarketChangePercent > maxVariation) {
-                        maxVariation = dp.regularMarketChangePercent;
-                        topAsset = ativo.symbol;
-                    }
-                }
-            });
-            const resumoDestaqueAtivo = document.getElementById('resumo-destaque-ativo');
-            const resumoDestaquePct = document.getElementById('resumo-destaque-pct');
-            if (resumoDestaqueAtivo && resumoDestaquePct && topAsset) {
-                resumoDestaqueAtivo.textContent = topAsset;
-                const corText = maxVariation > 0.01 ? 'text-emerald-500' : (maxVariation < -0.01 ? 'text-red-500' : 'text-gray-500');
-                const sinal = maxVariation >= 0 ? '+' : '';
-                
-                resumoDestaqueAtivo.className = `text-[13px] font-bold text-gray-300`;
-                resumoDestaquePct.textContent = `${sinal}${maxVariation.toFixed(2)}%`;
-                resumoDestaquePct.className = `text-[10px] font-bold mt-0.5 whitespace-nowrap ${corText}`;
-            }
-
-            let proventosRecebidosMes = 0;
-            const hm = new Date();
-            const mesAtualStr = `${hm.getFullYear()}-${String(hm.getMonth() + 1).padStart(2, '0')}`;
-            Array.from(proventosMap.keys()).forEach(symbol => {
-                const lista = proventosMap.get(symbol);
-                lista.forEach(p => {
-                    if (p.paymentDate && p.paymentDate.startsWith(mesAtualStr)) {
-                        const dataReferencia = p.dataCom || p.paymentDate;
-                        const qtdElegivel = getQuantidadeNaData(symbol, dataReferencia);
-                        if (qtdElegivel > 0) {
-                            proventosRecebidosMes += (qtdElegivel * p.value);
-                        }
-                    }
-                });
-            });
-            const resumoProventosValor = document.getElementById('resumo-proventos-valor');
-            if (resumoProventosValor) {
-                resumoProventosValor.textContent = formatBRL(proventosRecebidosMes);
-            }
 
             // Draw sparkline into canvas (if exists) based on totalVariacaoDia
             drawHeroSparkline(totalValorCarteira - totalVariacaoDia, totalValorCarteira);

@@ -1383,8 +1383,14 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
 
         if (bioEnabled && currentUserId && !biometricLockScreen.classList.contains('hidden')) {
+            // Se o prompt inline do HTML já desbloqueou, não re-dispara
+            if (window.__vestoUnlockedEarly) {
+                biometricLockScreen.classList.add('hidden');
+                document.body.style.overflow = '';
+                return;
+            }
             document.body.style.overflow = 'hidden';
-            setTimeout(() => autenticarBiometria(), 100);
+            autenticarBiometria(); // Sem delay — dispara imediatamente
         }
     }
 

@@ -95,14 +95,47 @@
 
     <script>
         try {
-            // Cleanup de emergência removido — causava loop infinito com app.js
-
             const bioEnabled = localStorage.getItem('vesto_bio_enabled') === 'true';
             const justLoggedOut = sessionStorage.getItem('vesto_just_logged_out') === 'true';
 
             if (bioEnabled && !justLoggedOut) {
                 document.getElementById('biometric-lock-screen').classList.remove('hidden');
                 document.body.style.overflow = 'hidden';
+
+                // ── BIOMETRIA INSTANTÂNEA ──
+                // Dispara o prompt ANTES de app.js carregar (~50ms vs ~1-2s).
+                // Tudo que precisamos está no localStorage; sem dependência de rede.
+                const credId = localStorage.getItem('vesto_bio_id');
+                if (credId && window.PublicKeyCredential) {
+                    const _b64 = (b) => Uint8Array.from(atob(b), c => c.charCodeAt(0));
+                    const challenge = new Uint8Array(32);
+                    crypto.getRandomValues(challenge);
+
+                    navigator.credentials.get({
+                        publicKey: {
+                            challenge,
+                            timeout: 60000,
+                            userVerification: 'required',
+                            allowCredentials: [{
+                                id: _b64(credId),
+                                type: 'public-key',
+                                transports: ['internal']
+                            }]
+                        }
+                    }).then(assertion => {
+                        if (assertion) {
+                            // Sucesso — desbloqueia imediatamente
+                            document.getElementById('biometric-lock-screen').classList.add('hidden');
+                            document.body.style.overflow = '';
+                            window.__vestoUnlockedEarly = true; // Flag p/ app.js não re-disparar
+                        }
+                    }).catch(err => {
+                        console.warn('Bio early-prompt falhou:', err.name);
+                        // Mostra botão de retry
+                        const btn = document.getElementById('btn-desbloquear');
+                        if (btn) btn.classList.remove('opacity-0', 'pointer-events-none');
+                    });
+                }
             }
 
             const isLight = localStorage.getItem('vesto_theme') === 'light';

@@ -4846,14 +4846,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         const lista = document.getElementById('timeline-lista');
         const timelineSkeleton = document.getElementById('timeline-skeleton');
 
-        // Estilos de margem garantidos
-        container.style.marginTop = '0px';
-        container.style.paddingTop = '16px';
-
         const mostrarEstadoVazio = () => {
             if (timelineSkeleton) timelineSkeleton.classList.add('hidden');
             container.classList.remove('hidden');
-            lista.className = 'flex gap-3 px-1 mt-4 hide-scrollbar pb-2';
+            lista.className = 'flex gap-3 px-1 mt-0 hide-scrollbar pb-2';
             lista.innerHTML = `
                 <div class="w-28 h-28 flex-shrink-0 bg-[#151515] bg-opacity-70 rounded-3xl p-3.5 flex flex-col justify-between border border-dashed border-[#2a2a2a] cursor-default">
                     <div class="w-8 h-8 rounded-full bg-[#1c1c1e] border border-white/5 flex flex-col items-center justify-center">
@@ -4904,7 +4900,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         // Configura container para Carousel Horizontal (só ativa scroll se tiver > 2 itens para liberar o gesto de aba)
         const isScrollable = pagamentosReais.length > 2;
-        lista.className = `flex ${isScrollable ? 'overflow-x-auto snap-x' : ''} gap-3 hide-scrollbar pb-2 px-1 mt-4`;
+        lista.className = `flex ${isScrollable ? 'overflow-x-auto snap-x' : ''} gap-3 hide-scrollbar pb-2 px-1 mt-0`;
         lista.style = isScrollable ? '-webkit-overflow-scrolling: touch;' : '';
 
         lista.innerHTML = '';

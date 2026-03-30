@@ -1475,11 +1475,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         } catch (e) {
             console.warn("Biometria cancelada ou falhou:", e);
-            // NotAllowedError = Usuário cancelou
-            // SecurityError / InvalidStateError = Chamada fora de contexto seguro (ex: clique antes do load completo)
-            if (e.name !== 'NotAllowedError' && e.name !== 'SecurityError' && e.name !== 'InvalidStateError') {
-                showToast("Falha na leitura biométrica.");
-            }
+            // Silencioso — o botão de retry na lock screen já dá feedback suficiente
 
             // Se falhou ou cancelou, exibe o botão na tela para tentar de novo
             const btnBox = document.getElementById('btn-desbloquear');

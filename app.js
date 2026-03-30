@@ -4853,16 +4853,18 @@ document.addEventListener('DOMContentLoaded', async () => {
         const mostrarEstadoVazio = () => {
             if (timelineSkeleton) timelineSkeleton.classList.add('hidden');
             container.classList.remove('hidden');
-            lista.className = 'w-full mt-4 pb-2';
+            lista.className = 'flex gap-3 px-1 mt-4 hide-scrollbar pb-2';
             lista.innerHTML = `
-                <div class="bg-[#151515] rounded-3xl p-5 flex flex-col items-center justify-center border border-dashed border-[#2a2a2a]" style="min-height: 120px;">
-                    <div class="w-10 h-10 rounded-full bg-[#1c1c1e] flex items-center justify-center mb-3">
-                        <svg class="w-5 h-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                <div class="w-28 h-28 flex-shrink-0 bg-[#151515] bg-opacity-70 rounded-3xl p-3.5 flex flex-col justify-between border border-dashed border-[#2a2a2a] cursor-default">
+                    <div class="w-8 h-8 rounded-full bg-[#1c1c1e] border border-white/5 flex flex-col items-center justify-center">
+                        <svg class="w-4 h-4 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
                         </svg>
                     </div>
-                    <span class="text-[11px] font-bold text-gray-400">Nenhum pagamento programado</span>
-                    <span class="text-[10px] text-gray-600 mt-1 uppercase tracking-wider text-center px-4">Seus proventos futuros aparecerão aqui.</span>
+                    <div class="flex flex-col">
+                        <span class="text-[11px] font-bold text-gray-500 tracking-wide leading-tight mt-1 mb-0.5">Vazio</span>
+                        <span class="text-[9px] text-gray-600 font-medium leading-tight">Nenhum valor agendado</span>
+                    </div>
                 </div>
             `;
         };

@@ -23,6 +23,11 @@
 
     <link href="./style-tailwind.css" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
+
+    <!-- Anti-FOUC (Mão pesada provisória p/ ocultar zeros antes do Tailwind renderizar) -->
+    <style>
+        .hidden { display: none !important; }
+    </style>
 </head>
 
 <body class="antialiased">

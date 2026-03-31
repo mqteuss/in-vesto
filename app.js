@@ -55,84 +55,7 @@ function checkEmptyState() {
     }
 }
 
-function drawHeroSparkline(startValue, endValue) {
-    const canvas = document.getElementById('hero-sparkline-canvas');
-    if (!canvas) return;
 
-    // Ajuste de precisão para telas Retina
-    const dpr = window.devicePixelRatio || 1;
-    const rect = canvas.getBoundingClientRect();
-    if (rect.width === 0 || rect.height === 0) return;
-
-    canvas.width = rect.width * dpr;
-    canvas.height = rect.height * dpr;
-    const ctx = canvas.getContext('2d');
-    ctx.scale(dpr, dpr);
-
-    const w = rect.width;
-    const h = rect.height;
-    ctx.clearRect(0, 0, w, h);
-
-    // Se tiver dados intradiários reais (calculados pela carteira) usa eles
-    let path = [];
-    if (window.valoresIntradiarioGlobal && window.valoresIntradiarioGlobal.length > 5) {
-        const minVal = Math.min(...window.valoresIntradiarioGlobal);
-        const maxVal = Math.max(...window.valoresIntradiarioGlobal);
-        const range = (maxVal - minVal) || 1;
-        path = window.valoresIntradiarioGlobal.map((v, i) => {
-            const x = (i / (window.valoresIntradiarioGlobal.length - 1)) * w;
-            const y = h - (((v - minVal) / range) * (h * 0.8)); // 80% do teto
-            return {x, y};
-        });
-    } else {
-        // Curve fake que dá sensação de "movimento do dia" baseado em Custo x Atual
-        const isUp = endValue >= startValue;
-        path = [
-            { x: 0, y: isUp ? h * 0.8 : h * 0.2 },
-            { x: w * 0.25, y: h * 0.5 },
-            { x: w * 0.5, y: isUp ? h * 0.6 : h * 0.4 },
-            { x: w * 0.75, y: isUp ? h * 0.3 : h *0.7 },
-            { x: w, y: isUp ? h * 0.1 : h * 0.9 }
-        ];
-    }
-
-    if (path.length === 0) return;
-
-    const isUp = endValue >= startValue;
-    // Roxo suave vibrante na alta, levemente apagado na baixa
-    const colorLine = isUp ? 'rgba(192, 132, 252, 0.9)' : 'rgba(209, 213, 219, 0.4)'; 
-    const colorFillTop = isUp ? 'rgba(168, 85, 247, 0.25)' : 'rgba(156, 163, 175, 0.1)';
-
-    ctx.beginPath();
-    ctx.moveTo(path[0].x, path[0].y);
-    
-    // Smooth Catmull-Rom
-    for (let i = 0; i < path.length - 1; i++) {
-        const p0 = i > 0 ? path[i - 1] : path[0];
-        const p1 = path[i];
-        const p2 = path[i + 1];
-        const p3 = i !== path.length - 2 ? path[i + 2] : p2;
-        const cp1x = p1.x + (p2.x - p0.x) / 6;
-        const cp1y = p1.y + (p2.y - p0.y) / 6;
-        const cp2x = p2.x - (p3.x - p1.x) / 6;
-        const cp2y = p2.y - (p3.y - p1.y) / 6;
-        ctx.bezierCurveTo(cp1x, cp1y, cp2x, cp2y, p2.x, p2.y);
-    }
-
-    ctx.lineWidth = 2;
-    ctx.strokeStyle = colorLine;
-    ctx.stroke();
-
-    ctx.lineTo(w, h);
-    ctx.lineTo(0, h);
-    ctx.closePath();
-
-    const gradient = ctx.createLinearGradient(0, 0, 0, h);
-    gradient.addColorStop(0, colorFillTop);
-    gradient.addColorStop(1, 'rgba(0,0,0,0)');
-    ctx.fillStyle = gradient;
-    ctx.fill();
-}
 
 function limparTodasNotificacoes() {
     const list = document.getElementById('notifications-list');
@@ -5418,8 +5341,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 
 
-            // Draw sparkline into canvas (if exists) based on totalVariacaoDia
-            drawHeroSparkline(totalValorCarteira - totalVariacaoDia, totalValorCarteira);
+
 
             const patrimonioRealParaSnapshot = patrimonioTotalAtivos + saldoCaixa;
             renderizarTimelinePagamentos(); // Mantido pois é a timeline visual no dashboard, não o gráfico pesado

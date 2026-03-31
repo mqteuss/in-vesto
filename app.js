@@ -2844,568 +2844,351 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
 
-    function renderizarGraficoAlocacao(isRetry = false) {
-        const canvas = document.getElementById('alocacao-chart');
-        if (!canvas) return;
+    // Nova Lógica de Alocação em Barra Stacked
+window.alocacaoSelectedMode = 'ativo';
+window.alocacaoSelectedIdx = -1;
+window.alocacaoDadosAtuais = [];
 
-        const cardContainer = canvas.closest('.border');
-        if (cardContainer) {
-            cardContainer.classList.remove('border', 'border-[#2C2C2E]');
-            cardContainer.style.border = 'none';
-            cardContainer.style.boxShadow = 'none';
+function desenharLinhaAlocacao() {
+    const svg = document.getElementById('alocacao-svg-lines');
+    if (!svg) return;
+    
+    // Clear previous
+    svg.innerHTML = '';
+    
+    if (window.alocacaoSelectedIdx === -1) return;
+    const idx = window.alocacaoSelectedIdx;
+    
+    const segmentEl = document.getElementById('alocacao-segment-' + idx);
+    const legendEl = document.getElementById('alocacao-legend-item-' + idx);
+    const splitView = document.getElementById('alocacao-split-view');
+    
+    if (!segmentEl || !legendEl || !splitView) return;
+    
+    // Precisamos das posições relativas ao splitView (que é o container do SVG)
+    const svgRect = svg.getBoundingClientRect();
+    const segRect = segmentEl.getBoundingClientRect();
+    
+    // Ajustar se o segmento for muito fino
+    let y1 = segRect.top - svgRect.top + (segRect.height / 2);
+    let x1 = segRect.right - svgRect.left;
+    
+    // Dot dentro da legenda para conectar
+    const dotEl = legendEl.querySelector('.alocacao-legend-dot');
+    let y2 = y1;
+    let x2 = x1 + 15; // Ponto quebrado logo depois da barra
+    let y3 = y1;
+    let x3 = x2;
+    
+    if (dotEl) {
+        const dotRect = dotEl.getBoundingClientRect();
+        // Verifica se o item de legenda está visível na área de scroll
+        y3 = (dotRect.top - svgRect.top) + (dotRect.height / 2);
+        x3 = dotRect.left - svgRect.left - 4; // Um pouco antes do dot
+    }
+    
+    const cor = segmentEl.dataset.color || '#fff';
+    
+    // Se saiu da tela absurdamente para cima ou para baixo, oculta
+    if(y3 < -50 || y3 > svgRect.height + 50) {
+       return;
+    }
+
+    const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    
+    // Linha Reta com quina em 45 graus ou simples polyline
+    const xMid = x2 + ((x3 - x2) / 2);
+    // path.setAttribute("d", `M ${x1} ${y1} C ${x2+30} ${y1}, ${x3-30} ${y3}, ${x3} ${y3}`); // Curva Bezzier suave
+    path.setAttribute("d", `M ${x1} ${y1} L ${x2} ${y1} L ${x3} ${y3}`);
+    path.setAttribute("fill", "none");
+    path.setAttribute("stroke", cor);
+    path.setAttribute("stroke-width", "1.5");
+    path.setAttribute("class", "transition-all duration-300");
+    // Adiciona o glow sutil (filter drop-shadow) opcional
+    path.style.filter = `drop-shadow(0 0 6px ${cor}88)`;
+    
+    svg.appendChild(path);
+}
+
+// Global exposure para onscroll inline no HTML
+window.desenharLinhaAlocacao = desenharLinhaAlocacao;
+
+function selecionarItemAlocacao(idx) {
+    if (idx === window.alocacaoSelectedIdx) return; // already selected
+    window.alocacaoSelectedIdx = idx;
+    
+    // Estilos Visuais da Legenda e do Bar
+    document.querySelectorAll('.alocacao-legend-item').forEach((el, i) => {
+        if(i === idx) {
+            el.style.backgroundColor = 'rgba(255,255,255,0.05)';
+            const details = el.querySelector('.alocacao-details');
+            if(details) details.style.maxHeight = '150px';
+        } else {
+            el.style.backgroundColor = 'transparent';
+            const details = el.querySelector('.alocacao-details');
+            if(details) details.style.maxHeight = '0px';
         }
-
-        const temPrecos = Array.isArray(precosAtuais) && precosAtuais.length > 0;
-
-        if (!window.alocacaoRetryCount) window.alocacaoRetryCount = 0;
-
-        if (!temPrecos && window.alocacaoRetryCount < 5) {
-            window.alocacaoRetryTimer = setTimeout(() => {
-                window.alocacaoRetryCount++;
-                renderizarGraficoAlocacao(true);
-            }, 800);
-        } else if (temPrecos) {
-            window.alocacaoRetryCount = 0;
-            if (window.alocacaoRetryTimer) clearTimeout(window.alocacaoRetryTimer);
+    });
+    
+    document.querySelectorAll('.alocacao-bar-seg').forEach((el, i) => {
+        if(i === idx) {
+            el.style.opacity = '1';
+            el.style.filter = 'brightness(1.2) contrast(1.1)';
+            el.style.transform = 'scaleX(1.05)';
+        } else {
+            el.style.opacity = '0.4';
+            el.style.filter = 'brightness(0.7)';
+            el.style.transform = 'scaleX(1)';
         }
+    });
+    
+    desenharLinhaAlocacao();
+}
 
-        const mapPrecos = new Map();
-        if (temPrecos) {
-            precosAtuais.forEach(p => {
-                const sym = p.symbol || p.ticker || p.codigo;
-                const val = p.regularMarketPrice || p.price || p.cotacao || p.valor;
-                if (sym && val) {
-                    mapPrecos.set(sym.toUpperCase().trim(), parseFloat(val));
-                }
-            });
-        }
+function processarDadosAlocacao() {
+    const temPrecos = Array.isArray(precosAtuais) && precosAtuais.length > 0;
+    const mapPrecos = new Map();
+    if (temPrecos) {
+        precosAtuais.forEach(p => {
+            const sym = p.symbol || p.ticker || p.codigo;
+            const val = p.regularMarketPrice || p.price || p.cotacao || p.valor;
+            if (sym && val) mapPrecos.set(sym.toUpperCase().trim(), parseFloat(val));
+        });
+    }
 
-        let totalGeral = 0;
+    let totalGeral = 0;
+    const listaFinal = [];
+
+    if (window.alocacaoSelectedMode === 'ativo') {
         const dadosAtivos = [];
-
         if (Array.isArray(carteiraCalculada)) {
             carteiraCalculada.forEach(ativo => {
                 const ticker = (ativo.symbol || ativo.ticker).toUpperCase().trim();
                 const qtd = parseFloat(ativo.quantity || ativo.quantidade || 0);
                 const precoMedio = parseFloat(ativo.precoMedio || ativo.averagePrice || 0);
-
-                let precoLive = mapPrecos.get(ticker);
-                if (!precoLive) precoLive = parseFloat(ativo.regularMarketPrice || ativo.price || 0);
+                let precoLive = mapPrecos.get(ticker) || parseFloat(ativo.regularMarketPrice || ativo.price || 0);
                 if (!precoLive || isNaN(precoLive) || precoLive === 0) precoLive = precoMedio;
-
+                
                 const valorTotal = precoLive * qtd;
-
                 if (valorTotal > 0.01) {
                     totalGeral += valorTotal;
                     dadosAtivos.push({
+                        id: ticker,
                         label: ticker,
                         value: valorTotal,
                         qtd: qtd,
                         precoMedio: precoMedio,
-                        precoLive: precoLive,
-                        color: ''
+                        precoLive: precoLive
                     });
                 }
             });
         }
-
         dadosAtivos.sort((a, b) => b.value - a.value);
-
-        const paletaCores = [
-            '#8B5CF6', '#10B981', '#3B82F6', '#F59E0B',
-            '#EC4899', '#6366F1', '#EF4444', '#14B8A6'
-        ];
-
-        dadosAtivos.forEach((d, i) => {
-            d.color = paletaCores[i % paletaCores.length];
-        });
-
-        const sortedLabels = dadosAtivos.map(d => d.label);
-        const sortedValues = dadosAtivos.map(d => d.value);
-        const sortedColors = dadosAtivos.map(d => d.color);
-
-        const elTotalCenter = document.getElementById('alocacao-total-center');
-        if (elTotalCenter) {
-            elTotalCenter.textContent = totalGeral.toLocaleString('pt-BR', {
-                style: 'currency', currency: 'BRL'
-            });
-        }
-
-        if (dadosAtivos.length === 0) {
-            if (alocacaoChartInstance) {
-                alocacaoChartInstance.destroy();
-                alocacaoChartInstance = null;
-            }
-            return;
-        }
-
-        if (alocacaoChartInstance) {
-            alocacaoChartInstance.destroy();
-        }
-
-        const ctx = canvas.getContext('2d');
-        const isLight = document.body.classList.contains('light-mode');
-        const borderColor = isLight ? '#ffffff' : '#151515';
-
-        alocacaoChartInstance = new Chart(ctx, {
-            type: 'doughnut',
-            data: {
-                labels: sortedLabels,
-                datasets: [{
-                    data: sortedValues,
-                    backgroundColor: sortedColors,
-                    borderWidth: 2,
-                    borderColor: borderColor,
-                    hoverOffset: 14,
-                    borderRadius: 5
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                cutout: '75%',
-                plugins: {
-                    legend: { display: false },
-                    tooltip: {
-                        backgroundColor: isLight ? 'rgba(255,255,255,0.97)' : 'rgba(18, 18, 18, 0.97)',
-                        titleColor: isLight ? '#333' : '#fff',
-                        bodyColor: isLight ? '#555' : '#a1a1aa',
-                        borderColor: isLight ? '#ddd' : '#2C2C2E',
-                        borderWidth: 1,
-                        padding: 14,
-                        cornerRadius: 12,
-                        bodyFont: { family: "'Inter', sans-serif", size: 12 },
-                        titleFont: { family: "'Inter', sans-serif", weight: 'bold', size: 13 },
-                        displayColors: true,
-                        boxWidth: 8,
-                        boxHeight: 8,
-                        boxPadding: 6,
-                        callbacks: {
-                            title: function(items) {
-                                return items[0].label;
-                            },
-                            label: function (context) {
-                                const idx = context.dataIndex;
-                                const item = dadosAtivos[idx];
-                                const pct = totalGeral > 0 ? ((item.value / totalGeral) * 100).toFixed(1) : '0';
-                                return `${pct}% • ${item.value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}`;
-                            },
-                            afterLabel: function(context) {
-                                const idx = context.dataIndex;
-                                const item = dadosAtivos[idx];
-                                const lines = [];
-                                lines.push(`${item.qtd} cotas`);
-                                if (item.precoMedio > 0) lines.push(`PM: ${formatBRL(item.precoMedio)}`);
-                                if (item.precoLive > 0) lines.push(`Atual: ${formatBRL(item.precoLive)}`);
-                                return lines;
-                            }
-                        }
-                    }
-                },
-                animation: { animateScale: true, animateRotate: true },
-                onHover: (event, elements) => {
-                    canvas.style.cursor = elements.length > 0 ? 'pointer' : 'default';
-                    // Esconde o total do centro quando hover numa fatia (evita sobreposição com tooltip)
-                    const centerEl = document.getElementById('alocacao-total-center');
-                    const centerLabel = centerEl?.previousElementSibling;
-                    if (elements.length > 0) {
-                        if (centerEl) centerEl.style.opacity = '0';
-                        if (centerLabel) centerLabel.style.opacity = '0';
-                    } else {
-                        if (centerEl) centerEl.style.opacity = '1';
-                        if (centerLabel) centerLabel.style.opacity = '1';
-                    }
-                }
-            }
-        });
-
-        // ═══════════════════════════════════════════════════
-        // LEGENDA INTERATIVA
-        // ═══════════════════════════════════════════════════
-        const legendContainer = document.getElementById('alocacao-legend-container');
-        if (legendContainer) {
-            legendContainer.innerHTML = '';
-            let activeIndex = -1; // Rastreia qual item está expandido
-
-            dadosAtivos.forEach((item, index) => {
-                const percent = totalGeral > 0 ? ((item.value / totalGeral) * 100).toFixed(1) : 0;
-                const valorFormatado = item.value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-
-                const div = document.createElement('div');
-                div.className = 'flex flex-col bg-[#151515] rounded-2xl mb-2 cursor-pointer transition-all duration-200 hover:bg-[#1a1a1a]';
-                div.style.overflow = 'hidden';
-
-                // Variação Preço Médio → Atual
-                let variacaoHtml = '';
-                if (item.precoMedio > 0 && item.precoLive > 0) {
-                    const variacao = ((item.precoLive - item.precoMedio) / item.precoMedio * 100).toFixed(1);
-                    const varColor = variacao >= 0 ? '#22c55e' : '#ef4444';
-                    const varSign = variacao >= 0 ? '+' : '';
-                    variacaoHtml = `<span style="font-size: 11px; color: ${varColor}; font-weight: 600;">${varSign}${variacao}%</span>`;
-                }
-
-                div.innerHTML = `
-                    <div class="flex items-center justify-between p-3" data-legend-index="${index}">
-                        <div class="flex items-center gap-3">
-                            <div class="w-1.5 h-8 rounded-full" style="background-color: ${item.color}"></div>
-                            <div class="flex flex-col gap-1">
-                                <span class="text-sm font-bold text-white tracking-tight leading-none">${item.label}</span>
-                                <span class="text-xs text-gray-500 font-medium">${percent}%</span>
-                            </div>
-                        </div>
-                        <div class="text-right flex items-center gap-3">
-                            ${variacaoHtml}
-                            <span class="text-sm font-bold text-white tracking-tight">${valorFormatado}</span>
-                        </div>
-                    </div>
-                    <div class="legend-details" style="max-height: 0; opacity: 0; transition: max-height 0.3s ease, opacity 0.2s ease, padding 0.3s ease; padding: 0 12px; overflow: hidden;">
-                        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; padding: 8px 4px 14px 4px;">
-                            <div style="text-align: center; background: #1C1C1E; border-radius: 10px; padding: 10px 8px;">
-                                <div style="font-size: 10px; color: #71717a; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px;">Cotas</div>
-                                <div style="font-size: 14px; font-weight: 700; color: #e5e5e5;">${item.qtd}</div>
-                            </div>
-                            <div style="text-align: center; background: #1C1C1E; border-radius: 10px; padding: 10px 8px;">
-                                <div style="font-size: 10px; color: #71717a; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px;">PM</div>
-                                <div style="font-size: 14px; font-weight: 700; color: #e5e5e5;">${formatBRL(item.precoMedio)}</div>
-                            </div>
-                            <div style="text-align: center; background: #1C1C1E; border-radius: 10px; padding: 10px 8px;">
-                                <div style="font-size: 10px; color: #71717a; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px;">Atual</div>
-                                <div style="font-size: 14px; font-weight: 700; color: #e5e5e5;">${formatBRL(item.precoLive)}</div>
-                            </div>
-                        </div>
-                    </div>
-                `;
-
-                // Click handler
-                div.addEventListener('click', () => {
-                    const details = div.querySelector('.legend-details');
-                    const isExpanded = details.style.maxHeight !== '0px' && details.style.maxHeight !== '';
-
-                    // Fecha todos os outros
-                    legendContainer.querySelectorAll('.legend-details').forEach(el => {
-                        el.style.maxHeight = '0px';
-                        el.style.opacity = '0';
-                        el.style.paddingTop = '0';
-                        el.style.paddingBottom = '0';
-                    });
-
-                    if (!isExpanded) {
-                        // Abre este
-                        details.style.maxHeight = '120px';
-                        details.style.opacity = '1';
-                        activeIndex = index;
-
-                        // Esconde o total do centro
-                        const centerEl = document.getElementById('alocacao-total-center');
-                        const centerLabel = centerEl?.previousElementSibling;
-                        if (centerEl) centerEl.style.opacity = '0';
-                        if (centerLabel) centerLabel.style.opacity = '0';
-
-                        // Destaca a fatia no gráfico
-                        if (alocacaoChartInstance) {
-                            alocacaoChartInstance.setActiveElements([{
-                                datasetIndex: 0,
-                                index: index
-                            }]);
-                            alocacaoChartInstance.tooltip.setActiveElements([{
-                                datasetIndex: 0,
-                                index: index
-                            }], { x: 0, y: 0 });
-                            alocacaoChartInstance.update();
-                        }
-                    } else {
-                        // Fecha e remove destaque
-                        activeIndex = -1;
-
-                        // Mostra o total do centro de volta
-                        const centerEl = document.getElementById('alocacao-total-center');
-                        const centerLabel = centerEl?.previousElementSibling;
-                        if (centerEl) centerEl.style.opacity = '1';
-                        if (centerLabel) centerLabel.style.opacity = '1';
-
-                        if (alocacaoChartInstance) {
-                            alocacaoChartInstance.setActiveElements([]);
-                            alocacaoChartInstance.tooltip.setActiveElements([], { x: 0, y: 0 });
-                            alocacaoChartInstance.update();
-                        }
-                    }
-                });
-
-                legendContainer.appendChild(div);
-            });
-        }
-
-
-    }
-
-    // Estado do filtro de alocação
-    let alocacaoFilterMode = 'ativo'; // 'ativo' ou 'segmento'
-
-    // Cache de segmentos em localStorage (permanente — dados nunca mudam)
-    const SEGMENTOS_CACHE_KEY = 'vesto_segmentos_cache';
-
-    // Mapa de segmentos conhecidos dos FIIs (fallback estático)
-    const SEGMENTOS_FII = {
-        'BTCI11': 'Recebíveis', 'KNCR11': 'Recebíveis', 'MXRF11': 'Híbrido',
-        'HGLG11': 'Logística', 'XPLG11': 'Logística', 'VILG11': 'Logística',
-        'VISC11': 'Shopping', 'XPML11': 'Shopping', 'HSML11': 'Shopping',
-        'HGRE11': 'Escritório', 'BRCR11': 'Escritório', 'PVBI11': 'Escritório',
-        'GARE11': 'Renda Urbana', 'TRXF11': 'Renda Urbana', 'GGRC11': 'Logística',
-        'KNRI11': 'Híbrido', 'BCFF11': 'Fundo de Fundos', 'RZAT11': 'Agro',
-        'XPCA11': 'Agro', 'VGIR11': 'Recebíveis', 'CPTS11': 'Recebíveis'
-    };
-
-    // Cache em memória para a sessão atual
-    let _segmentosCache = null;
-
-    function _carregarSegmentosCache() {
-        if (_segmentosCache) return _segmentosCache;
-        try {
-            const raw = localStorage.getItem(SEGMENTOS_CACHE_KEY);
-            if (raw) {
-                const parsed = JSON.parse(raw);
-                // Verifica TTL — expira após 24h
-                if (parsed._ts && (Date.now() - parsed._ts) < SEGMENTOS_CACHE_TTL) {
-                    _segmentosCache = parsed;
-                    return _segmentosCache;
-                }
-            }
-        } catch(e) {}
-        _segmentosCache = { _ts: Date.now() };
-        return _segmentosCache;
-    }
-
-    function _salvarSegmentoCache(ticker, segmento) {
-        const cache = _carregarSegmentosCache();
-        if (cache[ticker] === segmento) return;
-        cache[ticker] = segmento;
-        _segmentosCache = cache;
-        try { localStorage.setItem(SEGMENTOS_CACHE_KEY, JSON.stringify(cache)); } catch(e) {}
-    }
-
-    function getSegmento(ticker) {
-        // 1. Cache local em memória/localStorage (mais rápido)
-        const cache = _carregarSegmentosCache();
-        if (cache[ticker]) return cache[ticker];
-
-        // 2. Mapa estático de fallback
-        if (SEGMENTOS_FII[ticker]) {
-            _salvarSegmentoCache(ticker, SEGMENTOS_FII[ticker]);
-            return SEGMENTOS_FII[ticker];
-        }
-
-        // 3. Tenta fundamentos em cache do app
-        try {
-            const cached = localStorage.getItem(`vesto_fund_${ticker}`);
-            if (cached) {
-                const parsed = JSON.parse(cached);
-                if (parsed.segmento && parsed.segmento !== '-') {
-                    _salvarSegmentoCache(ticker, parsed.segmento);
-                    return parsed.segmento;
-                }
-            }
-        } catch(e) {}
-
-        return 'Outros';
-    }
-
-    function renderizarGraficoAlocacaoPorSegmento() {
-        const canvas = document.getElementById('alocacao-chart');
-        if (!canvas) return;
-
-        const temPrecos = Array.isArray(precosAtuais) && precosAtuais.length > 0;
-        const mapPrecos = new Map();
-        if (temPrecos) {
-            precosAtuais.forEach(p => {
-                const sym = p.symbol || p.ticker || p.codigo;
-                const val = p.regularMarketPrice || p.price || p.cotacao || p.valor;
-                if (sym && val) mapPrecos.set(sym.toUpperCase().trim(), parseFloat(val));
-            });
-        }
-
-        // Agrupa por segmento
+        listaFinal.push(...dadosAtivos);
+        
+    } else {
         const segmentoMap = new Map();
-        let totalGeral = 0;
-
         if (Array.isArray(carteiraCalculada)) {
             carteiraCalculada.forEach(ativo => {
                 const ticker = (ativo.symbol || ativo.ticker).toUpperCase().trim();
                 const qtd = parseFloat(ativo.quantity || ativo.quantidade || 0);
                 const precoMedio = parseFloat(ativo.precoMedio || ativo.averagePrice || 0);
-                let precoLive = mapPrecos.get(ticker);
-                if (!precoLive) precoLive = parseFloat(ativo.regularMarketPrice || ativo.price || 0);
+                let precoLive = mapPrecos.get(ticker) || parseFloat(ativo.regularMarketPrice || ativo.price || 0);
                 if (!precoLive || isNaN(precoLive) || precoLive === 0) precoLive = precoMedio;
+                
                 const valorTotal = precoLive * qtd;
-
                 if (valorTotal > 0.01) {
                     totalGeral += valorTotal;
                     const seg = getSegmento(ticker);
-                    if (!segmentoMap.has(seg)) {
-                        segmentoMap.set(seg, { label: seg, value: 0, tickers: [], color: '' });
-                    }
+                    if (!segmentoMap.has(seg)) segmentoMap.set(seg, { id: seg, label: seg, value: 0, tickers: [] });
                     const entry = segmentoMap.get(seg);
                     entry.value += valorTotal;
                     entry.tickers.push({ ticker, valor: valorTotal, qtd });
                 }
             });
         }
+        const segSorted = Array.from(segmentoMap.values()).sort((a, b) => b.value - a.value);
+        listaFinal.push(...segSorted);
+    }
 
-        const dadosSegmentos = Array.from(segmentoMap.values()).sort((a, b) => b.value - a.value);
+    const paletaCores = ['#8B5CF6', '#10B981', '#3B82F6', '#F59E0B', '#EC4899', '#6366F1', '#EF4444', '#14B8A6'];
+    listaFinal.forEach((d, i) => d.color = paletaCores[i % paletaCores.length]);
+    
+    return { lista: listaFinal, total: totalGeral };
+}
 
-        const paletaCores = [
-            '#8B5CF6', '#10B981', '#3B82F6', '#F59E0B',
-            '#EC4899', '#6366F1', '#EF4444', '#14B8A6'
-        ];
-        dadosSegmentos.forEach((d, i) => { d.color = paletaCores[i % paletaCores.length]; });
-
-        const elTotalCenter = document.getElementById('alocacao-total-center');
-        if (elTotalCenter) {
-            elTotalCenter.textContent = totalGeral.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+function renderizarGraficoAlocacao(isRetry = false) {
+    if(!document.getElementById('alocacao-stacked-bar')) return;
+    
+    const { lista, total } = processarDadosAlocacao();
+    window.alocacaoDadosAtuais = lista;
+    
+    // Wait for pricing load trick
+    if (total === 0 && !isRetry) {
+        if (!window.alocacaoRetryCount) window.alocacaoRetryCount = 0;
+        if (window.alocacaoRetryCount < 5) {
+            setTimeout(() => {
+                window.alocacaoRetryCount++;
+                renderizarGraficoAlocacao(true);
+            }, 800);
+            return;
         }
+    } else {
+        window.alocacaoRetryCount = 0;
+    }
+    
+    // Total
+    const elTotal = document.getElementById('alocacao-total-center');
+    if (elTotal) elTotal.textContent = total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+    
+    // Bar
+    const barContainer = document.getElementById('alocacao-stacked-bar');
+    barContainer.innerHTML = '';
+    
+    // Legend Container
+    const legContainer = document.getElementById('alocacao-legend-container');
+    legContainer.innerHTML = '';
 
-        if (alocacaoChartInstance) alocacaoChartInstance.destroy();
+    // Removendo dependência do chart js, se houver flag
+    if(window.alocacaoChartInstance) {
+        window.alocacaoChartInstance.destroy();
+        window.alocacaoChartInstance = null;
+    }
+    
+    window.alocacaoSelectedIdx = -1; // reset on re-render
 
-        const ctx = canvas.getContext('2d');
-        const isLight = document.body.classList.contains('light-mode');
-        const borderColor = isLight ? '#ffffff' : '#151515';
-
-        alocacaoChartInstance = new Chart(ctx, {
-            type: 'doughnut',
-            data: {
-                labels: dadosSegmentos.map(d => d.label),
-                datasets: [{
-                    data: dadosSegmentos.map(d => d.value),
-                    backgroundColor: dadosSegmentos.map(d => d.color),
-                    borderWidth: 2,
-                    borderColor: borderColor,
-                    hoverOffset: 14,
-                    borderRadius: 5
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                cutout: '75%',
-                plugins: {
-                    legend: { display: false },
-                    tooltip: {
-                        backgroundColor: isLight ? 'rgba(255,255,255,0.97)' : 'rgba(18, 18, 18, 0.97)',
-                        titleColor: isLight ? '#333' : '#fff',
-                        bodyColor: isLight ? '#555' : '#a1a1aa',
-                        borderColor: isLight ? '#ddd' : '#2C2C2E',
-                        borderWidth: 1,
-                        padding: 14,
-                        cornerRadius: 12,
-                        callbacks: {
-                            label: function(ctx) {
-                                const item = dadosSegmentos[ctx.dataIndex];
-                                const pct = totalGeral > 0 ? ((item.value / totalGeral) * 100).toFixed(1) : '0';
-                                return `${pct}% • ${item.value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}`;
-                            },
-                            afterLabel: function(ctx) {
-                                const item = dadosSegmentos[ctx.dataIndex];
-                                return item.tickers.map(t => `  ${t.ticker}`);
-                            }
-                        }
-                    }
-                },
-                animation: { animateScale: true, animateRotate: true }
+    lista.forEach((item, index) => {
+        const pctReal = total > 0 ? (item.value / total) * 100 : 0;
+        const pctStr = pctReal.toFixed(1);
+        
+        // --- 1. BAR SEGMENT ---
+        const hVisual = Math.max(pctReal, 1);
+        const seg = document.createElement('div');
+        seg.id = 'alocacao-segment-' + index;
+        seg.className = 'alocacao-bar-seg w-full transition-all duration-300';
+        seg.style.height = hVisual + '%';
+        seg.style.backgroundColor = item.color;
+        seg.dataset.color = item.color;
+        seg.style.cursor = 'pointer';
+        if (index < lista.length - 1) seg.style.borderBottom = '2px solid #151515'; // Separador
+        
+        seg.onclick = () => selecionarItemAlocacao(index);
+        barContainer.appendChild(seg);
+        
+        // --- 2. LEGEND ITEM ---
+        const legItem = document.createElement('div');
+        legItem.id = 'alocacao-legend-item-' + index;
+        legItem.className = 'alocacao-legend-item rounded-xl p-3 cursor-pointer transition-colors';
+        legItem.onclick = () => selecionarItemAlocacao(index);
+        
+        const formatBRL = v => (v||0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+        
+        // Detalhes extras
+        let extraHTML = '';
+        if (window.alocacaoSelectedMode === 'ativo') {
+            let variacaoHtml = '';
+            if (item.precoMedio > 0 && item.precoLive > 0) {
+                const variacao = ((item.precoLive - item.precoMedio) / item.precoMedio * 100).toFixed(1);
+                const varColor = variacao >= 0 ? '#22c55e' : '#ef4444';
+                const varSign = variacao >= 0 ? '+' : '';
+                variacaoHtml = `<span style="font-size: 11px; color: ${varColor}; font-weight: 600;">${varSign}${variacao}%</span>`;
             }
-        });
-
-        // Legenda por segmento
-        const legendContainer = document.getElementById('alocacao-legend-container');
-        if (legendContainer) {
-            legendContainer.innerHTML = '';
-            dadosSegmentos.forEach((seg, index) => {
-                const percent = totalGeral > 0 ? ((seg.value / totalGeral) * 100).toFixed(1) : 0;
-                const valorFormatado = seg.value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-                const tickersStr = seg.tickers.map(t => t.ticker).join(', ');
-
-                const div = document.createElement('div');
-                div.className = 'flex flex-col bg-[#151515] rounded-2xl mb-2 cursor-pointer transition-all duration-200 hover:bg-[#1a1a1a]';
-                div.style.overflow = 'hidden';
-
-                div.innerHTML = `
-                    <div class="flex items-center justify-between p-3">
-                        <div class="flex items-center gap-3">
-                            <div class="w-1.5 h-8 rounded-full" style="background-color: ${seg.color}"></div>
-                            <div class="flex flex-col gap-1">
-                                <span class="text-sm font-bold text-white tracking-tight leading-none">${seg.label}</span>
-                                <span class="text-xs text-gray-500 font-medium">${percent}% • ${seg.tickers.length} ativo${seg.tickers.length > 1 ? 's' : ''}</span>
-                            </div>
+            extraHTML = `
+                <div class="alocacao-details overflow-hidden" style="max-height: 0px; transition: max-height 0.3s ease;">
+                    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; padding-top: 14px;">
+                        <div style="text-align: center; background: #1C1C1E; border-radius: 10px; padding: 10px 8px;">
+                            <div style="font-size: 10px; color: #71717a; font-weight: 600; text-transform: uppercase;">Cotas</div>
+                            <div style="font-size: 14px; font-weight: 700; color: #e5e5e5; margin-top: 4px;">${item.qtd}</div>
                         </div>
-                        <div class="text-right">
-                            <span class="text-sm font-bold text-white tracking-tight">${valorFormatado}</span>
+                        <div style="text-align: center; background: #1C1C1E; border-radius: 10px; padding: 10px 8px;">
+                            <div style="font-size: 10px; color: #71717a; font-weight: 600; text-transform: uppercase;">PM</div>
+                            <div style="font-size: 14px; font-weight: 700; color: #e5e5e5; margin-top: 4px;">${formatBRL(item.precoMedio)}</div>
+                        </div>
+                        <div style="text-align: center; background: #1C1C1E; border-radius: 10px; padding: 10px 8px;">
+                            <div style="font-size: 10px; color: #71717a; font-weight: 600; text-transform: uppercase;">Atual</div>
+                            <div style="font-size: 14px; font-weight: 700; color: #e5e5e5; margin-top: 4px;">${formatBRL(item.precoLive)}</div>
                         </div>
                     </div>
-                    <div class="legend-details" style="max-height: 0; opacity: 0; transition: max-height 0.3s ease, opacity 0.2s ease; overflow: hidden; padding: 0 12px;">
-                        <div style="padding: 4px 4px 14px 4px;">
-                            <div style="font-size: 11px; color: #a1a1aa; line-height: 1.8;">${tickersStr}</div>
-                        </div>
+                </div>
+            `;
+        } else {
+             const ativosTickers = item.tickers.slice(0, 5).map(t => `<span class="px-2 py-1 bg-[#1c1c1e] rounded text-[10px] m-1">${t.ticker}</span>`).join('');
+             extraHTML = `
+                <div class="alocacao-details overflow-hidden" style="max-height: 0px; transition: max-height 0.3s ease;">
+                    <div class="pt-3 flex flex-wrap gap-1">
+                        ${ativosTickers}
+                        ${item.tickers.length > 5 ? '<span class="px-2 py-1 text-[10px] text-gray-500">...</span>' : ''}
                     </div>
-                `;
-
-                div.addEventListener('click', () => {
-                    const details = div.querySelector('.legend-details');
-                    const isExpanded = details.style.maxHeight !== '0px' && details.style.maxHeight !== '';
-
-                    legendContainer.querySelectorAll('.legend-details').forEach(el => {
-                        el.style.maxHeight = '0px';
-                        el.style.opacity = '0';
-                    });
-
-                    if (!isExpanded) {
-                        details.style.maxHeight = '80px';
-                        details.style.opacity = '1';
-                        if (alocacaoChartInstance) {
-                            alocacaoChartInstance.setActiveElements([{ datasetIndex: 0, index }]);
-                            alocacaoChartInstance.update();
-                        }
-                    } else {
-                        if (alocacaoChartInstance) {
-                            alocacaoChartInstance.setActiveElements([]);
-                            alocacaoChartInstance.update();
-                        }
-                    }
-                });
-
-                legendContainer.appendChild(div);
-            });
+                </div>
+            `;
         }
-    }
-
-    // Event listeners para filtros de alocação
-    function _resetCenterOpacity() {
-        const centerEl = document.getElementById('alocacao-total-center');
-        const centerLabel = centerEl?.previousElementSibling;
-        if (centerEl) centerEl.style.opacity = '1';
-        if (centerLabel) centerLabel.style.opacity = '1';
-    }
-
-    document.getElementById('alocacao-filter-ativo')?.addEventListener('click', () => {
-        if (alocacaoFilterMode === 'ativo') return;
-        alocacaoFilterMode = 'ativo';
-        _resetCenterOpacity();
-        const btnAtivo = document.getElementById('alocacao-filter-ativo');
-        const btnSeg = document.getElementById('alocacao-filter-segmento');
-        btnAtivo.className = 'text-xs font-bold px-4 py-1.5 rounded-full transition-all duration-200 bg-white text-black';
-        btnSeg.className = 'text-xs font-bold px-4 py-1.5 rounded-full transition-all duration-200 bg-[#1C1C1E] text-gray-400 hover:text-white';
-        renderizarGraficoAlocacao();
+        
+        legItem.innerHTML = `
+            <div class="flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <div class="alocacao-legend-dot w-2 h-2 rounded-full ring-2 ring-offset-2 ring-offset-[#151515]" style="background-color: ${item.color}; --tw-ring-color: ${item.color}33"></div>
+                    <div class="flex flex-col">
+                        <span class="text-[13px] font-bold text-white tracking-tight">${item.label}</span>
+                        <span class="text-[11px] text-gray-500 font-medium">${pctStr}%</span>
+                    </div>
+                </div>
+                <div class="text-right flex flex-col items-end">
+                    <span class="text-[13px] font-bold text-gray-300 tracking-tight">${formatBRL(item.value)}</span>
+                </div>
+            </div>
+            ${extraHTML}
+        `;
+        legContainer.appendChild(legItem);
     });
+    
+    // Auto-Select first item immediately
+    if (lista.length > 0) {
+        setTimeout(() => selecionarItemAlocacao(0), 50);
+    } else {
+        const svg = document.getElementById('alocacao-svg-lines');
+        if(svg) svg.innerHTML = '';
+    }
+}
 
-    document.getElementById('alocacao-filter-segmento')?.addEventListener('click', () => {
-        if (alocacaoFilterMode === 'segmento') return;
-        alocacaoFilterMode = 'segmento';
-        _resetCenterOpacity();
-        const btnAtivo = document.getElementById('alocacao-filter-ativo');
-        const btnSeg = document.getElementById('alocacao-filter-segmento');
-        btnSeg.className = 'text-xs font-bold px-4 py-1.5 rounded-full transition-all duration-200 bg-white text-black';
-        btnAtivo.className = 'text-xs font-bold px-4 py-1.5 rounded-full transition-all duration-200 bg-[#1C1C1E] text-gray-400 hover:text-white';
-        renderizarGraficoAlocacaoPorSegmento();
-    });
+// Global exposure for filter modes
+function renderizarGraficoAlocacaoPorSegmento() {
+    window.alocacaoSelectedMode = 'segmento';
+    renderizarGraficoAlocacao();
+}
 
-    function exibirDetalhesProventos(anoMes, labelAmigavel) {
+// Filtros click events handled elsewhere (ou sobrescrevemos na unha)
+document.addEventListener('DOMContentLoaded', () => {
+    // Override filters behavior
+    const overrideFilter = (id, isAtivo) => {
+        const btn = document.getElementById(id);
+        if(!btn) return;
+        // Remove old listeners cloning node
+        const newBtn = btn.cloneNode(true);
+        btn.parentNode.replaceChild(newBtn, btn);
+        newBtn.addEventListener('click', () => {
+            window.alocacaoSelectedMode = isAtivo ? 'ativo' : 'segmento';
+            
+            const btnAtivo = document.getElementById('alocacao-filter-ativo');
+            const btnSeg = document.getElementById('alocacao-filter-segmento');
+            if (isAtivo) {
+                if(btnAtivo) btnAtivo.className = 'text-xs font-bold px-4 py-1.5 rounded-full transition-all duration-200 bg-white text-black shrink-0';
+                if(btnSeg) btnSeg.className = 'text-xs font-bold px-4 py-1.5 rounded-full transition-all duration-200 bg-[#1C1C1E] text-gray-400 hover:text-white shrink-0';
+            } else {
+                if(btnSeg) btnSeg.className = 'text-xs font-bold px-4 py-1.5 rounded-full transition-all duration-200 bg-white text-black shrink-0';
+                if(btnAtivo) btnAtivo.className = 'text-xs font-bold px-4 py-1.5 rounded-full transition-all duration-200 bg-[#1C1C1E] text-gray-400 hover:text-white shrink-0';
+            }
+            renderizarGraficoAlocacao();
+        });
+    }
+    
+    // We will do it immediately but also setup a MutationObserver just in case, but since elements are static it's fine.
+    setTimeout(() => {
+        overrideFilter('alocacao-filter-ativo', true);
+        overrideFilter('alocacao-filter-segmento', false);
+    }, 1000);
+});
+
+function exibirDetalhesProventos(anoMes, labelAmigavel) {
         // 1. Filtrar e Agrupar
         const agrupado = {};
         let totalMes = 0;

@@ -2092,36 +2092,47 @@
                     </div>
                 </div>
 
-                <div class="overflow-y-auto h-[calc(85vh-90px)] p-4 pt-0 custom-scroll">
-
-                    <div
-                        class="relative w-full flex flex-col items-center justify-center bg-[#151515] rounded-xl p-6 mb-6 mt-4 shadow-xl">
-                        <div class="relative w-64 h-64">
-                            <canvas id="alocacao-chart"></canvas>
-
-                            <div class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                                <span class="text-[10px] text-gray-500 uppercase tracking-widest font-bold">Total</span>
-                                <span id="alocacao-total-center" class="text-xl font-bold text-white mt-1">...</span>
+                <div class="overflow-hidden flex flex-col h-[85vh]">
+                    
+                    <!-- Cabeçalho (Filtros e Total) -->
+                    <div class="p-4 flex flex-col gap-4 border-b border-[#1c1c1e]">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center gap-2">
+                                <button id="alocacao-filter-ativo" class="text-xs font-bold px-4 py-1.5 rounded-full transition-all duration-200 bg-white text-black shrink-0">Ativo</button>
+                                <button id="alocacao-filter-segmento" class="text-xs font-bold px-4 py-1.5 rounded-full transition-all duration-200 bg-[#1C1C1E] text-gray-400 hover:text-white shrink-0">Segmento</button>
                             </div>
+                            <div class="flex items-center gap-2">
+                                <span class="text-[10px] text-gray-600 bg-[#1C1C1E] px-2 py-1 rounded-full border border-[#2C2C2E]">Ocupado</span>
+                            </div>
+                        </div>
+                        <div class="flex flex-col">
+                            <span id="alocacao-total-center" class="text-[14px] font-bold text-gray-400">R$ 0,00</span>
                         </div>
                     </div>
 
-                    <!-- Filtros: Por Ativo | Por Segmento -->
-                    <div class="flex items-center gap-2 px-2 mb-4">
-                        <button id="alocacao-filter-ativo" class="text-xs font-bold px-4 py-1.5 rounded-full transition-all duration-200 bg-white text-black">Por Ativo</button>
-                        <button id="alocacao-filter-segmento" class="text-xs font-bold px-4 py-1.5 rounded-full transition-all duration-200 bg-[#1C1C1E] text-gray-400 hover:text-white">Por Segmento</button>
-                    </div>
+                    <!-- Área do Gráfico e Lista (Lado a Lado) -->
+                    <div class="relative flex flex-1 overflow-hidden" id="alocacao-split-view">
+                        
+                        <!-- SVG para as Linhas de Conexão -->
+                        <svg id="alocacao-svg-lines" class="absolute inset-0 w-full h-full pointer-events-none z-10 opacity-70"></svg>
+                        
+                        <!-- Coluna do Gráfico de Barra (Fixa, não rola) -->
+                        <div class="w-16 sm:w-20 pl-4 py-6 pr-8 flex flex-col items-center justify-end border-r border-[#151515]">
+                            <!-- O Barra 2D Stacked -->
+                            <div id="alocacao-stacked-bar" class="w-10 sm:w-12 h-[95%] bg-[#151515] rounded-[30px] overflow-hidden flex flex-col-reverse shadow-inner border border-[#2C2C2E]">
+                                <!-- Segmentos injetados via JS -->
+                            </div>
+                        </div>
 
-                    <div class="flex items-center justify-between px-2 mb-3">
-                        <h3 class="text-xs font-bold text-gray-400 uppercase tracking-wider">Detalhamento</h3>
-                        <span
-                            class="text-[10px] text-gray-600 bg-[#1C1C1E] px-2 py-1 rounded-full border border-[#2C2C2E]">Ordenado
-                            por Valor</span>
-                    </div>
+                        <!-- Coluna da Lista de Ativos/Segmentos (Permite Scroll) -->
+                        <div class="flex-1 overflow-y-auto pb-10 pt-4 custom-scroll" id="alocacao-legend-scroll" onscroll="if(window.desenharLinhaAlocacao) window.desenharLinhaAlocacao()">
+                            <div id="alocacao-legend-container" class="space-y-4 px-2 pr-4 relative z-20">
+                                <!-- Itens de legenda injetados via JS -->
+                            </div>
+                        </div>
 
-                    <div id="alocacao-legend-container" class="space-y-3 pb-10">
                     </div>
-
+                    
                 </div>
 
             </div>

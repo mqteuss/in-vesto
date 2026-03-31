@@ -561,10 +561,10 @@
 
                             <!-- Rankings -->
                             <div id="rankings-container" class="px-5 mt-3">
-                                <div class="bg-[#151515] rounded-2xl py-4 shadow-sm relative overflow-hidden">
+                                <div class="bg-[#151515] rounded-2xl pt-4 pb-3 shadow-sm relative overflow-hidden flex flex-col">
                                 
                                     <!-- Horizontal Carousel -->
-                                    <div id="rankings-scroll-area" class="flex overflow-x-auto snap-x snap-mandatory no-scrollbar [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden w-full h-full" onscroll="const s=this.scrollLeft; const w=this.clientWidth; const idx=Math.round(s/w); const dots=this.parentElement.nextElementSibling.querySelectorAll('.ranking-dot'); dots.forEach((d,i)=>{if(i===idx){d.classList.add('bg-white','w-4');d.classList.remove('bg-gray-600','w-1.5');}else{d.classList.add('bg-gray-600','w-1.5');d.classList.remove('bg-white','w-4');}});">
+                                    <div id="rankings-scroll-area" class="flex overflow-x-auto snap-x snap-mandatory no-scrollbar [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden w-full h-full" onscroll="const s=this.scrollLeft; const w=this.clientWidth; const idx=Math.round(s/w); const dots=this.parentElement.querySelectorAll('.ranking-dot'); dots.forEach((d,i)=>{if(i===idx){d.classList.add('bg-white','w-4');d.classList.remove('bg-gray-600','w-1.5');}else{d.classList.add('bg-gray-600','w-1.5');d.classList.remove('bg-white','w-4');}});">
                                         
                                         <!-- Maiores Altas -->
                                         <div class="snap-start snap-always shrink-0 w-full px-4">
@@ -594,12 +594,12 @@
 
                                     </div>
                                     
-                                </div>
-                                
-                                <!-- Dots Pagination -->
-                                <div class="flex items-center justify-center gap-1.5 mt-4">
-                                    <div class="ranking-dot w-4 h-1.5 rounded-full bg-white transition-all duration-300 ease-out"></div>
-                                    <div class="ranking-dot w-1.5 h-1.5 rounded-full bg-gray-600 transition-all duration-300 ease-out"></div>
+                                    <!-- Dots Pagination -->
+                                    <div class="flex items-center justify-center gap-1.5 mt-2">
+                                        <div class="ranking-dot w-4 h-1.5 rounded-full bg-white transition-all duration-300 ease-out"></div>
+                                        <div class="ranking-dot w-1.5 h-1.5 rounded-full bg-gray-600 transition-all duration-300 ease-out"></div>
+                                    </div>
+
                                 </div>
                             </div>
                         </div>

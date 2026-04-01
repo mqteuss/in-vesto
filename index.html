@@ -380,7 +380,11 @@
 
                                     <div class="flex items-center gap-1.5 mb-2 relative z-30">
                                         <span class="text-[11px] uppercase tracking-[0.12em] font-semibold text-[#71717a]">Patrimônio Total</span>
-                                        <button onclick="event.stopPropagation(); showToast('Soma de todo o seu dinheiro: Ativos investidos + Dinheiro em Caixa', 'info')" class="w-3.5 h-3.5 rounded-full bg-[#2C2C2E] text-[9px] text-gray-400 hover:text-white hover:bg-[#3C3C3E] transition-all flex items-center justify-center font-bold" style="line-height:1;">?</button>
+                                        <button data-info-toggle="info-popover-patrimonio" class="w-3.5 h-3.5 rounded-full bg-[#2C2C2E] text-[9px] text-gray-400 hover:text-white hover:bg-[#3C3C3E] transition-all flex items-center justify-center font-bold" style="line-height:1;">?</button>
+                                        <!-- Popover -->
+                                        <div id="info-popover-patrimonio" class="absolute left-0 top-full mt-2 w-48 bg-[#1C1C1E] border border-[#2C2C2E] rounded-xl p-3 shadow-xl z-50 transition-all duration-200" style="display: none; opacity: 0;">
+                                            <p class="text-[11px] text-gray-300 leading-relaxed normal-case tracking-normal">Soma total de todos os seus ativos em carteira mais o seu Caixa Livre.</p>
+                                        </div>
                                     </div>
 
                                     <div id="skeleton-total-valor" class="h-8 w-40 skeleton rounded"></div>
@@ -414,7 +418,10 @@
                                     <div class="premium-stat-box">
                                         <div class="flex items-center gap-1 relative z-30">
                                             <span class="premium-stat-sub" style="margin-top:0">Investido</span>
-                                            <button onclick="event.stopPropagation(); showToast('Total de dinheiro gasto diretamente para comprar seus ativos atuais.', 'info')" class="w-3.5 h-3.5 rounded-full bg-[#2C2C2E] text-[9px] text-gray-400 hover:text-white hover:bg-[#3C3C3E] transition-all flex items-center justify-center font-bold" style="line-height:1;">?</button>
+                                            <button data-info-toggle="info-popover-investido" class="w-3.5 h-3.5 rounded-full bg-[#2C2C2E] text-[9px] text-gray-400 hover:text-white hover:bg-[#3C3C3E] transition-all flex items-center justify-center font-bold" style="line-height:1;">?</button>
+                                            <div id="info-popover-investido" class="absolute left-0 top-full mt-2 w-44 bg-[#1C1C1E] border border-[#2C2C2E] rounded-xl p-3 shadow-xl z-50 transition-all duration-200" style="display: none; opacity: 0;">
+                                                <p class="text-[11px] text-gray-300 leading-relaxed normal-case tracking-normal">Total de dinheiro gasto do seu bolso diretamente para comprar seus ativos atuais.</p>
+                                            </div>
                                         </div>
                                         <div id="skeleton-total-custo" class="h-4 w-16 skeleton rounded mt-1"></div>
                                         <span id="total-carteira-custo" class="premium-stat-value hidden">R$
@@ -426,7 +433,10 @@
                                     <div class="premium-stat-box">
                                         <div class="flex items-center gap-1 relative z-30">
                                             <span class="premium-stat-sub" style="margin-top:0">Na Carteira</span>
-                                            <button onclick="event.stopPropagation(); showToast('Valor atual de mercado se você vendesse todos os seus ativos hoje.', 'info')" class="w-3.5 h-3.5 rounded-full bg-[#2C2C2E] text-[9px] text-gray-400 hover:text-white hover:bg-[#3C3C3E] transition-all flex items-center justify-center font-bold" style="line-height:1;">?</button>
+                                            <button data-info-toggle="info-popover-mercado" class="w-3.5 h-3.5 rounded-full bg-[#2C2C2E] text-[9px] text-gray-400 hover:text-white hover:bg-[#3C3C3E] transition-all flex items-center justify-center font-bold" style="line-height:1;">?</button>
+                                            <div id="info-popover-mercado" class="absolute left-1/2 -translate-x-1/2 top-full mt-2 w-40 bg-[#1C1C1E] border border-[#2C2C2E] rounded-xl p-3 shadow-xl z-50 transition-all duration-200" style="display: none; opacity: 0;">
+                                                <p class="text-[11px] text-gray-300 leading-relaxed normal-case tracking-normal">Valor atual de mercado real se você vendesse todos os seus ativos hoje.</p>
+                                            </div>
                                         </div>
                                         <div id="skeleton-total-mercado" class="h-4 w-16 skeleton rounded mt-1"></div>
                                         <span id="total-carteira-mercado" class="premium-stat-value hidden">R$
@@ -438,7 +448,10 @@
                                     <div class="premium-stat-box">
                                         <div class="flex items-center gap-1 relative z-30">
                                             <span class="premium-stat-sub" style="margin-top:0">Caixa Livre</span>
-                                            <button onclick="event.stopPropagation(); showToast('Saldo líquido proveniente do acúmulo de dividendos ou vendas.', 'info')" class="w-3.5 h-3.5 rounded-full bg-[#2C2C2E] text-[9px] text-gray-400 hover:text-white hover:bg-[#3C3C3E] transition-all flex items-center justify-center font-bold" style="line-height:1;">?</button>
+                                            <button data-info-toggle="info-popover-caixa" class="w-3.5 h-3.5 rounded-full bg-[#2C2C2E] text-[9px] text-gray-400 hover:text-white hover:bg-[#3C3C3E] transition-all flex items-center justify-center font-bold" style="line-height:1;">?</button>
+                                            <div id="info-popover-caixa" class="absolute right-0 top-full mt-2 w-40 bg-[#1C1C1E] border border-[#2C2C2E] rounded-xl p-3 shadow-xl z-50 transition-all duration-200" style="display: none; opacity: 0;">
+                                                <p class="text-[11px] text-gray-300 leading-relaxed normal-case tracking-normal">Saldo líquido proveniente apenas do acúmulo de dividendos recebidos.</p>
+                                            </div>
                                         </div>
                                         <div id="skeleton-total-caixa"
                                             class="h-4 w-16 skeleton rounded mt-1"></div>

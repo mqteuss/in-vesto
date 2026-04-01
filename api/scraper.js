@@ -1,51 +1,49 @@
-const axios = require('axios');
-const cheerio = require('cheerio');
 const https = require('https');
 
-// ---------------------------------------------------------
-// CONFIGURAÇÃO: AGENTE HTTPS & CLIENTE AXIOS
-// ---------------------------------------------------------
-const httpsAgent = new https.Agent({
-    keepAlive: true,
-    maxSockets: 128,
-    maxFreeSockets: 20,
-    timeout: 10000
-});
-
-const client = axios.create({
-    httpsAgent,
-    decompress: true,
-    headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-        'Accept-Encoding': 'gzip, deflate, br',
-        'Referer': 'https://investidor10.com.br/'
-    },
-    timeout: 8000
-});
+// Helper para conectar à API AeroScrape
+async function aeroScrape(url, payloadOpts = {}) {
+    const res = await fetch('https://aero-scrape.vercel.app/api/scrape', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url, ...payloadOpts })
+    });
+    if (!res.ok) throw new Error(`AeroScrape HTTP ${res.status}`);
+    return await res.json();
+}
 
 /**
- * fetchWithRetry: Tenta fazer a requisição via Axios.
- * Se falhar (timeout, erro 500, etc), tenta novamente usando backoff exponencial.
+ * fetchWithRetry: Substitui o Axios pelo Fetch nativo
+ * Utilizado agora APENAS para buscar APIs JSON puras locais (Yahoo, StatusInvest).
  */
 async function fetchWithRetry(url, options = {}, retries = 3, baseBackoff = 1000) {
-    // Caso a chamada só passe retries no lugar de options
     if (typeof options === 'number') {
         baseBackoff = retries === 3 ? 1000 : retries;
         retries = options;
         options = {};
     }
+    
+    // Headers para simular browser, similar ao antigo client.axios
+    if (!options.headers) {
+        options.headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
+            'Accept': 'application/json, text/plain, */*',
+            'Referer': 'https://investidor10.com.br/'
+        };
+    }
 
     for (let i = 0; i < retries; i++) {
         try {
-            return await client.get(url, options);
+            const res = await fetch(url, options);
+            if (!res.ok) {
+                if (res.status === 404 || i === retries - 1) throw new Error(`HTTP ${res.status}`);
+                throw new Error(`HTTP ${res.status}`);
+            }
+            const data = await res.json();
+            return { data };
         } catch (err) {
-            const status = err.response ? err.response.status : null;
-            // Se for 404, não adianta tentar novamente (página inexistente)
-            if (status === 404 || i === retries - 1) {
+            if (i === retries - 1 || (err.message && err.message.includes('404'))) {
                 throw err;
             }
-            // Espera antes da próxima tentativa (backoff exponencial: 1s, 2s, 4s...)
             const delay = baseBackoff * Math.pow(2, i);
             console.log(`[RETRY] Tentativa ${i + 1} falhou para ${url}: ${err.message}. Retentando em ${delay}ms...`);
             await new Promise(res => setTimeout(res, delay));
@@ -139,34 +137,38 @@ async function scrapeFundamentos(ticker) {
         const urlFii = `https://investidor10.com.br/fiis/${ticker.toLowerCase()}/`;
         const urlAcao = `https://investidor10.com.br/acoes/${ticker.toLowerCase()}/`;
 
-        const fetchHtml = async (url, tipo) => {
-            const res = await fetchWithRetry(url);
-            if (res.status !== 200) throw new Error(`HTTP ${res.status}`);
-            if (!res.data.includes('cotacao') && !res.data.includes('Cotação')) throw new Error('Página inválida');
-            return { html: res.data, tipo };
-        };
-
-        // Smart URL: tenta a mais provável primeiro, fallback se falhar (evita 1 request desnecessário)
         const primaryUrl = guess === 'fii' ? urlFii : urlAcao;
         const fallbackUrl = guess === 'fii' ? urlAcao : urlFii;
-        const primaryTipo = guess;
-        const fallbackTipo = guess === 'fii' ? 'acao' : 'fii';
+
+        let urlToUse = primaryUrl;
 
         try {
-            const result = await fetchHtml(primaryUrl, primaryTipo);
+            const result = await aeroScrape(primaryUrl, { returnHtml: true, includeScripts: true });
+            if (!result.html) throw new Error('Sem html');
             html = result.html;
-            tipoAtivo = result.tipo;
+            tipoAtivo = guess;
         } catch (e) {
             try {
-                const result = await fetchHtml(fallbackUrl, fallbackTipo);
+                const result = await aeroScrape(fallbackUrl, { returnHtml: true, includeScripts: true });
+                if (!result.html) throw new Error('Sem html');
                 html = result.html;
-                tipoAtivo = result.tipo;
+                tipoAtivo = guess === 'fii' ? 'acao' : 'fii';
+                urlToUse = fallbackUrl;
             } catch (e2) {
                 throw new Error('Ativo não encontrado no Investidor10');
             }
         }
 
-        const $ = cheerio.load(html);
+        if (!html.includes('cotacao') && !html.includes('Cotação')) throw new Error('Página inválida');
+
+        // Buscar dados estruturados via scanner paralelo
+        const [resCards, resCells, resTable, resAbout] = await Promise.all([
+            aeroScrape(urlToUse, { selector: '._card-header, ._card-body' }),
+            aeroScrape(urlToUse, { selector: '.cell .name, .cell .value' }),
+            aeroScrape(urlToUse, { selector: 'table tbody tr td' }),
+            aeroScrape(urlToUse, { selector: '#about-section p, .profile-description p, #description p, .text-description p' })
+        ]);
+
 
         let dados = {
             dy: 'N/A', pvp: 'N/A', pl: 'N/A', roe: 'N/A', lpa: 'N/A', vp_cota: 'N/A',
@@ -265,33 +267,36 @@ async function scrapeFundamentos(ticker) {
             }
         };
 
-        $('._card').each((i, el) => {
-            const titulo = $(el).find('._card-header').text().trim();
-            const valor = $(el).find('._card-body').text().trim();
-            processPair(titulo, valor, 'card');
-            if (normalize(titulo).includes('cotacao')) cotacao_atual = parseValue(valor);
-        });
-
-        if (cotacao_atual === 0) {
-            const cEl = $('._card.cotacao ._card-body span').first();
-            if (cEl.length) cotacao_atual = parseValue(cEl.text());
+        if (resCards && resCards.data) {
+            for (let i = 0; i < resCards.data.length; i += 2) {
+                const titulo = resCards.data[i] || '';
+                const valor = resCards.data[i + 1] || '';
+                processPair(titulo, valor, 'card');
+                if (normalize(titulo).includes('cotacao')) cotacao_atual = parseValue(valor);
+            }
         }
 
-        $('.cell').each((i, el) => {
-            let titulo = $(el).find('.name').text().trim();
-            if (!titulo) titulo = $(el).children('span').first().text().trim();
-            let valorEl = $(el).find('.value span').first();
-            let valor = (valorEl.length > 0) ? valorEl.text().trim() : $(el).find('.value').text().trim();
-            processPair(titulo, valor, 'cell');
-        });
+        if (cotacao_atual === 0) {
+            const cotacaoMatch = html.match(/<span[^>]*>([\d.,]+)<\/span>/i);
+            if (cotacaoMatch) cotacao_atual = parseValue(cotacaoMatch[1]);
+        }
 
-        $('table tbody tr').each((i, row) => {
-            const cols = $(row).find('td');
-            if (cols.length >= 2) {
-                const indicatorAttr = $(cols[0]).find('[data-indicator]').attr('data-indicator');
-                processPair($(cols[0]).text(), $(cols[1]).text(), 'table', indicatorAttr);
+        if (resCells && resCells.data) {
+            for (let i = 0; i < resCells.data.length; i += 2) {
+                const titulo = resCells.data[i] || '';
+                const valor = resCells.data[i + 1] || '';
+                processPair(titulo, valor, 'cell');
             }
-        });
+        }
+
+        if (resTable && resTable.data) {
+            for (let i = 0; i < resTable.data.length; i += 2) {
+                const titulo = resTable.data[i] || '';
+                const valor = resTable.data[i + 1] || '';
+                // Como não temos 'indicatorAttr' via AeroScrape, enviamos null e a função vai parsear pelo titulo normalmente.
+                processPair(titulo, valor, 'table', null);
+            }
+        }
 
         if (dados.val_mercado === 'N/A' || dados.val_mercado === '-') {
             let mercadoCalc = 0;
@@ -308,51 +313,50 @@ async function scrapeFundamentos(ticker) {
             }
         }
 
-        $('#properties-section .card-propertie').each((i, el) => {
-            const nome = $(el).find('h3').text().trim();
-            let estado = '';
-            let abl = '';
-            $(el).find('small').each((j, small) => {
-                const t = $(small).text().trim();
-                if (t.includes('Estado:')) estado = t.replace('Estado:', '').trim();
-                if (t.includes('Área bruta locável:')) abl = t.replace('Área bruta locável:', '').trim();
-            });
-            if (nome) {
+        const propsDivsMatch = html.match(/<div[^>]*class=["'][^"']*card-propertie[^"']*["'][^>]*>([\s\S]*?)<\/div>/gi) || [];
+        propsDivsMatch.forEach(divHtml => {
+            const nomeMatch = divHtml.match(/<h3[^>]*>([\s\S]*?)<\/h3>/i);
+            const smallsMatch = divHtml.match(/<small[^>]*>([\s\S]*?)<\/small>/gi) || [];
+            if (nomeMatch) {
+                let nome = nomeMatch[1].replace(/<[^>]+>/g, '').trim();
+                let estado = '', abl = '';
+                smallsMatch.forEach(s => {
+                     const t = s.replace(/<[^>]+>/g, '').trim();
+                     if (t.includes('Estado:')) estado = t.replace('Estado:', '').trim();
+                     if (t.includes('Área bruta locável:')) abl = t.replace('Área bruta locável:', '').trim();
+                });
                 dados.imoveis.push({ nome, estado, abl });
             }
         });
 
-        const logoImg = $('.header-company img, #header-container img, .brand-company img').first();
-        if (logoImg.length) {
-            dados.logo_url = logoImg.attr('src') || '';
-            // Se for URL relativa, transforma em absoluta
+        // Logo
+        const logoMatch = html.match(/<img[^>]+src=["']([^>]*?logo[^>]*?)["']/i);
+        if (logoMatch) {
+            dados.logo_url = logoMatch[1];
             if (dados.logo_url.startsWith('/')) {
                 dados.logo_url = 'https://investidor10.com.br' + dados.logo_url;
             }
         }
 
-        let sobreTexto = '';
-        $('#about-section p, .profile-description p, #description p, .text-description p').each((i, el) => {
-            sobreTexto += $(el).text().trim() + ' ';
-        });
+        // Sobre texto (seja via AeroScrape ou fallback regex)
+        let sobreTexto = (resAbout && resAbout.data) ? resAbout.data.join(' ') : '';
 
         if (!sobreTexto.trim()) {
-            $('script[type="application/ld+json"]').each((i, el) => {
+            const scriptJsonMatch = html.match(/<script[^>]*type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/i);
+            if (scriptJsonMatch) {
                 try {
-                    const html = $(el).html();
-                    if (html) {
-                        const json = JSON.parse(html);
-                        const items = json['@graph'] ? json['@graph'] : [json];
-                        items.forEach(item => {
-                            if (item.articleBody) sobreTexto = item.articleBody;
-                        });
-                    }
+                    const json = JSON.parse(scriptJsonMatch[1]);
+                    const items = json['@graph'] ? json['@graph'] : [json];
+                    items.forEach(item => {
+                        if (item.articleBody) sobreTexto = item.articleBody;
+                    });
                 } catch (e) { }
-            });
+            }
         }
 
         if (!sobreTexto.trim()) {
-            sobreTexto = $('meta[name="description"]').attr('content') || '';
+            const metaDescMatch = html.match(/<meta[^>]*name=["']description["'][^>]*content=["']([^"']+)["']/i);
+            if (metaDescMatch) sobreTexto = metaDescMatch[1];
         }
 
         // SEU CÓDIGO COMEÇA AQUI ==========================
@@ -457,28 +461,28 @@ async function scrapeFundamentos(ticker) {
         if (companyId && tipoAtivo === 'acao') {
             const baseUrl = 'https://investidor10.com.br';
             const chartRequests = [
-                client.get(`${baseUrl}/api/balancos/receitaliquida/chart/${companyId}/3650/false/`)
+                fetchWithRetry(`${baseUrl}/api/balancos/receitaliquida/chart/${companyId}/3650/false/`)
                     .then(r => ({ tipo: 'receitas_lucros', data: r.data })).catch(() => null),
-                client.get(`${baseUrl}/api/cotacao-lucro/${ticker.toLowerCase()}/adjusted/`)
+                fetchWithRetry(`${baseUrl}/api/cotacao-lucro/${ticker.toLowerCase()}/adjusted/`)
                     .then(r => ({ tipo: 'lucro_cotacao', data: r.data })).catch(() => null),
-                client.get(`${baseUrl}/api/balancos/ativospassivos/chart/${companyId}/3650/`)
+                fetchWithRetry(`${baseUrl}/api/balancos/ativospassivos/chart/${companyId}/3650/`)
                     .then(r => ({ tipo: 'evolucao_patrimonio', data: r.data })).catch(() => null),
             ];
             if (tickerId) {
                 chartRequests.push(
-                    client.get(`${baseUrl}/api/acoes/payout-chart/${companyId}/${tickerId}/${ticker.toUpperCase()}/3650`)
+                    fetchWithRetry(`${baseUrl}/api/acoes/payout-chart/${companyId}/${tickerId}/${ticker.toUpperCase()}/3650`)
                         .then(r => ({ tipo: 'payout', data: r.data })).catch(() => null)
                 );
             }
             chartPromise = Promise.all(chartRequests);
         }
 
-        // Lança comparação API em paralelo (não espera)
-        const apiUrl = $('#table-compare-fiis').attr('data-url') || $('#table-compare-segments').attr('data-url');
+        const apiUrlMatch = html.match(/id=["']table-compare-(?:fiis|segments)["'][^>]*data-url=["']([^"']+)["']/i);
+        const apiUrl = apiUrlMatch ? apiUrlMatch[1] : null;
         let comparacaoApiPromise = Promise.resolve(null);
         if (apiUrl) {
             const fullUrl = apiUrl.startsWith('http') ? apiUrl : `https://investidor10.com.br${apiUrl}`;
-            comparacaoApiPromise = client.get(fullUrl).catch(() => null);
+            comparacaoApiPromise = fetchWithRetry(fullUrl);
         }
 
         // ─── Aguarda comparação API + charts em paralelo enquanto parseia HTML abaixo ───
@@ -525,83 +529,45 @@ async function scrapeFundamentos(ticker) {
 
         // TENTATIVA 2: SEU CÓDIGO HTML (Fallback se a API falhar)
         if (dados.comparacao.length === 0) {
-            // FII tables
-            $('#table-compare-fiis, #table-compare-segments').each((_, table) => {
+            const tableMatch = html.match(/<table[^>]*id=["']table-compare(?:-fiis|-segments|-tickers)["'][^>]*>([\s\S]*?)<\/table>/i);
+            if (tableMatch) {
                 let idxDy = -1, idxPvp = -1, idxPat = -1, idxSeg = -1, idxTipo = -1;
+                const theadMatch = tableMatch[1].match(/<thead[^>]*>([\s\S]*?)<\/thead>/i);
+                if (theadMatch) {
+                    const ths = theadMatch[1].match(/<th[^>]*>([\s\S]*?)<\/th>/gi) || [];
+                    ths.forEach((th, idx) => {
+                        const txt = th.replace(/<[^>]+>/g, '').toLowerCase();
+                        if (txt.includes('dy') || txt.includes('dividend')) idxDy = idx;
+                        if (txt.includes('p/vp') || txt.includes('p/l') || txt.includes('p/ vp')) idxPvp = idx;
+                        if (txt.includes('patrim') || txt.includes('mercado')) idxPat = idx;
+                        if (txt.includes('segmento')) idxSeg = idx;
+                        if (txt.includes('tipo')) idxTipo = idx;
+                    });
+                }
 
-                $(table).find('thead th').each((idx, th) => {
-                    const txt = $(th).text().toLowerCase();
-                    if (txt.includes('dy') || txt.includes('dividend')) idxDy = idx;
-                    if (txt.includes('p/vp')) idxPvp = idx;
-                    if (txt.includes('patrim')) idxPat = idx;
-                    if (txt.includes('segmento')) idxSeg = idx;
-                    if (txt.includes('tipo')) idxTipo = idx;
-                });
-
-                $(table).find('tbody tr').each((i, el) => {
-                    const cols = $(el).find('td');
+                const tbodyMatch = tableMatch[1].match(/<tbody[^>]*>([\s\S]*?)<\/tbody>/i);
+                const rows = tbodyMatch ? (tbodyMatch[1].match(/<tr[^>]*>([\s\S]*?)<\/tr>/gi) || []) : [];
+                rows.forEach((row) => {
+                    const cols = row.match(/<td[^>]*>([\s\S]*?)<\/td>/gi) || [];
                     if (cols.length >= 3) {
-                        const ticker = $(cols[0]).text().replace(/\s+/g, ' ').trim();
-                        if (ticker && !tickersVistos.has(ticker)) {
-                            let nome = $(cols[0]).find('a').attr('title') || '';
+                        const cleanTxt = t => t.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+                        const tickerMatch = cols[0].match(/<a[^>]+title=["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/i);
+                        let ticker = tickerMatch ? cleanTxt(tickerMatch[2]) : cleanTxt(cols[0]);
+                        let nome = tickerMatch ? tickerMatch[1] : '';
 
-                            const dy = idxDy !== -1 && cols.length > idxDy ? $(cols[idxDy]).text().trim() : '-';
-                            const pvp = idxPvp !== -1 && cols.length > idxPvp ? $(cols[idxPvp]).text().trim() : '-';
-                            const patrimonio = idxPat !== -1 && cols.length > idxPat ? $(cols[idxPat]).text().trim() : '-';
-                            const segmento = idxSeg !== -1 && cols.length > idxSeg ? $(cols[idxSeg]).text().trim() : '-';
-                            const tipo = idxTipo !== -1 && cols.length > idxTipo ? $(cols[idxTipo]).text().trim() : '-';
+                        if (ticker && !tickersVistos.has(ticker)) {
+                            const dy = idxDy !== -1 && cols.length > idxDy ? cleanTxt(cols[idxDy]) : '-';
+                            const pvp = idxPvp !== -1 && cols.length > idxPvp ? cleanTxt(cols[idxPvp]) : '-';
+                            const patrimonio = idxPat !== -1 && cols.length > idxPat ? cleanTxt(cols[idxPat]) : '-';
+                            const segmento = idxSeg !== -1 && cols.length > idxSeg ? cleanTxt(cols[idxSeg]) : '-';
+                            const tipo = idxTipo !== -1 && cols.length > idxTipo ? cleanTxt(cols[idxTipo]) : '-';
 
                             dados.comparacao.push({ ticker, nome, dy, pvp, patrimonio, segmento, tipo });
                             tickersVistos.add(ticker);
                         }
                     }
                 });
-            });
-
-            // Tabela de COMPARAÇÃO DE AÇÕES (#table-compare-tickers)
-            // Colunas: Ativo | P/L | P/VP | ROE | DY | Val. Mercado | Margem Líquida
-            $('#table-compare-tickers').find('tbody tr').each((i, el) => {
-                const cols = $(el).find('td');
-                if (cols.length >= 7) {
-                    const cleanTxt = (td) => $(td).clone().children('i').remove().end().text().replace(/\s+/g, ' ').trim();
-                    const ticker = $(cols[0]).text().replace(/\s+/g, ' ').trim();
-                    if (ticker && !tickersVistos.has(ticker)) {
-                        const nome = $(cols[0]).find('a').attr('title') || '';
-                        dados.comparacao.push({
-                            ticker, nome,
-                            pl: cleanTxt(cols[1]),
-                            pvp: cleanTxt(cols[2]),
-                            roe: cleanTxt(cols[3]),
-                            dy: cleanTxt(cols[4]),
-                            val_mercado: cleanTxt(cols[5]),
-                            margem_liquida: cleanTxt(cols[6]),
-                            patrimonio: '-', segmento: '-', tipo: '-'
-                        });
-                        tickersVistos.add(ticker);
-                    }
-                }
-            });
-
-            // Método B: Cards Relacionados (Fallback)
-            $('.card-related-fii').each((i, el) => {
-                const ticker = $(el).find('h2').text().trim();
-                if (ticker && !tickersVistos.has(ticker)) {
-                    const nome = $(el).find('h3, span.name').first().text().trim();
-                    let dy = '-', pvp = '-', patrimonio = '-', segmento = '-', tipo = '-';
-
-                    $(el).find('.card-footer p, .card-footer div').each((j, p) => {
-                        const text = $(p).text();
-                        if (text.includes('DY:')) dy = text.replace('DY:', '').trim();
-                        if (text.includes('P/VP:')) pvp = text.replace('P/VP:', '').trim();
-                        if (text.includes('Patrimônio:')) patrimonio = text.replace('Patrimônio:', '').trim();
-                        if (text.includes('Segmento:')) segmento = text.replace('Segmento:', '').trim();
-                        if (text.includes('Tipo:')) tipo = text.replace('Tipo:', '').trim();
-                    });
-
-                    dados.comparacao.push({ ticker, nome, dy, pvp, patrimonio, segmento, tipo });
-                    tickersVistos.add(ticker);
-                }
-            });
+            }
         }
 
         // ─── Resolver chart promises (lançadas em paralelo acima) ───
@@ -706,20 +672,19 @@ async function scrapeMarketIndices() {
 async function scrapeRankings() {
     const resultados = { altas: [], baixas: [] };
 
-    const extractItems = ($, container, limit = 6) => {
+    const extractCards = (blockHtml) => {
         const items = [];
-        if (!container) return items;
-        container.find('a[href*="/acoes/"]').each((i, el) => {
-            if (i >= limit) return false;
-            const fullText = $(el).text().replace(/\s+/g, ' ').trim();
-            const tickerMatch = fullText.match(/([A-Z]{4}\d{1,2})/);
-            const varMatch = fullText.match(/([+-]?\d+[,.]\d+\s*%)/);
-            const precoMatch = fullText.match(/R\$\s*([\d.,]+)/);
-
+        const links = blockHtml.match(/<a[^>]+href=["'][^"]*\/acoes\/[^"]*["'][^>]*>([\s\S]*?)<\/a>/gi) || [];
+        for (let i = 0; i < Math.min(links.length, 6); i++) {
+            const txt = links[i].replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+            const tickerMatch = txt.match(/([A-Z]{4}\d{1,2})/);
+            const varMatch = txt.match(/([+-]?\d+[,.]\d+\s*%)/);
+            const precoMatch = txt.match(/R\$\s*([\d.,]+)/);
+            
             let logo_url = '';
-            const imgEl = $(el).find('img').first();
-            if (imgEl.length) {
-                logo_url = imgEl.attr('src') || '';
+            const imgMatch = links[i].match(/<img[^>]+src=["']([^"']+)["']/i);
+            if (imgMatch) {
+                logo_url = imgMatch[1];
                 if (logo_url.startsWith('/')) logo_url = 'https://investidor10.com.br' + logo_url;
             }
 
@@ -728,39 +693,30 @@ async function scrapeRankings() {
                     ticker: tickerMatch[1],
                     variacao: varMatch ? varMatch[1].replace(/\s/g, '') : '',
                     preco: precoMatch ? `R$ ${precoMatch[1]}` : '',
-                    logo_url: logo_url
+                    logo_url
                 });
             }
-        });
+        }
         return items;
     };
 
-    const findSection = ($, titulo) => {
-        let container = null;
-        $('h2').each((_, el) => {
-            if ($(el).text().trim() === titulo) {
-                container = $(el).parent();
-                if (container.find('a[href*="/acoes/"]').length === 0) {
-                    container = container.parent();
-                }
-                return false;
-            }
-        });
-        return container;
-    };
-
     try {
-        const res = await fetchWithRetry('https://investidor10.com.br/');
-        if (res.status !== 200) return resultados;
-        const $ = cheerio.load(res.data);
+        const { html } = await aeroScrape('https://investidor10.com.br/', { returnHtml: true });
+        if (!html) return resultados;
+        
+        const blocks = html.split('<h2');
+        let blockAltas = '', blockBaixas = '';
+        blocks.forEach(b => {
+             if (b.includes('Maiores Altas')) blockAltas = b;
+             if (b.includes('Maiores Baixas')) blockBaixas = b;
+        });
 
-        resultados.altas = extractItems($, findSection($, 'Maiores Altas'), 6);
-        resultados.baixas = extractItems($, findSection($, 'Maiores Baixas'), 6);
+        if (blockAltas) resultados.altas = extractCards(blockAltas);
+        if (blockBaixas) resultados.baixas = extractCards(blockBaixas);
 
     } catch (e) {
         console.error('Erro rankings:', e.message);
     }
-
     return resultados;
 }
 
@@ -841,37 +797,35 @@ async function scrapeAsset(ticker) {
 
 async function scrapeIpca() {
     try {
-        const url = 'https://investidor10.com.br/indices/ipca/';
-        const { data } = await fetchWithRetry(url);
-        const $ = cheerio.load(data);
+        const { html } = await aeroScrape('https://investidor10.com.br/indices/ipca/', { returnHtml: true });
+        if (!html) throw new Error("Sem HTML retornado");
 
         const historico = [];
         let acumulado12m = '0,00';
         let acumuladoAno = '0,00';
 
-        let $table = $('table').filter((i, el) => {
-            const firstRow = $(el).find('thead tr th').first().text().toLowerCase();
-            return firstRow.includes('acumulado') || firstRow.includes('varia');
-        }).first();
-
-        if (!$table.length) {
-            $('table').each((i, el) => {
-                if ($table.length) return false;
-                const headers = $(el).find('thead').text().toLowerCase();
-                if (headers.includes('acumulado 12 meses') || headers.includes('variação em %')) {
-                    $table = $(el);
+        const tableDataMatch = html.match(/<tbody[^>]*>([\s\S]*?)<\/tbody>/g);
+        let rowsHtml = '';
+        if (tableDataMatch) {
+            for (let t of tableDataMatch) {
+                if (t.toLowerCase().includes('acumulado') || t.toLowerCase().includes('variaç')) {
+                    rowsHtml = t;
+                    break;
                 }
-            });
+            }
+            if (!rowsHtml && tableDataMatch.length > 0) rowsHtml = tableDataMatch[0];
         }
 
-        if ($table) {
-            $table.find('tbody tr').each((i, el) => {
-                const cols = $(el).find('td');
-                if (cols.length >= 2) {
-                    const dataRef = $(cols[0]).text().trim();
-                    const valorStr = $(cols[1]).text().trim();
-                    const acAnoStr = $(cols[2]).text().trim();
-                    const ac12mStr = $(cols[3]).text().trim();
+        if (rowsHtml) {
+            const rows = rowsHtml.match(/<tr[^>]*>([\s\S]*?)<\/tr>/g) || [];
+            rows.forEach((r, i) => {
+                const cols = r.match(/<td[^>]*>([\s\S]*?)<\/td>/g) || [];
+                if (cols.length >= 4) {
+                    const cleanTxt = (t) => t.replace(/<[^>]+>/g, '').trim();
+                    const dataRef = cleanTxt(cols[0]);
+                    const valorStr = cleanTxt(cols[1]);
+                    const acAnoStr = cleanTxt(cols[2]);
+                    const ac12mStr = cleanTxt(cols[3]);
 
                     if (i === 0) {
                         acumulado12m = ac12mStr.replace('.', ',');
@@ -890,10 +844,8 @@ async function scrapeIpca() {
             });
         }
 
-        const historicoCronologico = historico.reverse();
-
         return {
-            historico: historicoCronologico,
+            historico: historico.reverse(),
             acumulado_12m: acumulado12m,
             acumulado_ano: acumuladoAno
         };

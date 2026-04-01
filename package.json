@@ -7,11 +7,13 @@
     "build": "tailwindcss -i ./input.css -o ./style-tailwind.css --minify"
   },
   "dependencies": {
-    "uuid": "^13.0.0",
     "@supabase/supabase-js": "^2.89.0",
+    "@vercel/kv": "^2.0.0",
+    "csv-parser": "^3.2.0",
+    "jimp": "^0.22.12",
     "rss-parser": "^3.13.0",
-    "axios": "^1.13.2",
-    "cheerio": "^1.1.2",
+    "svg2img": "^1.0.0-beta.2",
+    "uuid": "^13.0.0",
     "web-push": "^3.6.7"
   },
   "devDependencies": {

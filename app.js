@@ -12376,38 +12376,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
 
         if (!dados || !dados.historico) return;
 
-        const mapPatrimonio = {};
-        const sourcePatrimonio = window.cachedPatrimonioHistorico || (typeof patrimonio !== 'undefined' ? patrimonio : []);
-        if (Array.isArray(sourcePatrimonio)) {
-            sourcePatrimonio.forEach(p => {
-                if (p.date && p.value) {
-                    const key = p.date.substring(0, 7);
-                    mapPatrimonio[key] = p.value;
-                }
-            });
-        }
-
-        const mapProventos = {};
-        if (typeof proventosConhecidos !== 'undefined' && Array.isArray(proventosConhecidos)) {
-            proventosConhecidos.forEach(p => {
-                // Verifica data válida
-                if (!p.paymentDate) return;
-                const key = p.paymentDate.substring(0, 7); // YYYY-MM
-
-                // Calcula o total recebido neste pagamento (Valor * Qtd na data)
-                // Usa a função global getQuantidadeNaData se disponível
-                const qtd = (typeof getQuantidadeNaData === 'function')
-                    ? getQuantidadeNaData(p.symbol, p.paymentDate)
-                    : 0;
-
-                // Registra que existiu UM provento nessa data,
-                // mesmo que a Qtd calculada seja 0 (caso o usuário tenha apagado as transações passadas).
-                const total = p.value * Math.max(qtd, 1);
-                mapProventos[key] = (mapProventos[key] || 0) + total;
-            });
-        }
-
-        // Helper para datas
+        // Helper para formatar ano/mês
         const getYearMonthKey = (mesStr) => {
             if (!mesStr) return null;
             const parts = mesStr.includes('/') ? mesStr.split('/') : [mesStr];
@@ -12428,169 +12397,105 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
             return null;
         };
 
-        // Encontra a data de início da carteira (o menor ano-mês com saldo ou provento)
-        let earliestKey = null;
-        const allKeys = [...Object.keys(mapPatrimonio), ...Object.keys(mapProventos)];
+        const historicoClean = [...dados.historico].reverse(); // Do mais recente para o mais antigo
 
-        if (allKeys.length > 0) {
-            allKeys.sort(); // String sort (e.g. "2023-01") works perfectly for YYYY-MM
-            earliestKey = allKeys[0].trim();
-        }
-
-        // Filtra o histórico para conter apenas dados retroativos até a criação da carteira
-        let historicoFiltrado = [...dados.historico];
-        if (earliestKey) {
-            const tempFiltrado = [];
-            for (let i = 0; i < historicoFiltrado.length; i++) {
-                const item = historicoFiltrado[i];
-                const ymKey = getYearMonthKey(item.mes);
-                if (ymKey) {
-                    if (ymKey >= earliestKey) {
-                        tempFiltrado.push(item);
-                    }
-                }
+        // 1. Calcular o Acumulado dos ultimos 12 meses
+        let fatorAcumulado12m = 1;
+        const apenas12meses = historicoClean.slice(0, 12);
+        apenas12meses.forEach(item => {
+            fatorAcumulado12m *= (1 + (item.valor / 100));
+        });
+        const acumulado12mPorcento = (fatorAcumulado12m - 1) * 100;
+        
+        const elAcumulado = document.getElementById('ipca-acumulado-12m');
+        if (elAcumulado) {
+            elAcumulado.textContent = acumulado12mPorcento.toFixed(2) + '%';
+            if (acumulado12mPorcento < 0) {
+                elAcumulado.classList.remove('text-white', 'text-red-500');
+                elAcumulado.classList.add('text-emerald-400');
+            } else if (acumulado12mPorcento >= 4.5) {
+                elAcumulado.classList.remove('text-white', 'text-emerald-400');
+                elAcumulado.classList.add('text-red-500');
+            } else {
+                elAcumulado.classList.remove('text-red-500', 'text-emerald-400');
+                elAcumulado.classList.add('text-white');
             }
-            historicoFiltrado = tempFiltrado;
         }
 
+        // 2. Renderizar a Lista Simplificada
         if (listaContainer) {
             listaContainer.innerHTML = '';
-            listaContainer.classList.add('divide-y', 'divide-white/[0.04]', 'rounded-2xl', 'overflow-hidden', 'bg-[#141414]');
+            listaContainer.classList.add('divide-y', 'divide-white/[0.04]', 'bg-[#141414]', 'rounded-xl', 'overflow-hidden');
 
-            [...historicoFiltrado].reverse().forEach(item => {
-                const valor = item.valor; // Inflação do mês
-                const ymKey = getYearMonthKey(item.mes);
-
-                let erosaoPatHtml = '';
-                if (ymKey && mapPatrimonio[ymKey]) {
-                    const saldoMes = mapPatrimonio[ymKey];
-                    const impactoReais = saldoMes * (valor / 100);
-
-                    const isPerda = impactoReais > 0;
-                    const sinal = isPerda ? '-' : '+';
-                    const corErosao = isPerda ? 'text-red-400' : 'text-emerald-400';
-                    const valorErosaoFmt = Math.abs(impactoReais).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-
-                    erosaoPatHtml = `
-                    <div class="flex items-center gap-3 justify-end mt-1" >
-                        <span class="text-[10px] text-gray-500 font-medium tracking-wide">Patrimônio</span>
-                        <span class="text-xs font-bold ${corErosao} w-20 text-right tabular-nums">${sinal} ${Math.abs(impactoReais).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
-                    </div>`;
-                } else {
-                    erosaoPatHtml = `
-                    <div class="flex items-center gap-3 justify-end mt-1 opacity-40" >
-                        <span class="text-[10px] text-gray-500 font-medium tracking-wide">Patrimônio</span>
-                        <span class="text-xs font-bold text-gray-500 w-20 text-right tabular-nums">--</span>
-                    </div>`;
-                }
-
-                let erosaoDivHtml = '';
-                if (ymKey && mapProventos[ymKey]) {
-                    const proventosMes = mapProventos[ymKey];
-                    const impactoDiv = proventosMes * (valor / 100);
-
-                    const isPerdaDiv = impactoDiv > 0;
-                    const sinalDiv = isPerdaDiv ? '-' : '+';
-                    const corErosaoDiv = isPerdaDiv ? 'text-red-400' : 'text-emerald-400';
-                    const valorErosaoDivFmt = Math.abs(impactoDiv).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-
-                    erosaoDivHtml = `
-                    <div class="flex items-center gap-3 justify-end mt-1 mb-1" >
-                        <span class="text-[10px] text-gray-500 font-medium tracking-wide">Proventos</span>
-                        <span class="text-xs font-bold ${corErosaoDiv} w-20 text-right tabular-nums">${sinalDiv} ${Math.abs(impactoDiv).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
-                    </div>`;
-                } else {
-                    erosaoDivHtml = `
-                    <div class="flex items-center gap-3 justify-end mt-1 mb-1 opacity-30" >
-                        <span class="text-[10px] text-gray-500 font-medium tracking-wide">Proventos</span>
-                        <span class="text-xs font-bold text-gray-500 w-20 text-right tabular-nums">--</span>
-                    </div>`;
-                }
-
-                // Cores do Badge de IPCA
+            historicoClean.forEach(item => {
+                const valor = item.valor;
+                
                 let corTexto = 'text-white';
                 let dotIcon = '';
 
                 if (valor >= 0.5) {
                     corTexto = 'text-red-400';
-                    dotIcon = '<div class="w-1.5 h-1.5 rounded-full bg-red-400 shadow-[0_0_8px_rgba(239,68,68,0.6)]"></div>';
+                    dotIcon = '<div class="w-1.5 h-1.5 rounded-full bg-red-500"></div>';
                 } else if (valor < 0) {
                     corTexto = 'text-emerald-400';
-                    dotIcon = '<div class="w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.6)]"></div>';
+                    dotIcon = '<div class="w-1.5 h-1.5 rounded-full bg-emerald-500"></div>';
                 } else {
                     corTexto = 'text-orange-400';
-                    dotIcon = '<div class="w-1.5 h-1.5 rounded-full bg-orange-400 shadow-[0_0_8px_rgba(251,146,60,0.6)]"></div>';
+                    dotIcon = '<div class="w-1.5 h-1.5 rounded-full bg-orange-500"></div>';
                 }
 
                 let [mesNome, ano] = item.mes.includes('/') ? item.mes.split('/') : [item.mes, ''];
-
-                const isLight = document.body.classList.contains('light-mode');
-                const bgItem = isLight ? 'bg-white' : 'hover:bg-white/[0.02] transition-colors';
                 const txtMonth = isLight ? 'text-gray-800' : 'text-gray-200';
+                const bgItem = isLight ? 'bg-white' : 'hover:bg-white/[0.02] transition-colors';
 
                 const html = `
-                <div class="group flex items-center justify-between p-4 ${bgItem}" >
-                    <div class="flex items-center gap-4">
+                <div class="flex items-center justify-between p-4 ${bgItem}">
+                    <div class="flex items-center gap-3">
                         ${dotIcon}
-                        <div class="flex flex-col">
-                            <span class="text-[13px] font-bold ${txtMonth} capitalize">${mesNome}</span>
+                        <div class="flex items-baseline gap-1.5">
+                            <span class="text-[14px] font-bold ${txtMonth} capitalize">${mesNome}</span>
                             <span class="text-[11px] text-gray-500 font-medium">${ano}</span>
                         </div>
                     </div>
-
-                    <div class="flex flex-col items-end">
-                        <div class="flex items-center gap-2 mb-2">
-                            <span class="text-[10px] text-gray-500 font-semibold uppercase tracking-widest">Rate</span>
-                            <span class="text-sm font-bold ${corTexto} tabular-nums">${valor.toFixed(2)}%</span>
-                        </div>
-                        ${erosaoPatHtml}
-                        ${erosaoDivHtml}
-                    </div>
+                    <span class="text-[15px] font-black ${corTexto} tabular-nums">${valor.toFixed(2)}%</span>
                 </div>`;
-
                 listaContainer.insertAdjacentHTML('beforeend', html);
             });
         }
 
+        // 3. Renderizar o Gráfico
         if (!canvas) return;
         if (ipcaChartInstance) ipcaChartInstance.destroy();
 
         const ctx = canvas.getContext('2d');
-        const labels = historicoFiltrado.map(d => d.mes.split('/')[0].substring(0, 3));
-        const values = historicoFiltrado.map(d => d.valor);
-        const backgroundColors = values.map(v => v < 0 ? '#10B981' : '#F97316');
-
-        const gradientFill = ctx.createLinearGradient(0, 0, 0, 400);
-        gradientFill.addColorStop(0, 'rgba(192, 132, 252, 0.45)');
-        gradientFill.addColorStop(1, 'rgba(192, 132, 252, 0.0)');
+        const historicoReverso = [...historicoClean].reverse(); // Cronológico para o gráfico
+        const labels = historicoReverso.map(d => d.mes.split('/')[0].substring(0, 3));
+        const values = historicoReverso.map(d => d.valor);
+        
+        // Cores do gráfico de Barras
+        const backgroundColors = values.map(v => {
+            if (v < 0) return '#10B981'; // Deflação (Verde)
+            if (v >= 0.5) return '#EF4444'; // Alta (Vermelho)
+            return '#F97316'; // Normal (Laranja)
+        });
 
         ipcaChartInstance = new Chart(ctx, {
-            type: 'line',
+            type: 'bar',
             data: {
                 labels: labels,
                 datasets: [{
                     label: 'IPCA',
                     data: values,
-                    fill: true,
-                    backgroundColor: gradientFill,
-                    borderColor: '#c084fc',
-                    borderWidth: 1.5,
-                    tension: 0.4,
-                    pointRadius: 0,
-                    pointHoverRadius: 4,
-                    pointHoverBackgroundColor: '#c084fc',
-                    pointHoverBorderWidth: 0,
-                    pointHitRadius: 15
+                    backgroundColor: backgroundColors,
+                    borderRadius: 4,
+                    borderSkipped: false,
+                    barPercentage: 0.6
                 }]
             },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
-                layout: { padding: { left: 0, right: 0, top: 0, bottom: 0 } },
-                interaction: {
-                    mode: 'index',
-                    intersect: false
-                },
+                layout: { padding: { left: 0, right: 0, top: 10, bottom: 0 } },
                 plugins: {
                     legend: { display: false },
                     tooltip: {
@@ -12612,57 +12517,14 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
                 scales: {
                     y: {
                         display: false,
+                        grid: { display: false }
                     },
                     x: {
-                        display: false
+                        display: false,
+                        grid: { display: false }
                     }
                 }
-            },
-            plugins: [{
-                id: 'ipcaCrosshair',
-                afterDraw: (chart) => {
-                    if (chart.tooltip?._active?.length && chart.tooltip._eventPosition) {
-                        const ctx = chart.ctx;
-                        const activePoint = chart.tooltip._active[0];
-                        const x = activePoint.element.x;
-                        const y = chart.tooltip._eventPosition.y;
-
-                        const topY = chart.scales.y.top;
-                        const bottomY = chart.scales.y.bottom;
-                        const leftX = chart.scales.x.left;
-                        const rightX = chart.scales.x.right;
-
-                        // Pega a cor correspondente à data atual (verde se deflação, laranja se inflação, vermelho alto)
-                        const val = activePoint.element.$context.raw;
-                        let pointColor = 'rgba(251,146,60,0.8)'; // Orange
-                        if (val >= 0.5) pointColor = 'rgba(239,68,68,0.8)'; // Red
-                        else if (val < 0) pointColor = 'rgba(52,211,153,0.8)'; // Emerald
-
-                        ctx.save();
-                        ctx.lineWidth = 1;
-                        ctx.strokeStyle = isLight ? '#d1d5db' : '#404040';
-                        ctx.setLineDash([4, 4]);
-
-                        // Crosshair X e Y
-                        ctx.beginPath();
-                        ctx.moveTo(x, topY);
-                        ctx.lineTo(x, bottomY);
-                        ctx.stroke();
-
-                        ctx.beginPath();
-                        ctx.moveTo(leftX, y);
-                        ctx.lineTo(rightX, y);
-                        ctx.stroke();
-
-                        // O pino brilhante na intersecção
-                        ctx.beginPath();
-                        ctx.arc(x, y, 4, 0, 2 * Math.PI);
-                        ctx.fillStyle = pointColor;
-                        ctx.fill();
-                        ctx.restore();
-                    }
-                }
-            }]
+            }
         });
     }
 

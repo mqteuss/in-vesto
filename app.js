@@ -1951,7 +1951,14 @@ document.addEventListener('DOMContentLoaded', async () => {
         const ativosMap = new Map();
         // OTIMIZAÇÃO: Comparação direta de strings ISO (YYYY-MM-DD) com localeCompare.
         // Elimina a criação de milhares de objetos Date descartáveis no Garbage Collector.
-        const transacoesOrdenadas = [...transacoes].sort((a, b) => a.date.localeCompare(b.date));
+        const transacoesOrdenadas = [...transacoes].sort((a, b) => {
+            const dateCmp = a.date.localeCompare(b.date);
+            if (dateCmp !== 0) return dateCmp;
+            // Se as datas são iguais, 'buy' sempre processa antes de 'sell' para não gerar saldos negativos falsos
+            if (a.type === 'buy' && b.type === 'sell') return -1;
+            if (a.type === 'sell' && b.type === 'buy') return 1;
+            return 0;
+        });
 
         for (const t of transacoesOrdenadas) {
             const symbol = t.symbol;

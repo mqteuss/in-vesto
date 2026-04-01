@@ -12397,7 +12397,52 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
             return null;
         };
 
-        const historicoClean = [...dados.historico].reverse(); // Do mais recente para o mais antigo
+        const mapPatrimonio = {};
+        const sourcePatrimonio = window.cachedPatrimonioHistorico || (typeof patrimonio !== 'undefined' ? patrimonio : []);
+        if (Array.isArray(sourcePatrimonio)) {
+            sourcePatrimonio.forEach(p => {
+                if (p.date && p.value) {
+                    const key = p.date.substring(0, 7);
+                    mapPatrimonio[key] = p.value;
+                }
+            });
+        }
+
+        const mapProventos = {};
+        if (typeof proventosConhecidos !== 'undefined' && Array.isArray(proventosConhecidos)) {
+            proventosConhecidos.forEach(p => {
+                if (!p.paymentDate) return;
+                const key = p.paymentDate.substring(0, 7); // YYYY-MM
+                const qtd = (typeof getQuantidadeNaData === 'function') ? getQuantidadeNaData(p.symbol, p.paymentDate) : 0;
+                const total = p.value * Math.max(qtd, 1);
+                mapProventos[key] = (mapProventos[key] || 0) + total;
+            });
+        }
+
+        // Encontra a data de início da carteira (o menor ano-mês com saldo ou provento)
+        let earliestKey = null;
+        const allKeys = [...Object.keys(mapPatrimonio), ...Object.keys(mapProventos)];
+
+        if (allKeys.length > 0) {
+            allKeys.sort();
+            earliestKey = allKeys[0].trim();
+        }
+
+        // Filtra o histórico para conter apenas dados retroativos até a criação da carteira
+        let historicoClean = [...dados.historico];
+        if (earliestKey) {
+            const tempFiltrado = [];
+            for (let i = 0; i < historicoClean.length; i++) {
+                const item = historicoClean[i];
+                const ymKey = getYearMonthKey(item.mes);
+                if (ymKey && ymKey >= earliestKey) {
+                    tempFiltrado.push(item);
+                }
+            }
+            historicoClean = tempFiltrado;
+        }
+
+        historicoClean = historicoClean.reverse(); // Do mais recente para o mais antigo
 
         // 1. Calcular o Acumulado dos ultimos 12 meses
         let fatorAcumulado12m = 1;
@@ -12429,7 +12474,52 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
 
             historicoClean.forEach(item => {
                 const valor = item.valor;
+                const ymKey = getYearMonthKey(item.mes);
                 
+                let erosaoPatHtml = '';
+                if (ymKey && mapPatrimonio[ymKey]) {
+                    const saldoMes = mapPatrimonio[ymKey];
+                    const impactoReais = saldoMes * (valor / 100);
+
+                    const isPerda = impactoReais > 0;
+                    const sinal = isPerda ? '-' : '+';
+                    const corErosao = isPerda ? 'text-red-400' : 'text-emerald-400';
+
+                    erosaoPatHtml = `
+                    <div class="flex items-center gap-3 justify-end mt-1" >
+                        <span class="text-[10px] text-gray-500 font-medium tracking-wide">Patrimônio</span>
+                        <span class="text-xs font-bold ${corErosao} w-20 text-right tabular-nums">${sinal} ${Math.abs(impactoReais).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
+                    </div>`;
+                } else {
+                    erosaoPatHtml = `
+                    <div class="flex items-center gap-3 justify-end mt-1 opacity-40" >
+                        <span class="text-[10px] text-gray-500 font-medium tracking-wide">Patrimônio</span>
+                        <span class="text-xs font-bold text-gray-500 w-20 text-right tabular-nums">--</span>
+                    </div>`;
+                }
+
+                let erosaoDivHtml = '';
+                if (ymKey && mapProventos[ymKey]) {
+                    const proventosMes = mapProventos[ymKey];
+                    const impactoDiv = proventosMes * (valor / 100);
+
+                    const isPerdaDiv = impactoDiv > 0;
+                    const sinalDiv = isPerdaDiv ? '-' : '+';
+                    const corErosaoDiv = isPerdaDiv ? 'text-red-400' : 'text-emerald-400';
+
+                    erosaoDivHtml = `
+                    <div class="flex items-center gap-3 justify-end mt-1 mb-1" >
+                        <span class="text-[10px] text-gray-500 font-medium tracking-wide">Proventos</span>
+                        <span class="text-xs font-bold ${corErosaoDiv} w-20 text-right tabular-nums">${sinalDiv} ${Math.abs(impactoDiv).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
+                    </div>`;
+                } else {
+                    erosaoDivHtml = `
+                    <div class="flex items-center gap-3 justify-end mt-1 mb-1 opacity-30" >
+                        <span class="text-[10px] text-gray-500 font-medium tracking-wide">Proventos</span>
+                        <span class="text-xs font-bold text-gray-500 w-20 text-right tabular-nums">--</span>
+                    </div>`;
+                }
+
                 let corTexto = 'text-white';
                 let dotIcon = '';
 
@@ -12450,14 +12540,23 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
 
                 const html = `
                 <div class="flex items-center justify-between p-4 ${bgItem}">
-                    <div class="flex items-center gap-3">
-                        ${dotIcon}
-                        <div class="flex items-baseline gap-1.5">
-                            <span class="text-[14px] font-bold ${txtMonth} capitalize">${mesNome}</span>
-                            <span class="text-[11px] text-gray-500 font-medium">${ano}</span>
+                    <div class="flex flex-col gap-1 items-start">
+                        <div class="flex items-center gap-3">
+                            ${dotIcon}
+                            <div class="flex items-baseline gap-1.5">
+                                <span class="text-[14px] font-bold ${txtMonth} capitalize">${mesNome}</span>
+                                <span class="text-[11px] text-gray-500 font-medium">${ano}</span>
+                            </div>
                         </div>
                     </div>
-                    <span class="text-[15px] font-black ${corTexto} tabular-nums">${valor.toFixed(2)}%</span>
+                    <div class="flex flex-col items-end">
+                        <div class="flex items-center gap-2 mb-2">
+                            <span class="text-[10px] text-gray-500 font-semibold uppercase tracking-widest">Rate</span>
+                            <span class="text-sm font-bold ${corTexto} tabular-nums">${valor.toFixed(2)}%</span>
+                        </div>
+                        ${erosaoPatHtml}
+                        ${erosaoDivHtml}
+                    </div>
                 </div>`;
                 listaContainer.insertAdjacentHTML('beforeend', html);
             });

@@ -3435,18 +3435,15 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
         const ctx = canvas.getContext('2d');
         const isLight = document.body.classList.contains('light-mode');
 
-        // Gradiente nas barras Recebido
-        const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
-        gradient.addColorStop(0, '#a78bfa');
-        gradient.addColorStop(1, '#7c3aed');
-
+        // Cores Cleans e Sólidas
+        const colorRecebido = isLight ? '#8b5cf6' : '#a78bfa';
         const colorAReceber = isLight ? '#e5e7eb' : '#333333';
-        const linhaCrescimentoColor = isLight ? '#d1d5db' : '#F3F4F6';
+        const linhaCrescimentoColor = isLight ? '#9ca3af' : '#6b7280';
 
         // Destaque do mês atual — borda diferente na barra
         const currentMonthIdx = keysFiltrados.indexOf(mesAtualKey);
-        const borderColors = keysFiltrados.map((k, i) => i === currentMonthIdx ? '#a78bfa' : 'transparent');
-        const borderWidths = keysFiltrados.map((k, i) => i === currentMonthIdx ? 2 : 0);
+        const borderColors = keysFiltrados.map((k, i) => i === currentMonthIdx ? (isLight ? '#6d28d9' : '#d8b4fe') : 'transparent');
+        const borderWidths = keysFiltrados.map((k, i) => i === currentMonthIdx ? 1.5 : 0);
 
         // Total usado para traçar a linha de crescimento
         const dataTotal = dataRecebidoFiltrados.map((recebido, index) => recebido + dataAReceberFiltrados[index]);
@@ -3462,10 +3459,11 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
                         label: 'Crescimento',
                         data: dataTotal,
                         borderColor: linhaCrescimentoColor,
-                        borderWidth: 1.5,
-                        tension: 0.4,
+                        borderWidth: 2,
+                        tension: 0.2,
+                        fill: false,
                         pointRadius: 2,
-                        pointHoverRadius: 5,
+                        pointHoverRadius: 4,
                         pointBackgroundColor: linhaCrescimentoColor,
                         spanGaps: true,
                         order: 0
@@ -3483,7 +3481,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
                     {
                         label: 'Recebido',
                         data: dataRecebidoFiltrados,
-                        backgroundColor: gradient,
+                        backgroundColor: colorRecebido,
                         borderColor: borderColors,
                         borderWidth: borderWidths,
                         borderRadius: 4,

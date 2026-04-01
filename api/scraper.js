@@ -42,15 +42,21 @@ async function fetchWithRetry(url, options = {}, retries = 3, baseBackoff = 1000
     }
 
     for (let i = 0; i < retries; i++) {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 10000);
+
         try {
-            const res = await fetch(url, options);
+            const res = await fetch(url, { ...options, signal: controller.signal });
+            clearTimeout(timeout);
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
             const data = await res.json();
             return { data };
         } catch (err) {
-            if (i === retries - 1 || (err.message && err.message.includes('404'))) throw err;
+            clearTimeout(timeout);
+            const msg = err.name === 'AbortError' ? `Timeout 10s` : err.message;
+            if (i === retries - 1 || (err.message && err.message.includes('404'))) throw new Error(msg);
             const delay = baseBackoff * Math.pow(2, i);
-            console.log(`[RETRY] Tentativa ${i + 1} falhou para ${url}: ${err.message}. Retentando em ${delay}ms...`);
+            console.log(`[RETRY] Tentativa ${i + 1} falhou para ${url}: ${msg}. Retentando em ${delay}ms...`);
             await new Promise(res => setTimeout(res, delay));
         }
     }

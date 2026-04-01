@@ -378,7 +378,10 @@
                                 
                                 <div class="flex flex-col w-full mt-2 relative z-20 px-1">
 
-                                    <span class="text-[11px] uppercase tracking-[0.12em] font-semibold text-[#71717a] mb-2">Patrimônio Total</span>
+                                    <div class="flex items-center gap-1.5 mb-2 relative z-30">
+                                        <span class="text-[11px] uppercase tracking-[0.12em] font-semibold text-[#71717a]">Patrimônio Total</span>
+                                        <button onclick="event.stopPropagation(); showToast('Soma de todo o seu dinheiro: Ativos investidos + Dinheiro em Caixa', 'info')" class="w-3.5 h-3.5 rounded-full bg-[#2C2C2E] text-[9px] text-gray-400 hover:text-white hover:bg-[#3C3C3E] transition-all flex items-center justify-center font-bold" style="line-height:1;">?</button>
+                                    </div>
 
                                     <div id="skeleton-total-valor" class="h-8 w-40 skeleton rounded"></div>
 
@@ -409,7 +412,10 @@
                                 <div class="premium-grid relative z-20">
 
                                     <div class="premium-stat-box">
-                                        <span class="premium-stat-sub">Investido</span>
+                                        <div class="flex items-center gap-1 relative z-30">
+                                            <span class="premium-stat-sub" style="margin-top:0">Investido</span>
+                                            <button onclick="event.stopPropagation(); showToast('Total de dinheiro gasto diretamente para comprar seus ativos atuais.', 'info')" class="w-3.5 h-3.5 rounded-full bg-[#2C2C2E] text-[9px] text-gray-400 hover:text-white hover:bg-[#3C3C3E] transition-all flex items-center justify-center font-bold" style="line-height:1;">?</button>
+                                        </div>
                                         <div id="skeleton-total-custo" class="h-4 w-16 skeleton rounded mt-1"></div>
                                         <span id="total-carteira-custo" class="premium-stat-value hidden">R$
                                             0,00</span>
@@ -418,7 +424,10 @@
                                     <div class="premium-divider"></div>
 
                                     <div class="premium-stat-box">
-                                        <span class="premium-stat-sub">Na Carteira</span>
+                                        <div class="flex items-center gap-1 relative z-30">
+                                            <span class="premium-stat-sub" style="margin-top:0">Na Carteira</span>
+                                            <button onclick="event.stopPropagation(); showToast('Valor atual de mercado se você vendesse todos os seus ativos hoje.', 'info')" class="w-3.5 h-3.5 rounded-full bg-[#2C2C2E] text-[9px] text-gray-400 hover:text-white hover:bg-[#3C3C3E] transition-all flex items-center justify-center font-bold" style="line-height:1;">?</button>
+                                        </div>
                                         <div id="skeleton-total-mercado" class="h-4 w-16 skeleton rounded mt-1"></div>
                                         <span id="total-carteira-mercado" class="premium-stat-value hidden">R$
                                             0,00</span>
@@ -427,7 +436,10 @@
                                     <div class="premium-divider"></div>
 
                                     <div class="premium-stat-box">
-                                        <span class="premium-stat-sub">Caixa Livre</span>
+                                        <div class="flex items-center gap-1 relative z-30">
+                                            <span class="premium-stat-sub" style="margin-top:0">Caixa Livre</span>
+                                            <button onclick="event.stopPropagation(); showToast('Saldo líquido proveniente do acúmulo de dividendos ou vendas.', 'info')" class="w-3.5 h-3.5 rounded-full bg-[#2C2C2E] text-[9px] text-gray-400 hover:text-white hover:bg-[#3C3C3E] transition-all flex items-center justify-center font-bold" style="line-height:1;">?</button>
+                                        </div>
                                         <div id="skeleton-total-caixa"
                                             class="h-4 w-16 skeleton rounded mt-1"></div>
                                         <span id="total-caixa-valor" class="premium-stat-value hidden">R$

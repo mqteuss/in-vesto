@@ -1,31 +1,41 @@
-const https = require('https');
+/**
+ * Scraper API — Consumidor otimizado do AeroScrape v2.
+ * 
+ * Otimizações aplicadas:
+ * - Multi-selector: scrapeFundamentos faz 1 HTTP call (era 9)
+ * - Timeout + AbortController no helper aeroScrape
+ * - Removed dead code (require('https'))
+ * - Cleaned up fetchWithRetry
+ */
 
-// Helper para conectar à API AeroScrape
+// ─── AeroScrape Helper (com timeout) ─────────────────────────────────────────
+
+const AEROSCRAPE_URL = 'https://aero-scrape.vercel.app/api/scrape';
+
 async function aeroScrape(url, payloadOpts = {}) {
-    const res = await fetch('https://aero-scrape.vercel.app/api/scrape', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url, ...payloadOpts })
-    });
-    if (!res.ok) throw new Error(`AeroScrape HTTP ${res.status}`);
-    return await res.json();
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 15000);
+
+    try {
+        const res = await fetch(AEROSCRAPE_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ url, ...payloadOpts }),
+            signal: controller.signal,
+        });
+        if (!res.ok) throw new Error(`AeroScrape HTTP ${res.status}`);
+        return await res.json();
+    } finally {
+        clearTimeout(timeout);
+    }
 }
 
-/**
- * fetchWithRetry: Substitui o Axios pelo Fetch nativo
- * Utilizado agora APENAS para buscar APIs JSON puras locais (Yahoo, StatusInvest).
- */
+// ─── Fetch JSON Helper (para APIs que retornam JSON puro) ────────────────────
+
 async function fetchWithRetry(url, options = {}, retries = 3, baseBackoff = 1000) {
-    if (typeof options === 'number') {
-        baseBackoff = retries === 3 ? 1000 : retries;
-        retries = options;
-        options = {};
-    }
-    
-    // Headers para simular browser, similar ao antigo client.axios
     if (!options.headers) {
         options.headers = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
             'Accept': 'application/json, text/plain, */*',
             'Referer': 'https://investidor10.com.br/'
         };
@@ -34,16 +44,11 @@ async function fetchWithRetry(url, options = {}, retries = 3, baseBackoff = 1000
     for (let i = 0; i < retries; i++) {
         try {
             const res = await fetch(url, options);
-            if (!res.ok) {
-                if (res.status === 404 || i === retries - 1) throw new Error(`HTTP ${res.status}`);
-                throw new Error(`HTTP ${res.status}`);
-            }
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
             const data = await res.json();
             return { data };
         } catch (err) {
-            if (i === retries - 1 || (err.message && err.message.includes('404'))) {
-                throw err;
-            }
+            if (i === retries - 1 || (err.message && err.message.includes('404'))) throw err;
             const delay = baseBackoff * Math.pow(2, i);
             console.log(`[RETRY] Tentativa ${i + 1} falhou para ${url}: ${err.message}. Retentando em ${delay}ms...`);
             await new Promise(res => setTimeout(res, delay));
@@ -51,7 +56,8 @@ async function fetchWithRetry(url, options = {}, retries = 3, baseBackoff = 1000
     }
 }
 
-// Heurística: tickers que terminam em 11/12 são FIIs, EXCETO Units conhecidas
+// ─── Constantes ──────────────────────────────────────────────────────────────
+
 const KNOWN_UNITS = new Set([
     'BPAC11', 'BIDI11', 'ENGI11', 'TAEE11', 'KLBN11', 'SANB11', 'ALUP11', 'BBAS11',
     'MODL11', 'BRBI11', 'SULA11', 'SAPR11', 'IGTI11', 'CPLE11', 'ABEV11', 'PETR11',
@@ -75,9 +81,8 @@ const guessType = (ticker) => {
     return 'acao';
 };
 
-// ---------------------------------------------------------
-// HELPERS (FUNÇÕES AUXILIARES)
-// ---------------------------------------------------------
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+
 const REGEX_CLEAN_NUMBER = /[^0-9,-]+/g;
 const REGEX_NORMALIZE = /[\u0300-\u036f]/g;
 
@@ -119,19 +124,29 @@ function formatCurrency(value) {
 function cleanDoubledString(str) {
     if (!str) return "";
     const parts = str.split('R$');
-    if (parts.length > 2) {
-        return 'R$' + parts[1].trim();
-    }
+    if (parts.length > 2) return 'R$' + parts[1].trim();
     return str;
 }
 
-// ---------------------------------------------------------
-// PARTE 1: FUNDAMENTOS -> INVESTIDOR10
-// ---------------------------------------------------------
+// ─── Multi-selectors para Investidor10 (pré-definidos) ───────────────────────
+
+const FUNDAMENTOS_SELECTORS = {
+    cards: { selector: '._card-header, ._card-body' },
+    cells: { selector: '.cell .name, .cell .value' },
+    table: { selector: 'table tbody tr td' },
+    about: { selector: '#about-section p, .profile-description p, #description p, .text-description p' },
+    logo: { selector: '.header-company img, #header-container img, .brand-company img', extract: 'src' },
+    compareUrl: { selector: '#table-compare-fiis, #table-compare-segments', extract: 'data-url' },
+    props: { selector: 'div.card-propertie h3' },
+    propsSmall: { selector: 'div.card-propertie small' }
+};
+
+// ─── PARTE 1: FUNDAMENTOS → INVESTIDOR10 ─────────────────────────────────────
+// Otimizado: 1 HTTP call via multi-selector (era 9 calls)
 
 async function scrapeFundamentos(ticker) {
     try {
-        let html;
+        let html, results;
         const guess = guessType(ticker);
         let tipoAtivo = guess;
         const urlFii = `https://investidor10.com.br/fiis/${ticker.toLowerCase()}/`;
@@ -139,19 +154,29 @@ async function scrapeFundamentos(ticker) {
 
         const primaryUrl = guess === 'fii' ? urlFii : urlAcao;
         const fallbackUrl = guess === 'fii' ? urlAcao : urlFii;
-
         let urlToUse = primaryUrl;
 
+        // ── 1 ÚNICO HTTP call: HTML + todos os seletores ──
         try {
-            const result = await aeroScrape(primaryUrl, { returnHtml: true, includeScripts: true });
-            if (!result.html) throw new Error('Sem html');
-            html = result.html;
+            const res = await aeroScrape(primaryUrl, {
+                returnHtml: true,
+                includeScripts: true,
+                selectors: FUNDAMENTOS_SELECTORS
+            });
+            if (!res.html) throw new Error('Sem html');
+            html = res.html;
+            results = res.results || {};
             tipoAtivo = guess;
         } catch (e) {
             try {
-                const result = await aeroScrape(fallbackUrl, { returnHtml: true, includeScripts: true });
-                if (!result.html) throw new Error('Sem html');
-                html = result.html;
+                const res = await aeroScrape(fallbackUrl, {
+                    returnHtml: true,
+                    includeScripts: true,
+                    selectors: FUNDAMENTOS_SELECTORS
+                });
+                if (!res.html) throw new Error('Sem html');
+                html = res.html;
+                results = res.results || {};
                 tipoAtivo = guess === 'fii' ? 'acao' : 'fii';
                 urlToUse = fallbackUrl;
             } catch (e2) {
@@ -160,15 +185,6 @@ async function scrapeFundamentos(ticker) {
         }
 
         if (!html.includes('cotacao') && !html.includes('Cotação')) throw new Error('Página inválida');
-
-        // Buscar dados estruturados via scanner paralelo
-        const [resCards, resCells, resTable, resAbout] = await Promise.all([
-            aeroScrape(urlToUse, { selector: '._card-header, ._card-body' }),
-            aeroScrape(urlToUse, { selector: '.cell .name, .cell .value' }),
-            aeroScrape(urlToUse, { selector: 'table tbody tr td' }),
-            aeroScrape(urlToUse, { selector: '#about-section p, .profile-description p, #description p, .text-description p' })
-        ]);
-
 
         let dados = {
             dy: 'N/A', pvp: 'N/A', pl: 'N/A', roe: 'N/A', lpa: 'N/A', vp_cota: 'N/A',
@@ -267,13 +283,14 @@ async function scrapeFundamentos(ticker) {
             }
         };
 
-        if (resCards && resCards.data) {
-            for (let i = 0; i < resCards.data.length; i += 2) {
-                const titulo = resCards.data[i] || '';
-                const valor = resCards.data[i + 1] || '';
-                processPair(titulo, valor, 'card');
-                if (normalize(titulo).includes('cotacao')) cotacao_atual = parseValue(valor);
-            }
+        // ── Processar resultados do multi-selector (tudo local, zero HTTP) ──
+
+        const cards = results.cards || [];
+        for (let i = 0; i < cards.length; i += 2) {
+            const titulo = cards[i] || '';
+            const valor = cards[i + 1] || '';
+            processPair(titulo, valor, 'card');
+            if (normalize(titulo).includes('cotacao')) cotacao_atual = parseValue(valor);
         }
 
         if (cotacao_atual === 0) {
@@ -281,21 +298,14 @@ async function scrapeFundamentos(ticker) {
             if (cotacaoMatch) cotacao_atual = parseValue(cotacaoMatch[1]);
         }
 
-        if (resCells && resCells.data) {
-            for (let i = 0; i < resCells.data.length; i += 2) {
-                const titulo = resCells.data[i] || '';
-                const valor = resCells.data[i + 1] || '';
-                processPair(titulo, valor, 'cell');
-            }
+        const cells = results.cells || [];
+        for (let i = 0; i < cells.length; i += 2) {
+            processPair(cells[i] || '', cells[i + 1] || '', 'cell');
         }
 
-        if (resTable && resTable.data) {
-            for (let i = 0; i < resTable.data.length; i += 2) {
-                const titulo = resTable.data[i] || '';
-                const valor = resTable.data[i + 1] || '';
-                // Como não temos 'indicatorAttr' via AeroScrape, enviamos null e a função vai parsear pelo titulo normalmente.
-                processPair(titulo, valor, 'table', null);
-            }
+        const tableTds = results.table || [];
+        for (let i = 0; i < tableTds.length; i += 2) {
+            processPair(tableTds[i] || '', tableTds[i + 1] || '', 'table', null);
         }
 
         if (dados.val_mercado === 'N/A' || dados.val_mercado === '-') {
@@ -313,33 +323,34 @@ async function scrapeFundamentos(ticker) {
             }
         }
 
-        const propsDivsMatch = html.match(/<div[^>]*class=["'][^"']*card-propertie[^"']*["'][^>]*>([\s\S]*?)<\/div>/gi) || [];
-        propsDivsMatch.forEach(divHtml => {
-            const nomeMatch = divHtml.match(/<h3[^>]*>([\s\S]*?)<\/h3>/i);
-            const smallsMatch = divHtml.match(/<small[^>]*>([\s\S]*?)<\/small>/gi) || [];
-            if (nomeMatch) {
-                let nome = nomeMatch[1].replace(/<[^>]+>/g, '').trim();
+        // Imóveis do FII (via multi-selector results.props / results.propsSmall)
+        const propNames = results.props || [];
+        const propSmalls = results.propsSmall || [];
+        if (propNames.length > 0) {
+            let smallIdx = 0;
+            propNames.forEach(nome => {
+                if (!nome) return;
                 let estado = '', abl = '';
-                smallsMatch.forEach(s => {
-                     const t = s.replace(/<[^>]+>/g, '').trim();
-                     if (t.includes('Estado:')) estado = t.replace('Estado:', '').trim();
-                     if (t.includes('Área bruta locável:')) abl = t.replace('Área bruta locável:', '').trim();
-                });
-                dados.imoveis.push({ nome, estado, abl });
-            }
-        });
+                for (let s = 0; s < 2 && smallIdx < propSmalls.length; s++, smallIdx++) {
+                    const t = propSmalls[smallIdx] || '';
+                    if (t.includes('Estado:')) estado = t.replace('Estado:', '').trim();
+                    if (t.includes('Área bruta locável:')) abl = t.replace('Área bruta locável:', '').trim();
+                }
+                dados.imoveis.push({ nome: nome.trim(), estado, abl });
+            });
+        }
 
-        // Logo
-        const logoMatch = html.match(/<img[^>]+src=["']([^>]*?logo[^>]*?)["']/i);
-        if (logoMatch) {
-            dados.logo_url = logoMatch[1];
-            if (dados.logo_url.startsWith('/')) {
+        // Logo (via multi-selector results.logo — já extraiu 'src')
+        const logos = results.logo || [];
+        if (logos.length > 0) {
+            dados.logo_url = logos[0];
+            if (dados.logo_url && dados.logo_url.startsWith('/')) {
                 dados.logo_url = 'https://investidor10.com.br' + dados.logo_url;
             }
         }
 
-        // Sobre texto (seja via AeroScrape ou fallback regex)
-        let sobreTexto = (resAbout && resAbout.data) ? resAbout.data.join(' ') : '';
+        // Sobre (via multi-selector results.about)
+        let sobreTexto = (results.about || []).join(' ');
 
         if (!sobreTexto.trim()) {
             const scriptJsonMatch = html.match(/<script[^>]*type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/i);
@@ -359,32 +370,27 @@ async function scrapeFundamentos(ticker) {
             if (metaDescMatch) sobreTexto = metaDescMatch[1];
         }
 
-        // SEU CÓDIGO COMEÇA AQUI ==========================
         dados.sobre = sobreTexto.replace(/\s+/g, ' ').trim();
 
-        // NOVO: Extração de Gráfico de Rentabilidade (Ativo vs Índices)
+        // Rentabilidade Chart (regex no HTML bruto)
         let rentabilidadeChart = null;
         try {
             const chartMatch = html.match(/'lastProfitability':\s*JSON\.parse\(`([^`]+)`\)/);
             if (chartMatch && chartMatch[1]) {
                 const lastProf = JSON.parse(chartMatch[1]);
 
-                // Extrai as séries temporais (profitabilities) - pega a mais longa (5A ou 10A) se houver várias
-                // Captura legend e profitabilities em PARES para evitar mismatch
                 const regexProf = /'profitabilities':\s*JSON\.parse\(`([^`]+)`\)/g;
                 const regexLegend = /'legend':\s*JSON\.parse\(`([^`]+)`\)/g;
                 let profitabilities = [];
                 let legend = [];
                 let maxLen = 0;
 
-                // Coletamos TODAS as legends na ordem que aparecem
                 const allLegends = [];
                 let matchL;
                 while ((matchL = regexLegend.exec(html)) !== null) {
                     try { allLegends.push(JSON.parse(matchL[1])); } catch (e) { allLegends.push([]); }
                 }
 
-                // Coletamos os profitabilities e usamos o índice para casar com a legend correspondente
                 let profIdx = 0;
                 let matchProf;
                 while ((matchProf = regexProf.exec(html)) !== null) {
@@ -393,11 +399,9 @@ async function scrapeFundamentos(ticker) {
                         if (profArray && profArray.length > 0 && profArray[0].length > maxLen) {
                             maxLen = profArray[0].length;
                             profitabilities = profArray;
-                            // Casa com a legend que tem o mesmo número de itens ou a do mesmo índice
                             if (allLegends[profIdx] && allLegends[profIdx].length === profArray.length) {
                                 legend = allLegends[profIdx];
                             } else {
-                                // Fallback: tenta achar a legend com o mesmo número de séries
                                 const matching = allLegends.find(l => l.length === profArray.length);
                                 legend = matching || allLegends[profIdx] || [];
                             }
@@ -415,28 +419,19 @@ async function scrapeFundamentos(ticker) {
         }
         dados.rentabilidade_chart = rentabilidadeChart;
 
-        // NOVO: Extração de Indicadores Avançados e Receitas (Apenas para Ações)
+        // Indicadores Avançados e Receitas (Ações)
         let advancedMetrics = null;
         let revenueGeography = null;
         let revenueSegment = null;
         try {
-            // Extrai sectorIndicators
             const sectorMatch = html.match(/const\s+sectorIndicators\s*=\s*(\{.+\});/);
-            if (sectorMatch && sectorMatch[1]) {
-                advancedMetrics = JSON.parse(sectorMatch[1]);
-            }
+            if (sectorMatch && sectorMatch[1]) advancedMetrics = JSON.parse(sectorMatch[1]);
 
-            // Extrai companyRevenuesChartPie (Receita por Geografia)
             const revGeoMatch = html.match(/let\s+companyRevenuesChartPie\s*=\s*(\{.+\});/);
-            if (revGeoMatch && revGeoMatch[1]) {
-                revenueGeography = JSON.parse(revGeoMatch[1]);
-            }
+            if (revGeoMatch && revGeoMatch[1]) revenueGeography = JSON.parse(revGeoMatch[1]);
 
-            // Extrai companyBussinesRevenuesChartPie (Receita por Segmento)
             const revSegMatch = html.match(/let\s+companyBussinesRevenuesChartPie\s*=\s*(\{.+\});/);
-            if (revSegMatch && revSegMatch[1]) {
-                revenueSegment = JSON.parse(revSegMatch[1]);
-            }
+            if (revSegMatch && revSegMatch[1]) revenueSegment = JSON.parse(revSegMatch[1]);
         } catch (e) {
             console.error('Erro ao extrair métricas avançadas:', e.message);
         }
@@ -445,8 +440,7 @@ async function scrapeFundamentos(ticker) {
         if (revenueGeography) dados.revenue_geography = revenueGeography;
         if (revenueSegment) dados.revenue_segment = revenueSegment;
 
-        // ─── OTIMIZADO: Lança chart APIs + comparação API em PARALELO (não bloqueia) ───
-        // Extrai companyId e tickerId do HTML (via regex, sem cheerio)
+        // ── Chart APIs + Comparação (lançadas em PARALELO) ──
         let companyId = null;
         let tickerId = null;
         try {
@@ -456,7 +450,6 @@ async function scrapeFundamentos(ticker) {
             if (tickerMatch) tickerId = tickerMatch[1];
         } catch (e) { }
 
-        // Lança chart promises AGORA — resolve depois junto com a comparação
         let chartPromise = Promise.resolve(null);
         if (companyId && tipoAtivo === 'acao') {
             const baseUrl = 'https://investidor10.com.br';
@@ -477,19 +470,19 @@ async function scrapeFundamentos(ticker) {
             chartPromise = Promise.all(chartRequests);
         }
 
-        const apiUrlMatch = html.match(/id=["']table-compare-(?:fiis|segments)["'][^>]*data-url=["']([^"']+)["']/i);
-        const apiUrl = apiUrlMatch ? apiUrlMatch[1] : null;
+        // Comparação via API (data-url já extraído pelo multi-selector)
+        const compareUrls = results.compareUrl || [];
+        const apiUrl = compareUrls.length > 0 ? compareUrls[0] : null;
         let comparacaoApiPromise = Promise.resolve(null);
         if (apiUrl) {
             const fullUrl = apiUrl.startsWith('http') ? apiUrl : `https://investidor10.com.br${apiUrl}`;
             comparacaoApiPromise = fetchWithRetry(fullUrl);
         }
 
-        // ─── Aguarda comparação API + charts em paralelo enquanto parseia HTML abaixo ───
+        // ── Resolver comparação ──
         dados.comparacao = [];
         const tickersVistos = new Set();
 
-        // Resolver comparação API (já lançada acima)
         try {
             const resApi = await comparacaoApiPromise;
             if (resApi && resApi.data) {
@@ -525,9 +518,9 @@ async function scrapeFundamentos(ticker) {
                     });
                 }
             }
-        } catch (err) { /* Falhou API, segue pro HTML abaixo */ }
+        } catch (err) { /* API falhou, fallback HTML abaixo */ }
 
-        // TENTATIVA 2: SEU CÓDIGO HTML (Fallback se a API falhar)
+        // Fallback HTML para comparação
         if (dados.comparacao.length === 0) {
             const tableMatch = html.match(/<table[^>]*id=["']table-compare(?:-fiis|-segments|-tickers)["'][^>]*>([\s\S]*?)<\/table>/i);
             if (tableMatch) {
@@ -552,35 +545,31 @@ async function scrapeFundamentos(ticker) {
                     if (cols.length >= 3) {
                         const cleanTxt = t => t.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
                         const tickerMatch = cols[0].match(/<a[^>]+title=["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/i);
-                        let ticker = tickerMatch ? cleanTxt(tickerMatch[2]) : cleanTxt(cols[0]);
+                        let tkr = tickerMatch ? cleanTxt(tickerMatch[2]) : cleanTxt(cols[0]);
                         let nome = tickerMatch ? tickerMatch[1] : '';
 
-                        if (ticker && !tickersVistos.has(ticker)) {
+                        if (tkr && !tickersVistos.has(tkr)) {
                             const dy = idxDy !== -1 && cols.length > idxDy ? cleanTxt(cols[idxDy]) : '-';
                             const pvp = idxPvp !== -1 && cols.length > idxPvp ? cleanTxt(cols[idxPvp]) : '-';
                             const patrimonio = idxPat !== -1 && cols.length > idxPat ? cleanTxt(cols[idxPat]) : '-';
                             const segmento = idxSeg !== -1 && cols.length > idxSeg ? cleanTxt(cols[idxSeg]) : '-';
                             const tipo = idxTipo !== -1 && cols.length > idxTipo ? cleanTxt(cols[idxTipo]) : '-';
 
-                            dados.comparacao.push({ ticker, nome, dy, pvp, patrimonio, segmento, tipo });
-                            tickersVistos.add(ticker);
+                            dados.comparacao.push({ ticker: tkr, nome, dy, pvp, patrimonio, segmento, tipo });
+                            tickersVistos.add(tkr);
                         }
                     }
                 });
             }
         }
 
-        // ─── Resolver chart promises (lançadas em paralelo acima) ───
+        // ── Resolver chart promises ──
         try {
             const chartResults = await chartPromise;
             if (chartResults) {
                 const charts = {};
-                chartResults.filter(r => r && r.data).forEach(r => {
-                    charts[r.tipo] = r.data;
-                });
-                if (Object.keys(charts).length > 0) {
-                    dados.charts_financeiros = charts;
-                }
+                chartResults.filter(r => r && r.data).forEach(r => { charts[r.tipo] = r.data; });
+                if (Object.keys(charts).length > 0) dados.charts_financeiros = charts;
             }
         } catch (e) {
             console.error('Erro ao buscar gráficos financeiros:', e.message);
@@ -594,10 +583,8 @@ async function scrapeFundamentos(ticker) {
     }
 }
 
-// ---------------------------------------------------------
-// PARTE 1.4: ÍNDICES DE MERCADO (IBOV, IFIX, SP500, Dólar) -> YAHOO v8
-// Usa a mesma API v8/finance/chart que já funciona no fetchYahooFinance
-// ---------------------------------------------------------
+// ─── PARTE 1.4: ÍNDICES DE MERCADO (IBOV, IFIX, SP500, Dólar) → YAHOO v8 ───
+
 async function scrapeMarketIndices() {
     const indexDefs = [
         { symbol: '^BVSP', nome: 'IBOV', isCurrency: false },
@@ -665,54 +652,57 @@ async function scrapeMarketIndices() {
     }
 }
 
+// ─── PARTE 1.5: RANKINGS (Maiores Altas + Baixas) → INVESTIDOR10 ────────────
 
-// ---------------------------------------------------------
-// PARTE 1.5: RANKINGS (Maiores Altas + Baixas) -> INVESTIDOR10
-// ---------------------------------------------------------
 async function scrapeRankings() {
     const resultados = { altas: [], baixas: [] };
 
-    const extractCards = (blockHtml) => {
-        const items = [];
-        const links = blockHtml.match(/<a[^>]+href=["'][^"]*\/acoes\/[^"]*["'][^>]*>([\s\S]*?)<\/a>/gi) || [];
-        for (let i = 0; i < Math.min(links.length, 6); i++) {
-            const txt = links[i].replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
-            const tickerMatch = txt.match(/([A-Z]{4}\d{1,2})/);
-            const varMatch = txt.match(/([+-]?\d+[,.]\d+\s*%)/);
-            const precoMatch = txt.match(/R\$\s*([\d.,]+)/);
-            
-            let logo_url = '';
-            const imgMatch = links[i].match(/<img[^>]+src=["']([^"']+)["']/i);
-            if (imgMatch) {
-                logo_url = imgMatch[1];
-                if (logo_url.startsWith('/')) logo_url = 'https://investidor10.com.br' + logo_url;
-            }
-
-            if (tickerMatch) {
-                items.push({
-                    ticker: tickerMatch[1],
-                    variacao: varMatch ? varMatch[1].replace(/\s/g, '') : '',
-                    preco: precoMatch ? `R$ ${precoMatch[1]}` : '',
-                    logo_url
-                });
-            }
-        }
-        return items;
-    };
-
     try {
-        const { html } = await aeroScrape('https://investidor10.com.br/', { returnHtml: true });
-        if (!html) return resultados;
-        
+        const { data, html } = await aeroScrape('https://investidor10.com.br/', {
+            selector: 'a[href*="/acoes/"]',
+            extract: ['href', 'text'],
+            returnHtml: true
+        });
+
+        if (!data || !html) return resultados;
+
         const blocks = html.split('<h2');
         let blockAltas = '', blockBaixas = '';
         blocks.forEach(b => {
-             if (b.includes('Maiores Altas')) blockAltas = b;
-             if (b.includes('Maiores Baixas')) blockBaixas = b;
+            if (b.includes('Maiores Altas')) blockAltas = b;
+            if (b.includes('Maiores Baixas')) blockBaixas = b;
         });
 
-        if (blockAltas) resultados.altas = extractCards(blockAltas);
-        if (blockBaixas) resultados.baixas = extractCards(blockBaixas);
+        const parseItems = (blockHtml, limit = 6) => {
+            const items = [];
+            if (!blockHtml) return items;
+            const hrefMatches = blockHtml.match(/href=["']([^"']*\/acoes\/[^"']*)["']/gi) || [];
+            const blockHrefs = hrefMatches.map(m => m.replace(/href=["']/i, '').replace(/["']$/, ''));
+
+            for (const item of data) {
+                if (items.length >= limit) break;
+                const href = item.href || '';
+                if (!blockHrefs.some(bh => href.includes(bh) || bh.includes(href))) continue;
+
+                const txt = item.text || '';
+                const tickerMatch = txt.match(/([A-Z]{4}\d{1,2})/);
+                const varMatch = txt.match(/([+-]?\d+[,.]\d+\s*%)/);
+                const precoMatch = txt.match(/R\$\s*([\d.,]+)/);
+
+                if (tickerMatch) {
+                    items.push({
+                        ticker: tickerMatch[1],
+                        variacao: varMatch ? varMatch[1].replace(/\s/g, '') : '',
+                        preco: precoMatch ? `R$ ${precoMatch[1]}` : '',
+                        logo_url: ''
+                    });
+                }
+            }
+            return items;
+        };
+
+        resultados.altas = parseItems(blockAltas, 6);
+        resultados.baixas = parseItems(blockBaixas, 6);
 
     } catch (e) {
         console.error('Erro rankings:', e.message);
@@ -720,10 +710,7 @@ async function scrapeRankings() {
     return resultados;
 }
 
-
-// ---------------------------------------------------------
-// PARTE 2: PROVENTOS -> STATUSINVEST
-// ---------------------------------------------------------
+// ─── PARTE 2: PROVENTOS → STATUSINVEST ───────────────────────────────────────
 
 async function scrapeAsset(ticker) {
     try {
@@ -791,9 +778,7 @@ async function scrapeAsset(ticker) {
     }
 }
 
-// ---------------------------------------------------------
-// PARTE 3: IPCA -> INVESTIDOR10
-// ---------------------------------------------------------
+// ─── PARTE 3: IPCA → INVESTIDOR10 ───────────────────────────────────────────
 
 async function scrapeIpca() {
     try {
@@ -856,9 +841,7 @@ async function scrapeIpca() {
     }
 }
 
-// ---------------------------------------------------------
-// PARTE 4: COTAÇÃO HISTÓRICA (COM FALLBACK YAHOO FINANCE)
-// ---------------------------------------------------------
+// ─── PARTE 4: COTAÇÃO HISTÓRICA (YAHOO FINANCE) ─────────────────────────────
 
 function getYahooParams(range) {
     switch (range) {
@@ -942,9 +925,7 @@ async function scrapeCotacaoHistory(ticker, range = '1A') {
     };
 }
 
-// ---------------------------------------------------------
-// HANDLER (API MAIN)
-// ---------------------------------------------------------
+// ─── HANDLER ─────────────────────────────────────────────────────────────────
 
 module.exports = async function handler(req, res) {
     res.setHeader('Access-Control-Allow-Credentials', true);
@@ -952,23 +933,17 @@ module.exports = async function handler(req, res) {
     res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,POST');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
-    // Cache diferenciado por mode (otimização: fundamentos mudam pouco, cotação muda sempre)
     if (req.method === 'GET' || req.method === 'POST') {
         const mode = req.body?.mode;
         if (mode === 'fundamentos') {
-            // Fundamentos mudam pouco — cache de 4h, stale até 24h
             res.setHeader('Cache-Control', 's-maxage=14400, stale-while-revalidate=86400');
         } else if (mode === 'cotacao_historica') {
-            // Cotação muda durante o pregão — cache de 5min, stale até 1h
             res.setHeader('Cache-Control', 's-maxage=300, stale-while-revalidate=3600');
         } else if (mode === 'proximo_provento' || mode === 'historico_12m') {
-            // Proventos mudam ocasionalmente — cache de 2h
             res.setHeader('Cache-Control', 's-maxage=7200, stale-while-revalidate=43200');
         } else if (mode === 'rankings') {
-            // Rankings mudam durante o pregão — cache de 15min
             res.setHeader('Cache-Control', 's-maxage=900, stale-while-revalidate=3600');
         } else {
-            // Default: 1h
             res.setHeader('Cache-Control', 's-maxage=3600, stale-while-revalidate=86400');
         }
     }

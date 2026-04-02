@@ -582,7 +582,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     let currentUserId = null;
     let transacoes = [];
     let carteiraCalculada = [];
-    let carteira = [];
     let saldoCaixa = 0;
     let proventosConhecidos = [];
     let watchlist = [];

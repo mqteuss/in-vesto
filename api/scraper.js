@@ -396,7 +396,15 @@ async function scrapeFundamentos(ticker) {
         }
 
         // Sobre (via multi-selector results.about)
-        let sobreTexto = (results.about || []).join(' ');
+        // Filtra itens curtos, notícias ("Publicado em") e lixo de navegação
+        const aboutRaw = (results.about || []).filter(item => {
+            if (!item || item.length < 30) return false;
+            if (item.includes('Publicado em')) return false;
+            if (item.includes('Saiba mais') && item.length < 80) return false;
+            if (item.includes('ADICIONAR NA CARTEIRA')) return false;
+            return true;
+        });
+        let sobreTexto = aboutRaw.join('\n\n');
 
         if (!sobreTexto.trim()) {
             const scriptJsonMatch = html.match(/<script[^>]*type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/i);
@@ -416,7 +424,7 @@ async function scrapeFundamentos(ticker) {
             if (metaDescMatch) sobreTexto = metaDescMatch[1];
         }
 
-        dados.sobre = sobreTexto.replace(/\s+/g, ' ').trim();
+        dados.sobre = sobreTexto.replace(/[ \t]+/g, ' ').replace(/\n{3,}/g, '\n\n').trim();
 
         // Rentabilidade Chart (regex no HTML bruto)
         let rentabilidadeChart = null;
@@ -705,45 +713,49 @@ async function scrapeRankings() {
     const resultados = { altas: [], baixas: [] };
 
     try {
-        const { data, html } = await aeroScrape('https://investidor10.com.br/', {
-            selector: 'a[href*="/acoes/"]',
-            extract: ['href', 'text'],
+        const { html } = await aeroScrape('https://investidor10.com.br/', {
             returnHtml: true
         });
 
-        if (!data || !html) return resultados;
+        if (!html) return resultados;
 
-        const blocks = html.split('<h2');
-        let blockAltas = '', blockBaixas = '';
-        blocks.forEach(b => {
-            if (b.includes('Maiores Altas')) blockAltas = b;
-            if (b.includes('Maiores Baixas')) blockBaixas = b;
-        });
+        // Delimitar blocos usando indexOf para evitar sobreposição
+        const altasIdx = html.indexOf('Maiores Altas');
+        const baixasIdx = html.indexOf('Maiores Baixas');
+
+        if (altasIdx < 0 || baixasIdx < 0) return resultados;
+
+        const blockAltas = html.substring(altasIdx, baixasIdx);
+        // Baixas vai até o próximo <h2 ou até 10000 chars depois
+        const nextH2 = html.indexOf('<h2', baixasIdx + 20);
+        const blockBaixas = html.substring(baixasIdx, nextH2 > baixasIdx ? nextH2 : baixasIdx + 10000);
 
         const parseItems = (blockHtml, limit = 6) => {
             const items = [];
             if (!blockHtml) return items;
-            const hrefMatches = blockHtml.match(/href=["']([^"']*\/acoes\/[^"']*)["']/gi) || [];
-            const blockHrefs = hrefMatches.map(m => m.replace(/href=["']/i, '').replace(/["']$/, ''));
+            const seen = new Set();
 
-            for (const item of data) {
+            // Parsear diretamente os <a> tags com href para /acoes/TICKER/
+            const linkMatches = blockHtml.match(/<a[^>]*acoes\/[a-z]{4}\d{1,2}[^>]*>[\s\S]*?<\/a>/gi) || [];
+
+            for (const linkHtml of linkMatches) {
                 if (items.length >= limit) break;
-                const href = item.href || '';
-                if (!blockHrefs.some(bh => href.includes(bh) || bh.includes(href))) continue;
 
-                const txt = item.text || '';
-                const tickerMatch = txt.match(/([A-Z]{4}\d{1,2})/);
-                const varMatch = txt.match(/([+-]?\d+[,.]\d+\s*%)/);
-                const precoMatch = txt.match(/R\$\s*([\d.,]+)/);
+                const tickerMatch = linkHtml.match(/acoes\/([a-z]{4}\d{1,2})\//i);
+                if (!tickerMatch) continue;
 
-                if (tickerMatch) {
-                    items.push({
-                        ticker: tickerMatch[1],
-                        variacao: varMatch ? varMatch[1].replace(/\s/g, '') : '',
-                        preco: precoMatch ? `R$ ${precoMatch[1]}` : '',
-                        logo_url: ''
-                    });
-                }
+                const ticker = tickerMatch[1].toUpperCase();
+                if (seen.has(ticker)) continue;
+                seen.add(ticker);
+
+                const varMatch = linkHtml.match(/([+-]?\d+[,.]\d+\s*%)/); 
+                const precoMatch = linkHtml.match(/R\$\s*([\d.,]+)/);
+                items.push({
+                    ticker,
+                    variacao: varMatch ? varMatch[1].replace(/\s/g, '') : '',
+                    preco: precoMatch ? `R$ ${precoMatch[1]}` : '',
+                    logo_url: ''
+                });
             }
             return items;
         };

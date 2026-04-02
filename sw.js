@@ -2,16 +2,16 @@
 // CONFIGURAÇÃO
 // Incremente CACHE_VERSION a cada deploy para forçar atualização.
 // ---------------------------------------------------------
-const CACHE_VERSION = 'v31';
-const CACHE_NAME    = `vesto-cache-${CACHE_VERSION}`;
-const DEFAULT_URL   = '/?tab=tab-carteira';
+const CACHE_VERSION = 'v31'; // Forced cache refresh for IDB V2
+const CACHE_NAME = `vesto-cache-${CACHE_VERSION}`;
+const DEFAULT_URL = '/?tab=tab-carteira';
 
 // ---------------------------------------------------------
 // LOGGER — identifica logs do SW em produção
 // ---------------------------------------------------------
 const log = {
-    info:  (...a) => console.log(`[SW ${CACHE_VERSION}]`, ...a),
-    warn:  (...a) => console.warn(`[SW ${CACHE_VERSION}]`, ...a),
+    info: (...a) => console.log(`[SW ${CACHE_VERSION}]`, ...a),
+    warn: (...a) => console.warn(`[SW ${CACHE_VERSION}]`, ...a),
     error: (...a) => console.error(`[SW ${CACHE_VERSION}]`, ...a),
 };
 
@@ -54,7 +54,7 @@ const EXTERNAL_FILES = [
 // ---------------------------------------------------------
 async function cacheFile(cache, url, options = {}) {
     try {
-        const request  = new Request(url, options);
+        const request = new Request(url, options);
         const response = await fetch(request);
         await cache.put(request, response);
     } catch (err) {
@@ -164,12 +164,14 @@ self.addEventListener('fetch', event => {
                     return networkResponse;
                 })
                 .catch(err => {
-                    log.warn(`Revalidação falhou para ${url.pathname}:`, err.message);
-                    // Retorna null — tratado abaixo no fallback
+                    // Retorna null silenciosamente — tratado abaixo no fallback
                     return null;
                 });
 
             if (cachedResponse) {
+                // Garante que o SW não seja encerrado antes da revalidação terminar
+                event.waitUntil(revalidate);
+
                 // Tem cache: retorna imediatamente, revalida em background
                 return cachedResponse;
             }
@@ -184,7 +186,6 @@ self.addEventListener('fetch', event => {
             if (url.pathname !== '/') {
                 const fallback = await cache.match('/');
                 if (fallback) {
-                    log.warn(`Offline fallback para ${url.pathname}`);
                     return fallback;
                 }
             }
@@ -226,17 +227,17 @@ self.addEventListener('push', event => {
     }
 
     const options = {
-        body:    data.body  || '',
-        icon:    data.icon  || '/icons/icon-192x192.png',
-        badge:   data.badge || '/public/sininhov2.png',
+        body: data.body || '',
+        icon: data.icon || '/icons/icon-192x192.png',
+        badge: data.badge || '/public/sininhov2.png',
         vibrate: [100, 50, 100],
         data: {
-            url:           data.url || DEFAULT_URL,
+            url: data.url || DEFAULT_URL,
             dateOfArrival: Date.now(),
         },
         actions: [
-            { action: 'open',    title: 'Ver Portfólio' },
-            { action: 'dismiss', title: 'Dispensar'     },
+            { action: 'open', title: 'Abrir' },
+            { action: 'dismiss', title: 'Dispensar' },
         ],
     };
 
@@ -254,15 +255,24 @@ self.addEventListener('notificationclick', event => {
     // Trata a action "dismiss" explicitamente — apenas fecha
     if (event.action === 'dismiss') return;
 
+    // Obtem a URL salva no payload da notificação (ou a padrão)
     const targetUrl = event.notification.data?.url || DEFAULT_URL;
 
     event.waitUntil(
         self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(clientList => {
-            // Procura aba já aberta no mesmo origin
+            // Se a URL for externa (notícia de FII), abre uma nova aba diretamente
+            if (targetUrl.startsWith('http') && !targetUrl.startsWith(self.location.origin)) {
+                return self.clients.openWindow(targetUrl);
+            }
+
+            // Se for interna, tenta focar a aba existente e navegar
             for (const client of clientList) {
                 if (client.url.startsWith(self.location.origin) && 'focus' in client) {
-                    // Foca a aba E navega para a URL correta da notificação
-                    return client.focus().then(c => c.navigate(targetUrl));
+                    client.focus();
+                    if (client.url !== targetUrl) {
+                        return client.navigate(targetUrl);
+                    }
+                    return;
                 }
             }
             // Nenhuma aba aberta com o origin: abre nova janela

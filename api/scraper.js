@@ -138,8 +138,8 @@ function cleanDoubledString(str) {
 
 const FUNDAMENTOS_SELECTORS = {
     cards: { selector: '._card-header, ._card-body' },
-    cells_titles: { selector: '.cell span.d-flex.justify-content-between.align-items-center' },
-    cells_values: { selector: '.cell .value span' },
+    cells_titles: { selector: '.cell span.d-flex, .cell span.title' },
+    cells_values: { selector: '.cell .value' },
     table: { selector: 'table tbody tr td' },
     about: { selector: '#about-section p, .profile-description p, #description p, .text-description p, .link-card--description, .company-description' },
     logo: { selector: '.header-company img, #header-container img, .brand-company img', extract: 'src' },
@@ -194,8 +194,8 @@ async function scrapeFundamentos(ticker) {
         if (!html.includes('cotacao') && !html.includes('Cotação')) throw new Error('Página inválida');
 
         let dados = {
-            dy: 'N/A', pvp: 'N/A', pl: 'N/A', roe: 'N/A', lpa: 'N/A', vp_cota: 'N/A',
-            val_mercado: 'N/A', liquidez: 'N/A', variacao_12m: 'N/A', ultimo_rendimento: 'N/A',
+            dy: 'N/A', pvp: 'N/A', pl: 'N/A', roe: 'N/A', roa: 'N/A', roic: 'N/A', lpa: 'N/A', vp_cota: 'N/A',
+            val_mercado: 'N/A', liquidez: 'N/A', liq_corrente: 'N/A', variacao_12m: 'N/A', ultimo_rendimento: 'N/A',
             segmento: 'N/A', tipo_fundo: 'N/A', mandato: 'N/A', vacancia: 'N/A',
             patrimonio_liquido: 'N/A', cnpj: 'N/A',
             num_cotistas: 'N/A', tipo_gestao: 'N/A', prazo_duracao: 'N/A',
@@ -254,6 +254,9 @@ async function scrapeFundamentos(ticker) {
 
             if (dados.pl === 'N/A' && (titulo === 'p/l' || titulo.includes('p/l'))) dados.pl = valor;
             if (dados.roe === 'N/A' && titulo.replace(/\./g, '') === 'roe') dados.roe = valor;
+            if (dados.roa === 'N/A' && titulo.replace(/\./g, '') === 'roa') dados.roa = valor;
+            if (dados.roic === 'N/A' && titulo.replace(/\./g, '') === 'roic') dados.roic = valor;
+            if (dados.liq_corrente === 'N/A' && (titulo.includes('liq. corrente') || titulo.includes('liq corrente') || titulo.includes('liquidez corrente'))) dados.liq_corrente = valor;
             if (dados.lpa === 'N/A' && titulo.replace(/\./g, '') === 'lpa') dados.lpa = valor;
 
             if (titulo.includes('margem liquida')) dados.margem_liquida = valor;
@@ -335,12 +338,17 @@ async function scrapeFundamentos(ticker) {
             const cellDivs = html.match(/<div[^>]*class="[^"]*cell[^"]*"[^>]*>([\s\S]+?)<\/div>(?=\s*<div|\s*<\/div>)/gi) || [];
             cellDivs.forEach(cellHtml => {
                 let title = '';
-                const titleMatch = cellHtml.match(/<span[^>]*d-flex[^>]*>\s*([\w\/\s\(\)%:-]+)\s*<i/);
+                const titleMatch = cellHtml.match(/<span[^>]*d-flex[^>]*>\s*([\w\/\s\(\)\.%:-]+)\s*<i/);
+                const titleMatch2 = cellHtml.match(/<span[^>]*title[^>]*>([^<]+)<\/span>/);
                 if (titleMatch) title = titleMatch[1].trim();
+                else if (titleMatch2) title = titleMatch2[1].trim();
                 
                 let value = '';
+                // Novo Investidor10 coloca span dentro de value, ou usa simple-value
                 const valMatch = cellHtml.match(/<div[^>]*value[^>]*>[\s\S]*?<span>([\s\S]+?)<\/span>/);
+                const valMatch2 = cellHtml.match(/<div[^>]*simple-value[^>]*>([\s\S]+?)<\/div>/);
                 if (valMatch) value = valMatch[1].replace(/<[^>]+>/g, '').trim();
+                else if (valMatch2) value = valMatch2[1].replace(/<[^>]+>/g, '').trim();
                 
                 if (title && value) processPair(title, value, 'cell');
             });

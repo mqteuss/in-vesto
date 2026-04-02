@@ -582,7 +582,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     let currentUserId = null;
     let transacoes = [];
     let carteiraCalculada = [];
-    let patrimonio = [];
+    let carteira = [];
     let saldoCaixa = 0;
     let proventosConhecidos = [];
     let watchlist = [];
@@ -1756,31 +1756,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         transacoes = await supabaseDB.getTransacoes();
     }
 
-    async function carregarPatrimonio() {
-        let allPatrimonio = await supabaseDB.getPatrimonio();
-        allPatrimonio.sort((a, b) => new Date(a.date) - new Date(b.date));
-        patrimonio = allPatrimonio.length > 365 ? allPatrimonio.slice(-365) : allPatrimonio;
-    }
 
-    async function salvarSnapshotPatrimonio(totalValor) {
-        if (totalValor <= 0 && patrimonio.length === 0) return;
-
-        // Pega a data local do usuário em formato YYYY-MM-DD
-        const today = new Date().toLocaleDateString('en-CA'); // en-CA produz YYYY-MM-DD
-
-        const snapshot = { date: today, value: totalValor };
-
-        // Salva no banco
-        await supabaseDB.savePatrimonioSnapshot(snapshot);
-
-        // Atualiza o gráfico localmente sem precisar recarregar
-        const index = patrimonio.findIndex(p => p.date === today);
-        if (index > -1) {
-            patrimonio[index].value = totalValor;
-        } else {
-            patrimonio.push(snapshot);
-        }
-    }
 
     async function carregarCaixa() {
         const caixaState = await supabaseDB.getAppState('saldoCaixa');
@@ -4978,9 +4954,6 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
             dashboardMensagem.textContent = 'A sua carteira está vazia. Adicione ativos na aba "Carteira" para começar.';
             dashboardLoading.classList.add('hidden');
             dashboardStatus.classList.remove('hidden');
-
-
-            await salvarSnapshotPatrimonio(saldoCaixa);
             return;
         } else {
             carteiraStatus.classList.add('hidden');
@@ -5181,7 +5154,6 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
 
             const patrimonioRealParaSnapshot = patrimonioTotalAtivos + saldoCaixa;
             renderizarTimelinePagamentos(); // Mantido pois é a timeline visual no dashboard, não o gráfico pesado
-            await salvarSnapshotPatrimonio(patrimonioRealParaSnapshot);
         }
 
 
@@ -10760,7 +10732,6 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
             await Promise.all([
                 skeletonMinTime,
                 carregarTransacoes(),
-                carregarPatrimonio(),
                 carregarCaixa(),
                 carregarProventosConhecidos(),
                 carregarHistoricoProcessado(),

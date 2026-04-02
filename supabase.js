@@ -137,19 +137,7 @@ export async function deleteTransacoesDoAtivo(symbol) {
     if (error) throw new Error(handleSupabaseError(error, "deleteTransacoesDoAtivo"));
 }
 
-export async function getPatrimonio() {
-    const { data, error } = await supabaseClient.from('patrimonio').select('*');
-    if (error) throw new Error(handleSupabaseError(error, "getPatrimonio"));
-    return data || [];
-}
 
-export async function savePatrimonioSnapshot(snapshot) {
-    const { data: { user } } = await supabaseClient.auth.getUser();
-    if (!user) throw new Error("Usuário não autenticado.");
-    const snapshotComUser = { ...snapshot, user_id: user.id };
-    const { error } = await supabaseClient.from('patrimonio').upsert(snapshotComUser, { onConflict: 'user_id, date' }); 
-    if (error) throw new Error(handleSupabaseError(error, "savePatrimonioSnapshot"));
-}
 
 export async function getAppState(key) {
     const { data, error } = await supabaseClient

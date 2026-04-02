@@ -1,12 +1,12 @@
 const { createClient } = require('@supabase/supabase-js');
 const webpush = require('web-push');
+const RSSParser = require('rss-parser');
 const scraperHandler = require('../scraper.js');
 
 // ---------------------------------------------------------
 // CONFIGURAÇÃO
 // ---------------------------------------------------------
 const CONFIG = {
-    brapiTimeoutMs: 8000,
     timezone_offset: -3,    // BRT (UTC-3)
     notif: {
         icon: 'https://in-vesto.vercel.app/icons/icon-192x192.png',
@@ -71,65 +71,11 @@ function fmtBRL(val) {
 }
 
 // ---------------------------------------------------------
-// PARTE 1: PREÇOS SEQUENCIAIS VIA BRAPI
-// Chamadas 1 a 1 com intervalo entre elas para respeitar o rate limit.
+// SINGLETON: RSSParser instanciado uma vez no módulo.
 // ---------------------------------------------------------
-const INTERVALO_MS = 250;
-const sleep = (ms) => new Promise(r => setTimeout(r, ms));
-
-async function fetchPricesBatch(symbols) {
-    const token = process.env.BRAPI_API_TOKEN;
-    if (!token) throw new Error('BRAPI_API_TOKEN não configurado.');
-
-    const pricesMap = {};
-    log.info('Fetching prices sequentially', { count: symbols.length, intervalMs: INTERVALO_MS });
-
-    for (const symbol of symbols) {
-        const ticker = symbol.endsWith('.SA') ? symbol : `${symbol}.SA`;
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), CONFIG.brapiTimeoutMs);
-
-        try {
-            // Token via header Authorization — não expõe na URL / logs de acesso
-            const res = await fetch(`https://brapi.dev/api/quote/${ticker}`, {
-                signal: controller.signal,
-                headers: {
-                    'Accept': 'application/json',
-                    'Authorization': `Bearer ${token}`,
-                },
-            });
-            clearTimeout(timeoutId);
-
-            if (res.status === 429) {
-                log.warn('Brapi rate limit', { symbol });
-                await sleep(INTERVALO_MS);
-                continue;
-            }
-
-            if (!res.ok) {
-                log.warn('Brapi non-ok response', { status: res.status, symbol });
-                await sleep(INTERVALO_MS);
-                continue;
-            }
-
-            const json = await res.json();
-            const price = json.results?.[0]?.regularMarketPrice ?? 0;
-            if (price > 0) pricesMap[normalizeSymbol(symbol)] = price;
-
-        } catch (err) {
-            clearTimeout(timeoutId);
-            log.error('Brapi fetch failed', { symbol, error: err.name });
-        }
-
-        await sleep(INTERVALO_MS);
-    }
-
-    return pricesMap;
-}
-
-// ---------------------------------------------------------
-// JOB DE PATRIMÔNIO FOI DEPRECIADO - CALCULADO LOCAL VIA YAHOO FINANCE
-// ---------------------------------------------------------
+const rssParser = new RSSParser({
+    headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' }
+});
 
 // ---------------------------------------------------------
 // PARTE 3: ATUALIZAÇÃO DE PROVENTOS
@@ -308,10 +254,7 @@ async function enviarNoticiasRSS(rid) {
     const elapsed = log.timer();
     log.info('RSS news job started', { rid });
 
-    const RSSParser = require('rss-parser');
-    const parser = new RSSParser({
-        headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' }
-    });
+    const parser = rssParser;
     const RSS_URLS = [
         'https://www.infomoney.com.br/feed/',
         'https://suno.com.br/noticias/feed/',
@@ -490,28 +433,25 @@ module.exports = async function handler(req, res) {
     log.info('Cron started', { rid });
 
     try {
-        // 1. Proventos
-        const { data: ativos } = await supabase.from('transacoes').select('symbol');
-        if (ativos?.length > 0) {
-            const symbols = [...new Set(ativos.map(a => normalizeSymbol(a.symbol)))].filter(Boolean);
+        // 1. Proventos — query única para symbols + mapeamento user
+        const { data: allTransacoes } = await supabase.from('transacoes').select('user_id, symbol');
+        if (allTransacoes?.length > 0) {
+            // Monta mapeamento symbol → Set<user_id> E lista de symbols únicos em 1 pass
+            const symbolUserMap = {};
+            const uniqueSymbols = new Set();
+            for (const t of allTransacoes) {
+                const sym = normalizeSymbol(t.symbol);
+                if (!sym) continue;
+                uniqueSymbols.add(sym);
+                if (!symbolUserMap[sym]) symbolUserMap[sym] = new Set();
+                symbolUserMap[sym].add(t.user_id);
+            }
+
+            const symbols = [...uniqueSymbols];
             if (symbols.length > 0) {
                 const novosDados = await atualizarProventosPeloScraper(symbols);
 
                 if (novosDados?.length > 0) {
-                    // Busca transações para montar mapeamento symbol → users
-                    const { data: allTransacoes } = await supabase
-                        .from('transacoes')
-                        .select('user_id, symbol');
-
-                    // Índice O(1): symbol normalizado → Set de user_ids
-                    // ANTES: .filter() O(n×m) para cada item de novosDados
-                    // AGORA: Map lookup O(1)
-                    const symbolUserMap = {};
-                    for (const t of allTransacoes ?? []) {
-                        const sym = normalizeSymbol(t.symbol);
-                        if (!symbolUserMap[sym]) symbolUserMap[sym] = new Set();
-                        symbolUserMap[sym].add(t.user_id);
-                    }
 
                     const upserts = [];
                     for (const dado of novosDados) {
@@ -551,7 +491,6 @@ module.exports = async function handler(req, res) {
         // 3. Notificações de Notícias FIIs (RSS)
         const totalNewsSent = await enviarNoticiasRSS(rid);
 
-        const duration = ((Date.now() - elapsed()) / 1000 + elapsed() / 1000).toFixed(2);
         log.info('Cron finished', { rid, notifications: totalSent, news: totalNewsSent, ms: elapsed() });
 
         return res.status(200).json({

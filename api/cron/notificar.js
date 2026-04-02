@@ -128,92 +128,8 @@ async function fetchPricesBatch(symbols) {
 }
 
 // ---------------------------------------------------------
-// PARTE 2: JOB DE PATRIMÔNIO
+// JOB DE PATRIMÔNIO FOI DEPRECIADO - CALCULADO LOCAL VIA YAHOO FINANCE
 // ---------------------------------------------------------
-async function atualizarPatrimonioJob(rid) {
-    const elapsed = log.timer();
-    log.info('Patrimônio job started', { rid });
-
-    const [{ data: transacoes, error: errTx }, { data: appStates, error: errApp }] =
-        await Promise.all([
-            supabase.from('transacoes').select('user_id, symbol, type, quantity'),
-            supabase.from('appstate').select('user_id, value_json').eq('key', 'saldoCaixa'),
-        ]);
-
-    if (errTx || errApp) {
-        log.error('BD query failed', { rid, error: String(errTx || errApp) });
-        return 0;
-    }
-
-    if (!transacoes?.length) return 0;
-
-    // Mapeia carteiras por usuário
-    const userHoldings = {};
-    const uniqueSymbolSet = new Set();
-
-    for (const tx of transacoes) {
-        const sym = normalizeSymbol(tx.symbol);
-        uniqueSymbolSet.add(sym);
-        if (!userHoldings[tx.user_id]) userHoldings[tx.user_id] = {};
-        if (!userHoldings[tx.user_id][sym]) userHoldings[tx.user_id][sym] = 0;
-        const qtd = Number(tx.quantity);
-        if (tx.type === 'buy') userHoldings[tx.user_id][sym] += qtd;
-        if (tx.type === 'sell') userHoldings[tx.user_id][sym] -= qtd;
-    }
-
-    const symbolsToFetch = [...uniqueSymbolSet];
-    log.info('Fetching prices', { rid, count: symbolsToFetch.length });
-
-    const pricesMap = await fetchPricesBatch(symbolsToFetch);
-
-    if (Object.keys(pricesMap).length === 0) {
-        log.error('No prices obtained — aborting patrimônio update', { rid });
-        return 0;
-    }
-
-    // Monta mapa de caixa por usuário
-    const userCash = {};
-    for (const item of appStates ?? []) {
-        try {
-            const raw = typeof item.value_json === 'string' ? JSON.parse(item.value_json) : item.value_json;
-            const val = raw?.value !== undefined ? Number(raw.value) : (typeof raw === 'number' ? raw : 0);
-            userCash[item.user_id] = isFinite(val) ? val : 0;
-        } catch (e) {
-            log.warn('Failed to parse value_json', { rid, user_id: item.user_id, error: e.message });
-            userCash[item.user_id] = 0;
-        }
-    }
-
-    const dataHoje = getTodayBRT();
-    const snapshots = [];
-
-    for (const [userId, portfolio] of Object.entries(userHoldings)) {
-        let totalAtivos = 0;
-        for (const [sym, qtd] of Object.entries(portfolio)) {
-            if (qtd <= 0.0001) continue;
-            const preco = pricesMap[sym] ?? 0;
-            if (preco > 0) totalAtivos += qtd * preco;
-        }
-        const patrimonioTotal = totalAtivos + (userCash[userId] ?? 0);
-        if (patrimonioTotal > 0) {
-            snapshots.push({
-                user_id: userId,
-                date: dataHoje,
-                value: parseFloat(patrimonioTotal.toFixed(2)),
-            });
-        }
-    }
-
-    if (snapshots.length > 0) {
-        const { error } = await supabase
-            .from('patrimonio')
-            .upsert(snapshots, { onConflict: 'user_id, date' });
-        if (error) log.error('Erro ao salvar patrimônio', { rid, error: String(error) });
-    }
-
-    log.info('Patrimônio job done', { rid, snapshots: snapshots.length, ms: elapsed() });
-    return snapshots.length;
-}
 
 // ---------------------------------------------------------
 // PARTE 3: ATUALIZAÇÃO DE PROVENTOS
@@ -629,22 +545,18 @@ module.exports = async function handler(req, res) {
             }
         }
 
-        // 2. Patrimônio
-        const totalSnapshots = await atualizarPatrimonioJob(rid);
-
-        // 3. Notificações de Proventos
+        // 2. Notificações de Proventos
         const totalSent = await enviarNotificacoes(rid);
 
-        // 4. Notificações de Notícias FIIs (RSS)
+        // 3. Notificações de Notícias FIIs (RSS)
         const totalNewsSent = await enviarNoticiasRSS(rid);
 
         const duration = ((Date.now() - elapsed()) / 1000 + elapsed() / 1000).toFixed(2);
-        log.info('Cron finished', { rid, snapshots: totalSnapshots, notifications: totalSent, news: totalNewsSent, ms: elapsed() });
+        log.info('Cron finished', { rid, notifications: totalSent, news: totalNewsSent, ms: elapsed() });
 
         return res.status(200).json({
             status: 'ok',
             rid,
-            snapshots: totalSnapshots,
             notifications: totalSent,
             news_sent: totalNewsSent,
             ms: elapsed(),

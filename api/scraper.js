@@ -138,11 +138,12 @@ function cleanDoubledString(str) {
 
 const FUNDAMENTOS_SELECTORS = {
     cards: { selector: '._card-header, ._card-body' },
-    cells: { selector: '.cell .name, .cell .value' },
+    cells_titles: { selector: '.cell span.d-flex.justify-content-between.align-items-center' },
+    cells_values: { selector: '.cell .value span' },
     table: { selector: 'table tbody tr td' },
-    about: { selector: '#about-section p, .profile-description p, #description p, .text-description p' },
+    about: { selector: '#about-section p, .profile-description p, #description p, .text-description p, .link-card--description, .company-description' },
     logo: { selector: '.header-company img, #header-container img, .brand-company img', extract: 'src' },
-    compareUrl: { selector: '#table-compare-fiis, #table-compare-segments', extract: 'data-url' },
+    compareUrl: { selector: '#table-compare-fiis, #table-compare-segments, #table-compare-tickers', extract: 'data-url' },
     props: { selector: 'div.card-propertie h3' },
     propsSmall: { selector: 'div.card-propertie small' }
 };
@@ -304,14 +305,45 @@ async function scrapeFundamentos(ticker) {
             if (cotacaoMatch) cotacao_atual = parseValue(cotacaoMatch[1]);
         }
 
-        const cells = results.cells || [];
-        for (let i = 0; i < cells.length; i += 2) {
-            processPair(cells[i] || '', cells[i + 1] || '', 'cell');
+        const cellsTitles = results.cells_titles || [];
+        const cellsValues = results.cells_values || [];
+        for (let i = 0; i < cellsTitles.length; i++) {
+            // No novo HTML, os titulos vem com tags ou sujidade, vamos limpar
+            let title = typeof cellsTitles[i] === 'string' ? cellsTitles[i].replace(/<[^>]+>/g, '').trim() : '';
+            processPair(title, cellsValues[i] || '', 'cell');
         }
 
         const tableTds = results.table || [];
         for (let i = 0; i < tableTds.length; i += 2) {
             processPair(tableTds[i] || '', tableTds[i + 1] || '', 'table', null);
+        }
+
+        // Fallback robusto direto no HTML se não houver 'results' (API antiga não suportava selectors)
+        if (!results.cards && (dados.dy === 'N/A' || dados.pvp === 'N/A')) {
+            // Extrair cards antigos direto do HTML
+            const cardHeaders = html.match(/class="[^"]*_card-header[^"]*"[^>]*>([^<]+)/gi);
+            const cardBodies = html.match(/class="[^"]*_card-body[^"]*"[^>]*>([\s\S]*?)<\/div>/gi);
+            if (cardHeaders && cardBodies) {
+                for (let i = 0; i < cardHeaders.length; i++) {
+                    const title = cardHeaders[i].replace(/<[^>]+>/g, '').trim();
+                    const valMatch = (cardBodies[i] || '').match(/>([^<]+)<\/span>/);
+                    if (title && valMatch) processPair(title, valMatch[1], 'card');
+                }
+            }
+            
+            // Extrair cells antigos direto do HTML
+            const cellDivs = html.match(/<div[^>]*class="[^"]*cell[^"]*"[^>]*>([\s\S]+?)<\/div>(?=\s*<div|\s*<\/div>)/gi) || [];
+            cellDivs.forEach(cellHtml => {
+                let title = '';
+                const titleMatch = cellHtml.match(/<span[^>]*d-flex[^>]*>\s*([\w\/\s\(\)%:-]+)\s*<i/);
+                if (titleMatch) title = titleMatch[1].trim();
+                
+                let value = '';
+                const valMatch = cellHtml.match(/<div[^>]*value[^>]*>[\s\S]*?<span>([\s\S]+?)<\/span>/);
+                if (valMatch) value = valMatch[1].replace(/<[^>]+>/g, '').trim();
+                
+                if (title && value) processPair(title, value, 'cell');
+            });
         }
 
         if (dados.val_mercado === 'N/A' || dados.val_mercado === '-') {
@@ -430,13 +462,14 @@ async function scrapeFundamentos(ticker) {
         let revenueGeography = null;
         let revenueSegment = null;
         try {
-            const sectorMatch = html.match(/const\s+sectorIndicators\s*=\s*(\{.+\});/);
+            // Investidor10 alterou a variável de sectorIndicators para _sectorIndicators
+            const sectorMatch = html.match(/_sectorIndicators\s*=\s*(\{.*?\});/);
             if (sectorMatch && sectorMatch[1]) advancedMetrics = JSON.parse(sectorMatch[1]);
 
-            const revGeoMatch = html.match(/let\s+companyRevenuesChartPie\s*=\s*(\{.+\});/);
+            const revGeoMatch = html.match(/let\s+companyRevenuesChartPie\s*=\s*(\{.*?\});/);
             if (revGeoMatch && revGeoMatch[1]) revenueGeography = JSON.parse(revGeoMatch[1]);
 
-            const revSegMatch = html.match(/let\s+companyBussinesRevenuesChartPie\s*=\s*(\{.+\});/);
+            const revSegMatch = html.match(/let\s+companyBussinesRevenuesChartPie\s*=\s*(\{.*?\});/);
             if (revSegMatch && revSegMatch[1]) revenueSegment = JSON.parse(revSegMatch[1]);
         } catch (e) {
             console.error('Erro ao extrair métricas avançadas:', e.message);

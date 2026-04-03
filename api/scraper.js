@@ -534,12 +534,15 @@ async function scrapeFundamentos(ticker) {
             comparacaoApiPromise = fetchWithRetry(fullUrl);
         }
 
-        // ── Resolver comparação ──
+
         dados.comparacao = [];
         const tickersVistos = new Set();
 
+        // ── Resolver charts + comparação em PARALELO ──
         try {
-            const resApi = await comparacaoApiPromise;
+            const [chartResults, resApi] = await Promise.all([chartPromise, comparacaoApiPromise]);
+
+            // Processar comparação
             if (resApi && resApi.data) {
                 let arrayComparacao = resApi.data.data || resApi.data || [];
 
@@ -573,61 +576,15 @@ async function scrapeFundamentos(ticker) {
                     });
                 }
             }
-        } catch (err) { /* API falhou, fallback HTML abaixo */ }
 
-        // Fallback HTML para comparação
-        if (dados.comparacao.length === 0) {
-            const tableMatch = html.match(/<table[^>]*id=["']table-compare(?:-fiis|-segments|-tickers)["'][^>]*>([\s\S]*?)<\/table>/i);
-            if (tableMatch) {
-                let idxDy = -1, idxPvp = -1, idxPat = -1, idxSeg = -1, idxTipo = -1;
-                const theadMatch = tableMatch[1].match(/<thead[^>]*>([\s\S]*?)<\/thead>/i);
-                if (theadMatch) {
-                    const ths = theadMatch[1].match(/<th[^>]*>([\s\S]*?)<\/th>/gi) || [];
-                    ths.forEach((th, idx) => {
-                        const txt = th.replace(/<[^>]+>/g, '').toLowerCase();
-                        if (txt.includes('dy') || txt.includes('dividend')) idxDy = idx;
-                        if (txt.includes('p/vp') || txt.includes('p/l') || txt.includes('p/ vp')) idxPvp = idx;
-                        if (txt.includes('patrim') || txt.includes('mercado')) idxPat = idx;
-                        if (txt.includes('segmento')) idxSeg = idx;
-                        if (txt.includes('tipo')) idxTipo = idx;
-                    });
-                }
-
-                const tbodyMatch = tableMatch[1].match(/<tbody[^>]*>([\s\S]*?)<\/tbody>/i);
-                const rows = tbodyMatch ? (tbodyMatch[1].match(/<tr[^>]*>([\s\S]*?)<\/tr>/gi) || []) : [];
-                rows.forEach((row) => {
-                    const cols = row.match(/<td[^>]*>([\s\S]*?)<\/td>/gi) || [];
-                    if (cols.length >= 3) {
-                        const cleanTxt = t => t.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
-                        const tickerMatch = cols[0].match(/<a[^>]+title=["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/i);
-                        let tkr = tickerMatch ? cleanTxt(tickerMatch[2]) : cleanTxt(cols[0]);
-                        let nome = tickerMatch ? tickerMatch[1] : '';
-
-                        if (tkr && !tickersVistos.has(tkr)) {
-                            const dy = idxDy !== -1 && cols.length > idxDy ? cleanTxt(cols[idxDy]) : '-';
-                            const pvp = idxPvp !== -1 && cols.length > idxPvp ? cleanTxt(cols[idxPvp]) : '-';
-                            const patrimonio = idxPat !== -1 && cols.length > idxPat ? cleanTxt(cols[idxPat]) : '-';
-                            const segmento = idxSeg !== -1 && cols.length > idxSeg ? cleanTxt(cols[idxSeg]) : '-';
-                            const tipo = idxTipo !== -1 && cols.length > idxTipo ? cleanTxt(cols[idxTipo]) : '-';
-
-                            dados.comparacao.push({ ticker: tkr, nome, dy, pvp, patrimonio, segmento, tipo });
-                            tickersVistos.add(tkr);
-                        }
-                    }
-                });
-            }
-        }
-
-        // ── Resolver chart promises ──
-        try {
-            const chartResults = await chartPromise;
+            // Processar charts
             if (chartResults) {
                 const charts = {};
                 chartResults.filter(r => r && r.data).forEach(r => { charts[r.tipo] = r.data; });
                 if (Object.keys(charts).length > 0) dados.charts_financeiros = charts;
             }
         } catch (e) {
-            console.error('Erro ao buscar gráficos financeiros:', e.message);
+            console.error('Erro ao resolver charts/comparação:', e.message);
         }
 
         dados.tipo_ativo = tipoAtivo;
@@ -777,7 +734,7 @@ async function scrapeAsset(ticker) {
         let type = 'acao';
         if (KNOWN_UNITS.has(t)) {
             type = 'acao';
-        } else if (/\d{2}B?$/.test(t) && t.endsWith('11') || t.endsWith('11B')) {
+        } else if (/\d{2}B?$/.test(t) && (t.endsWith('11') || t.endsWith('11B'))) {
             type = 'fii';
         }
 
@@ -851,10 +808,20 @@ async function scrapeIpca() {
         const tableDataMatch = html.match(/<tbody[^>]*>([\s\S]*?)<\/tbody>/g);
         let rowsHtml = '';
         if (tableDataMatch) {
+            // Prefer the table that has actual IPCA data (numeric values with commas)
             for (let t of tableDataMatch) {
-                if (t.toLowerCase().includes('acumulado') || t.toLowerCase().includes('variaç')) {
+                if ((t.toLowerCase().includes('acumulado') || t.toLowerCase().includes('variaç')) && t.match(/\d+,\d+/)) {
                     rowsHtml = t;
                     break;
+                }
+            }
+            // Fallback: pick first table with numeric data
+            if (!rowsHtml) {
+                for (let t of tableDataMatch) {
+                    if (t.match(/\d+,\d+/)) {
+                        rowsHtml = t;
+                        break;
+                    }
                 }
             }
             if (!rowsHtml && tableDataMatch.length > 0) rowsHtml = tableDataMatch[0];

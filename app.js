@@ -740,6 +740,22 @@ document.addEventListener('DOMContentLoaded', async () => {
                 request.onsuccess = () => resolve();
                 request.onerror = (e) => reject(e.target.error);
             });
+        },
+        destroy() {
+            return new Promise((resolve, reject) => {
+                if (this.db) {
+                    this.db.close();
+                    this.db = null;
+                }
+                if (profileDB && profileDB._db) {
+                    profileDB._db.close();
+                    profileDB._db = null;
+                }
+                const req = indexedDB.deleteDatabase(DB_NAME);
+                req.onsuccess = () => resolve();
+                req.onerror = (e) => reject(e.target.error);
+                req.onblocked = () => resolve();
+            });
         }
     };
 
@@ -1500,7 +1516,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (btnSairLock) {
         btnSairLock.addEventListener('click', async () => {
             try {
-                await vestoDB.clear('apiCache');
+                const t = localStorage.getItem('vesto_theme');
+                localStorage.clear();
+                if (t) localStorage.setItem('vesto_theme', t);
+
+                await vestoDB.destroy();
                 sessionStorage.clear();
             } catch (e) {
                 console.error("Erro ao limpar dados locais:", e);
@@ -10510,7 +10530,11 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
         logoutBtn.addEventListener('click', () => {
             showModal("Sair?", "Tem certeza que deseja sair da sua conta?", async () => {
                 try {
-                    await vestoDB.clear('apiCache');
+                    const t = localStorage.getItem('vesto_theme');
+                    localStorage.clear();
+                    if (t) localStorage.setItem('vesto_theme', t);
+
+                    await vestoDB.destroy();
                     sessionStorage.clear();
                 } catch (e) {
                     console.error("Erro ao limpar dados locais:", e);

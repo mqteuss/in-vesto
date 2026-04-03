@@ -160,7 +160,8 @@ const formatDateToInput = (dateString) => {
 };
 
 // Lista principal de grandes BDRs e Units da B3 que terminam com 11, mas NÃO SÃO FIIs e devem receber logos
-const KNOWN_UNITS_BDRS = [
+// OTIMIZAÇÃO: Set para lookup O(1) em vez de Array.includes() O(97)
+const KNOWN_UNITS_BDRS = new Set([
     'BPAC11', 'BIDI11', 'ENGI11', 'TAEE11', 'KLBN11', 'SANB11', 'ALUP11', 'BBAS11',
     'MODL11', 'BRBI11', 'SULA11', 'SAPR11', 'IGTI11', 'CPLE11', 'ABEV11', 'PETR11',
     'ITUB11', 'BBDC11', 'VALE11', 'AMER11', 'MGLU11', 'VIIA11', 'WEGE11', 'EMBR11',
@@ -175,12 +176,12 @@ const KNOWN_UNITS_BDRS = [
     'SIMH11', 'RENT11', 'AMAR11', 'ARZZ11', 'CEAB11', 'SGPS11', 'VAMO11', 'VIVA11',
     'VULC11', 'ALPA11', 'DXCO11', 'LEVE11', 'MYPK11', 'RCSL11', 'TUPY11', 'WIZC11',
     'AESB11'
-];
+]);
 
 const isFII = (symbol) => {
     if (!symbol) return false;
     const symUpper = symbol.toUpperCase();
-    if (KNOWN_UNITS_BDRS.includes(symUpper)) return false;
+    if (KNOWN_UNITS_BDRS.has(symUpper)) return false;
     return symUpper.endsWith('11') || symUpper.endsWith('12');
 };
 const isAcao = (symbol) => !!(symbol && !isFII(symbol));
@@ -3079,7 +3080,7 @@ function renderizarGraficoAlocacao(isRetry = false) {
     }
     
     const elTotal = document.getElementById('alocacao-total-center');
-    if (elTotal) elTotal.textContent = total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+    if (elTotal) elTotal.textContent = _fmtBRL.format(total);
     
     const barContainer = document.getElementById('alocacao-stacked-bar');
     if(!barContainer) return;
@@ -3120,7 +3121,7 @@ function renderizarGraficoAlocacao(isRetry = false) {
         legItem.className = 'alocacao-legend-item rounded-xl p-3 cursor-pointer transition-colors';
         legItem.onclick = () => selecionarItemAlocacao(index);
         
-        const formatBRL = v => (v||0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+        const formatBRL = v => _fmtBRL.format(v||0);
         
         let extraHTML = '';
         if (window.alocacaoSelectedMode === 'ativo') {
@@ -4084,7 +4085,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
         if (dadosMensais.length === 0) return;
 
         // ── Helpers ──
-        const fmtBRL = (v) => Math.abs(v).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+        const fmtBRL = (v) => _fmtBRL.format(Math.abs(v));
         const MESES_PT = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
 
         const labels = [];
@@ -4829,9 +4830,19 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
     // Chave: `${symbol}_${dataLimiteStr}`. Evita O(N*M) iterações em loops de proventos.
     // Deve ser zerado sempre que o array de transações sofrer qualquer mutação.
     let _cacheQtdNaData = {};
+    // OTIMIZAÇÃO: Índice pré-agrupado symbol → transações (reconstruído ao invalidar)
+    let _txBySymbol = {};
+
+    function _rebuiltTxIndex() {
+        _txBySymbol = {};
+        for (const t of transacoes) {
+            (_txBySymbol[t.symbol] ??= []).push(t);
+        }
+    }
 
     function invalidarCacheQtdNaData() {
         _cacheQtdNaData = {};
+        _rebuiltTxIndex();
         // Limpa caches de cálculo do patrimônio histórico (força recálculo)
         ['7D', '1M', '6M', '1Y', 'ALL'].forEach(r => {
             try { vestoDB.delete('apiCache', `patrimonio_calc_${r}`); } catch (_) { }
@@ -4848,13 +4859,12 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
 
         const dataLimite = new Date(dataLimiteStr + 'T23:59:59');
 
-        const resultado = transacoes.reduce((total, t) => {
-            if (t.symbol === symbol) {
-                const dataTransacao = new Date(t.date);
-                if (dataTransacao <= dataLimite) {
-                    if (t.type === 'buy') return total + t.quantity;
-                    if (t.type === 'sell') return total - t.quantity;
-                }
+        // Usa índice pré-agrupado — itera apenas transações do symbol (~15x menos)
+        const resultado = (_txBySymbol[symbol] || []).reduce((total, t) => {
+            const dataTransacao = new Date(t.date);
+            if (dataTransacao <= dataLimite) {
+                if (t.type === 'buy') return total + t.quantity;
+                if (t.type === 'sell') return total - t.quantity;
             }
             return total;
         }, 0);
@@ -5151,7 +5161,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
 
 
 
-            const patrimonioRealParaSnapshot = patrimonioTotalAtivos + saldoCaixa;
+
             renderizarTimelinePagamentos(); // Mantido pois é a timeline visual no dashboard, não o gráfico pesado
         }
 
@@ -5334,9 +5344,9 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
             const sign = d >= 0 ? '+' : '';
             const cor = d >= 0 ? '#4ade80' : '#f87171';
 
-            if (elValue) elValue.textContent = currentValue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+            if (elValue) elValue.textContent = _fmtBRL.format(currentValue);
             if (elVar) {
-                elVar.textContent = `${sign}${d.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} (${sign}${pct.toFixed(2).replace('.', ',')}%)`;
+                elVar.textContent = `${sign}${_fmtBRL.format(d)} (${sign}${pct.toFixed(2).replace('.', ',')}%)`;
                 elVar.style.color = cor;
             }
         };
@@ -5643,11 +5653,12 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
         dataLimitePassado.setHours(0, 0, 0, 0);
 
         const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+        // OTIMIZAÇÃO: Map para lookup O(1) em vez de .find() O(n) no loop
+        const carteiraMap = new Map(carteiraCalculada.map(a => [a.symbol, a]));
 
         return proventosScraper
             .map(provento => {
-                const ativoCarteira = carteiraCalculada.find(a => a.symbol === provento.symbol);
-                if (!ativoCarteira) return null;
+                if (!carteiraMap.has(provento.symbol)) return null;
 
                 if (provento.paymentDate && typeof provento.value === 'number' && provento.value > 0 && dateRegex.test(provento.paymentDate)) {
                     const parts = provento.paymentDate.split('-');
@@ -7145,8 +7156,8 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
 
             if (!elOpen || !elClose || !elVar) return;
 
-            elOpen.innerText = startPrice.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-            elClose.innerText = currentPrice.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+            elOpen.innerText = _fmtBRL.format(startPrice);
+            elClose.innerText = _fmtBRL.format(currentPrice);
 
             const diff = currentPrice - startPrice;
             const percent = (diff / startPrice) * 100;
@@ -7375,7 +7386,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
                             },
                             label: function (context) {
                                 // TOOLTIP LIMPO: APENAS O PREÇO SEM "Fechamento:"
-                                return context.parsed.y.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+                                return _fmtBRL.format(context.parsed.y);
                             }
                         }
                     }
@@ -7457,9 +7468,9 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
             const varPct = ((close - open) / open) * 100;
             const isPos = varPct >= 0;
 
-            elOpen.textContent = open.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+            elOpen.textContent = _fmtBRL.format(open);
 
-            elClose.textContent = close.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+            elClose.textContent = _fmtBRL.format(close);
             elClose.style.color = ''; // Limpa a cor que ficava verde/vermelha no fechamento
 
             elVar.textContent = `${isPos ? '+' : ''}${varPct.toFixed(2).replace('.', ',')}%`;
@@ -7724,7 +7735,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
                     { label: 'C', val: c.close, color: '#fff' }
                 ];
                 ctx.font = '10px sans-serif';
-                const fmtBRL = v => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+                const fmtBRL = v => _fmtBRL.format(v);
                 const lines = tipLines.map(t => `${t.label}: ${fmtBRL(t.val)}`);
                 const maxTW = Math.max(...lines.map(l => ctx.measureText(l).width));
                 const tipW = maxTW + 16;
@@ -9299,7 +9310,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
         // ==========================================
         // ATUALIZA OS VALORES DOS BADGES NO TOPO
         // ==========================================
-        const fmtBRL = (v) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+        const fmtBRL = (v) => _fmtBRL.format(v);
         const elMed = document.getElementById('prov-stat-med');
         const elMax = document.getElementById('prov-stat-max');
         const elTot = document.getElementById('prov-stat-tot');
@@ -9473,14 +9484,14 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
                                 const idx = context[0].dataIndex;
                                 const info = customInfo[idx];
                                 if (!info) return context[0].label || '';
-                                const totalFmt = info.rawTotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+                                const totalFmt = _fmtBRL.format(info.rawTotal);
                                 return `${info.label}  ·  ${totalFmt}`;
                             },
                             label(context) {
                                 if (context.dataset.label === 'Média') return null;
                                 const val = context.parsed.y;
                                 if (!val || val < 0.001) return null;
-                                return `${context.dataset.label}: ${val.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}`;
+                                return `${context.dataset.label}: ${_fmtBRL.format(val)}`;
                             }
                             // O 'afterBody' foi removido daqui para deixar o Tooltip mais limpo!
                         }
@@ -12877,7 +12888,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
 
             // Atualiza Total
             if (totalEl) {
-                totalEl.textContent = totalGeral.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+                totalEl.textContent = _fmtBRL.format(totalGeral);
             }
 
             // 2. Agrupamento

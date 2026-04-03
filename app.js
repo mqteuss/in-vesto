@@ -1754,6 +1754,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     async function carregarTransacoes() {
         transacoes = await supabaseDB.getTransacoes();
+        _rebuiltTxIndex(); // Reconstrói índice symbol → transações para getQuantidadeNaData
     }
 
 

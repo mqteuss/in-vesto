@@ -9,8 +9,8 @@ const scraperHandler = require('../scraper.js');
 const CONFIG = {
     timezone_offset: -3,    // BRT (UTC-3)
     notif: {
-        icon: 'https://in-vesto.vercel.app/icons/icon-192x192.png',
-        badge: 'https://in-vesto.vercel.app/sininhov2.png',
+        icon: 'https://appvesto.vercel.app/icons/icon-192x192.png',
+        badge: 'https://appvesto.vercel.app/sininhov2.png',
         url: '/?tab=tab-carteira',
     },
 };

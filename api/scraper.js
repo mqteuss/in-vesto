@@ -10,56 +10,152 @@
 
 // ─── AeroScrape Helper (com timeout) ─────────────────────────────────────────
 
-const AEROSCRAPE_URL = 'https://aero-scrape.vercel.app/api/scrape';
+const AEROSCRAPE_URL = process.env.AEROSCRAPE_URL || 'https://aero-scrape.vercel.app/api/scrape';
+const AEROSCRAPE_TIMEOUT_MS = Math.max(2000, Number(process.env.AEROSCRAPE_TIMEOUT_MS || 15000));
+const JSON_FETCH_TIMEOUT_MS = Math.max(1000, Number(process.env.JSON_FETCH_TIMEOUT_MS || 10000));
+const AEROSCRAPE_RETRIES = Math.max(0, Number(process.env.AEROSCRAPE_RETRIES || 2));
+const ENABLE_DEBUG_LOGS = process.env.AEROSCRAPE_DEBUG === 'true';
+
+function isRetryableStatus(status) {
+    return status === 408 || status === 425 || status === 429 || status >= 500;
+}
+
+function isAbortError(err) {
+    return err && (err.name === 'AbortError' || err.code === 'ABORT_ERR');
+}
+
+function getErrorMessage(err, fallback = 'Erro de rede') {
+    return err && err.message ? err.message : fallback;
+}
+
+function getBackoffDelay(baseBackoff, attempt) {
+    const base = baseBackoff * Math.pow(2, attempt);
+    const jitter = Math.random() * (base * 0.3);
+    return Math.floor(base + jitter);
+}
 
 async function aeroScrape(url, payloadOpts = {}) {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 15000);
+    let lastError = null;
 
-    try {
-        const res = await fetch(AEROSCRAPE_URL, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ url, ...payloadOpts }),
-            signal: controller.signal,
-        });
-        if (!res.ok) throw new Error(`AeroScrape HTTP ${res.status}`);
-        return await res.json();
-    } finally {
-        clearTimeout(timeout);
+    for (let attempt = 0; attempt <= AEROSCRAPE_RETRIES; attempt++) {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), AEROSCRAPE_TIMEOUT_MS);
+
+        try {
+            const res = await fetch(AEROSCRAPE_URL, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json'
+                },
+                body: JSON.stringify({ url, ...payloadOpts }),
+                signal: controller.signal,
+            });
+
+            clearTimeout(timeout);
+
+            if (!res.ok) {
+                const err = new Error(`AeroScrape HTTP ${res.status}`);
+                err.status = res.status;
+                if (attempt < AEROSCRAPE_RETRIES && isRetryableStatus(res.status)) {
+                    const delay = getBackoffDelay(300, attempt);
+                    if (ENABLE_DEBUG_LOGS) {
+                        console.log(`[aeroScrape] Retry ${attempt + 1}/${AEROSCRAPE_RETRIES} em ${delay}ms (${res.status})`);
+                    }
+                    await new Promise(r => setTimeout(r, delay));
+                    lastError = err;
+                    continue;
+                }
+                throw err;
+            }
+
+            return await res.json();
+        } catch (err) {
+            clearTimeout(timeout);
+            lastError = err;
+
+            const shouldRetry = attempt < AEROSCRAPE_RETRIES && (isAbortError(err) || isRetryableStatus(err.status || 0));
+            if (shouldRetry) {
+                const delay = getBackoffDelay(300, attempt);
+                if (ENABLE_DEBUG_LOGS) {
+                    console.log(`[aeroScrape] Retry ${attempt + 1}/${AEROSCRAPE_RETRIES} em ${delay}ms (${getErrorMessage(err)})`);
+                }
+                await new Promise(r => setTimeout(r, delay));
+                continue;
+            }
+
+            throw new Error(getErrorMessage(err, 'Falha ao consultar AeroScrape'));
+        }
     }
+
+    throw new Error(getErrorMessage(lastError, 'Falha ao consultar AeroScrape'));
 }
 
 // ─── Fetch JSON Helper (para APIs que retornam JSON puro) ────────────────────
 
 async function fetchWithRetry(url, options = {}, retries = 3, baseBackoff = 1000) {
-    if (!options.headers) {
-        options.headers = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
-            'Accept': 'application/json, text/plain, */*',
-            'Referer': 'https://investidor10.com.br/'
-        };
-    }
+    const normalizedRetries = Math.max(0, retries);
+    const mergedHeaders = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
+        'Accept': 'application/json, text/plain, */*',
+        'Referer': 'https://investidor10.com.br/',
+        ...(options.headers || {})
+    };
 
-    for (let i = 0; i < retries; i++) {
+    let lastError = null;
+
+    for (let attempt = 0; attempt <= normalizedRetries; attempt++) {
         const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 10000);
+        const timeout = setTimeout(() => controller.abort(), JSON_FETCH_TIMEOUT_MS);
 
         try {
-            const res = await fetch(url, { ...options, signal: controller.signal });
+            const res = await fetch(url, {
+                ...options,
+                headers: mergedHeaders,
+                signal: controller.signal
+            });
+
             clearTimeout(timeout);
-            if (!res.ok) throw new Error(`HTTP ${res.status}`);
-            const data = await res.json();
+
+            if (!res.ok) {
+                const err = new Error(`HTTP ${res.status}`);
+                err.status = res.status;
+
+                if (attempt < normalizedRetries && isRetryableStatus(res.status)) {
+                    const delay = getBackoffDelay(baseBackoff, attempt);
+                    if (ENABLE_DEBUG_LOGS) {
+                        console.log(`[fetchWithRetry] Retry ${attempt + 1}/${normalizedRetries} em ${delay}ms (${res.status}) ${url}`);
+                    }
+                    await new Promise(r => setTimeout(r, delay));
+                    lastError = err;
+                    continue;
+                }
+
+                throw err;
+            }
+
+            const contentType = (res.headers.get('content-type') || '').toLowerCase();
+            const data = contentType.includes('application/json') ? await res.json() : await res.text();
             return { data };
         } catch (err) {
             clearTimeout(timeout);
-            const msg = err.name === 'AbortError' ? `Timeout 10s` : err.message;
-            if (i === retries - 1 || (err.message && err.message.includes('404'))) throw new Error(msg);
-            const delay = baseBackoff * Math.pow(2, i);
-            console.log(`[RETRY] Tentativa ${i + 1} falhou para ${url}: ${msg}. Retentando em ${delay}ms...`);
-            await new Promise(res => setTimeout(res, delay));
+            lastError = err;
+
+            const retryable = isAbortError(err) || isRetryableStatus(err.status || 0);
+            if (attempt < normalizedRetries && retryable) {
+                const delay = getBackoffDelay(baseBackoff, attempt);
+                if (ENABLE_DEBUG_LOGS) {
+                    console.log(`[fetchWithRetry] Retry ${attempt + 1}/${normalizedRetries} em ${delay}ms (${getErrorMessage(err)}) ${url}`);
+                }
+                await new Promise(r => setTimeout(r, delay));
+                continue;
+            }
+
+            throw new Error(getErrorMessage(err));
         }
     }
+
+    throw new Error(getErrorMessage(lastError));
 }
 
 // ─── Constantes ──────────────────────────────────────────────────────────────
@@ -113,6 +209,10 @@ function chunkArray(array, size) {
     return results;
 }
 
+function sleep(ms) {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 function parseExtendedValue(str) {
     if (!str) return 0;
     const val = parseValue(str);
@@ -137,15 +237,15 @@ function cleanDoubledString(str) {
 // ─── Multi-selectors para Investidor10 (pré-definidos) ───────────────────────
 
 const FUNDAMENTOS_SELECTORS = {
-    cards: { selector: '._card-header, ._card-body' },
-    cells_titles: { selector: '.cell span.d-flex, .cell span.title' },
-    cells_values: { selector: '.cell .value' },
-    table: { selector: 'table tbody tr td' },
-    about: { selector: '#about-section p, .profile-description p, #description p, .text-description p, .link-card--description, .company-description' },
+    cards: { selector: '._card-header, ._card-body', extract: 'text' },
+    cells_titles: { selector: '.cell span.d-flex, .cell span.title', extract: 'text' },
+    cells_values: { selector: '.cell .value', extract: 'text' },
+    table: { selector: 'table tbody tr td', extract: 'text' },
+    about: { selector: '#about-section p, .profile-description p, #description p, .text-description p, .link-card--description, .company-description', extract: 'text' },
     logo: { selector: '.header-company img, #header-container img, .brand-company img', extract: 'src' },
     compareUrl: { selector: '#table-compare-fiis, #table-compare-segments, #table-compare-tickers', extract: 'data-url' },
-    props: { selector: 'div.card-propertie h3' },
-    propsSmall: { selector: 'div.card-propertie small' }
+    props: { selector: 'div.card-propertie h3', extract: 'text' },
+    propsSmall: { selector: 'div.card-propertie small', extract: 'text' }
 };
 
 // ─── PARTE 1: FUNDAMENTOS → INVESTIDOR10 ─────────────────────────────────────
@@ -979,7 +1079,7 @@ module.exports = async function handler(req, res) {
 
     try {
         if (!req.body || !req.body.mode) throw new Error("Payload inválido");
-        const { mode, payload } = req.body;
+        const { mode, payload = {} } = req.body;
 
         if (mode === 'rankings') {
             const dados = await scrapeRankings();
@@ -1003,7 +1103,18 @@ module.exports = async function handler(req, res) {
         }
 
         if (mode === 'proventos_carteira' || mode === 'historico_portfolio') {
-            if (!payload.fiiList) return res.json({ json: [] });
+            if (!Array.isArray(payload.fiiList) || payload.fiiList.length === 0) return res.json({ json: [] });
+
+            const historyByTicker = new Map();
+            const getHistory = async (tickerRaw) => {
+                const ticker = String(tickerRaw || '').toUpperCase().trim();
+                if (!ticker) return [];
+                if (!historyByTicker.has(ticker)) {
+                    historyByTicker.set(ticker, scrapeAsset(ticker));
+                }
+                return historyByTicker.get(ticker);
+            };
+
             const batches = chunkArray(payload.fiiList, 5);
             let finalResults = [];
             for (const [batchIdx, batch] of batches.entries()) {
@@ -1011,14 +1122,14 @@ module.exports = async function handler(req, res) {
                     const ticker = typeof item === 'string' ? item : item.ticker;
                     const defaultLimit = mode === 'historico_portfolio' ? 14 : 12;
                     const limit = typeof item === 'string' ? defaultLimit : (item.limit || defaultLimit);
-                    const history = await scrapeAsset(ticker);
+                    const history = await getHistory(ticker);
                     const recents = history.filter(h => h.paymentDate && h.value > 0).slice(0, limit);
                     if (recents.length > 0) return recents.map(r => ({ symbol: ticker.toUpperCase(), ...r }));
                     return null;
                 });
                 const batchResults = await Promise.all(promises);
                 finalResults = finalResults.concat(batchResults);
-                if (batches.length > 1 && batchIdx < batches.length - 1) await new Promise(r => setTimeout(r, 200));
+                if (batches.length > 1 && batchIdx < batches.length - 1) await sleep(200);
             }
             return res.status(200).json({ json: finalResults.filter(d => d !== null).flat() });
         }
@@ -1068,6 +1179,7 @@ module.exports = async function handler(req, res) {
 
         return res.status(400).json({ error: "Modo desconhecido" });
     } catch (error) {
-        return res.status(500).json({ error: error.message });
+        const message = error && error.message ? error.message : 'Erro interno no scraper';
+        return res.status(500).json({ error: message });
     }
 };

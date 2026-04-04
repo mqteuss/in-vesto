@@ -101,12 +101,17 @@
             if (bioEnabled && !justLoggedOut) {
                 document.getElementById('biometric-lock-screen').classList.remove('hidden');
                 document.body.style.overflow = 'hidden';
+                const isLikelyMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent || '');
+                const btnRetry = document.getElementById('btn-desbloquear');
 
                 // ── BIOMETRIA INSTANTÂNEA ──
                 // Dispara o prompt ANTES de app.js carregar (~50ms vs ~1-2s).
                 // Tudo que precisamos está no localStorage; sem dependência de rede.
                 const credId = localStorage.getItem('vesto_bio_id');
-                if (credId && window.PublicKeyCredential && navigator.credentials?.get) {
+                if (isLikelyMobile && btnRetry) {
+                    // Em mobile, priorizamos tap explícito para abrir o prompt de biometria.
+                    btnRetry.classList.remove('opacity-0', 'pointer-events-none');
+                } else if (credId && window.PublicKeyCredential && navigator.credentials?.get) {
                     const _b64 = (b) => Uint8Array.from(atob(b), c => c.charCodeAt(0));
                     const challenge = new Uint8Array(32);
                     crypto.getRandomValues(challenge);
@@ -134,12 +139,13 @@
                     }).catch(err => {
                         console.warn('Bio early-prompt falhou:', err.name);
                         // Mostra botão de retry
-                        const btn = document.getElementById('btn-desbloquear');
-                        if (btn) btn.classList.remove('opacity-0', 'pointer-events-none');
+                        if (btnRetry) btnRetry.classList.remove('opacity-0', 'pointer-events-none');
                         window.dispatchEvent(new CustomEvent('vesto-bio-failed', { detail: { name: err.name } }));
                     }).finally(() => {
                         window.__vestoBioPromptInFlight = false;
                     });
+                } else if (btnRetry) {
+                    btnRetry.classList.remove('opacity-0', 'pointer-events-none');
                 }
             }
 

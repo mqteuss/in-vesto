@@ -651,8 +651,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     let newsSearchTerm = '';
     let newsSearchDebounceTimer = null;
     let biometricAuthInFlight = false;
+    let biometricAbortController = null;
     let updateInFlight = false;
     let pendingForceUpdate = false;
+    const isLikelyMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent || '');
 
     const NEWS_CATEGORY_QUERIES = {
         geral: '("Ações" OR "FIIs" OR "Bolsa de Valores" OR "Dividendos")',
@@ -1408,7 +1410,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         }, 3000);
     }
 
-    function mostrarTelaBloqueioBiometrico(showRetry = false) {
+    function mostrarTelaBloqueioBiometrico(showRetry = true) {
         if (!biometricLockScreen) return;
         biometricLockScreen.classList.remove('hidden');
         document.body.style.overflow = 'hidden';
@@ -1466,7 +1468,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             return true;
         }
 
-        mostrarTelaBloqueioBiometrico(false);
+        mostrarTelaBloqueioBiometrico(true);
+
+        // Em mobile, prioriza gesto explícito do usuário para maximizar compatibilidade.
+        if (isLikelyMobile) return false;
 
         // Se o script inline ainda está em execução, evita dupla chamada de WebAuthn.
         if (window.__vestoBioPromptInFlight) return false;
@@ -1525,7 +1530,12 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     async function autenticarBiometria({ source = 'manual' } = {}) {
         if (!window.PublicKeyCredential || !navigator.credentials?.get) return false;
-        if (biometricAuthInFlight || window.__vestoBioPromptInFlight) return false;
+        if (biometricAuthInFlight) {
+            if (source !== 'manual') return false;
+            try { biometricAbortController?.abort(); } catch (_) { }
+            await new Promise((resolve) => setTimeout(resolve, 80));
+            if (biometricAuthInFlight) return false;
+        }
         const savedCredId = localStorage.getItem('vesto_bio_id');
 
         if (!savedCredId) {
@@ -1539,6 +1549,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         try {
             const challenge = new Uint8Array(32);
             window.crypto.getRandomValues(challenge);
+            biometricAbortController = new AbortController();
 
             const publicKey = {
                 challenge: challenge,
@@ -1551,7 +1562,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                 }]
             };
 
-            const assertion = await navigator.credentials.get({ publicKey });
+            const assertion = await navigator.credentials.get({
+                publicKey,
+                signal: biometricAbortController.signal
+            });
 
             if (assertion) {
                 window.__vestoUnlockedEarly = true;
@@ -1563,6 +1577,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             return false;
         } catch (e) {
             console.warn("Biometria cancelada ou falhou:", e);
+
+            if (e?.name === 'AbortError') {
+                return false;
+            }
 
             if (['EncodingError', 'DataError', 'TypeError'].includes(e?.name)) {
                 desativarBiometria();
@@ -1577,17 +1595,20 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
             return false;
         } finally {
+            biometricAbortController = null;
             biometricAuthInFlight = false;
             window.__vestoBioPromptInFlight = false;
         }
     }
 
     function desativarBiometria() {
+        try { biometricAbortController?.abort(); } catch (_) { }
         localStorage.removeItem('vesto_bio_enabled');
         localStorage.removeItem('vesto_bio_id');
         window.__vestoUnlockedEarly = false;
         esconderTelaBloqueioBiometrico();
         verificarStatusBiometria();
+        window.dispatchEvent(new CustomEvent('vesto-bio-unlocked'));
     }
 
     if (btnDesbloquear) {

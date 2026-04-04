@@ -12,6 +12,18 @@
     <link rel="manifest" href="/manifest.json">
     <meta name="theme-color" content="#010101">
     <meta name="description" content="Vesto - Gestão inteligente de proventos e investimentos.">
+    <link rel="canonical" href="https://appvesto.vercel.app/">
+    <script>
+        (() => {
+            const CANONICAL_HOST = 'appvesto.vercel.app';
+            const currentHost = window.location.hostname;
+            const isVercelHost = currentHost.endsWith('.vercel.app');
+            if (isVercelHost && currentHost !== CANONICAL_HOST) {
+                const target = `https://${CANONICAL_HOST}${window.location.pathname}${window.location.search}${window.location.hash}`;
+                window.location.replace(target);
+            }
+        })();
+    </script>
     <link rel="dns-prefetch" href="https://cdn.jsdelivr.net">
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 

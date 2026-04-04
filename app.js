@@ -650,6 +650,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     let currentNewsCategory = 'geral';
     let newsSearchTerm = '';
     let newsSearchDebounceTimer = null;
+    let biometricAuthInFlight = false;
+    let updateInFlight = false;
+    let pendingForceUpdate = false;
 
     const NEWS_CATEGORY_QUERIES = {
         geral: '("Ações" OR "FIIs" OR "Bolsa de Valores" OR "Dividendos")',
@@ -1405,8 +1408,28 @@ document.addEventListener('DOMContentLoaded', async () => {
         }, 3000);
     }
 
+    function mostrarTelaBloqueioBiometrico(showRetry = false) {
+        if (!biometricLockScreen) return;
+        biometricLockScreen.classList.remove('hidden');
+        document.body.style.overflow = 'hidden';
+        if (btnDesbloquear) {
+            if (showRetry) {
+                btnDesbloquear.classList.remove('opacity-0', 'pointer-events-none');
+            } else {
+                btnDesbloquear.classList.add('opacity-0', 'pointer-events-none');
+            }
+        }
+    }
+
+    function esconderTelaBloqueioBiometrico() {
+        if (!biometricLockScreen) return;
+        biometricLockScreen.classList.add('hidden');
+        document.body.style.overflow = '';
+    }
+
     async function verificarStatusBiometria() {
         const bioEnabled = localStorage.getItem('vesto_bio_enabled') === 'true';
+        const justLoggedOut = sessionStorage.getItem('vesto_just_logged_out') === 'true';
 
         if (toggleBioBtn && bioToggleKnob) {
             if (bioEnabled) {
@@ -1432,16 +1455,23 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         }
 
-        if (bioEnabled && currentUserId && !biometricLockScreen.classList.contains('hidden')) {
-            // Se o prompt inline do HTML já desbloqueou, não re-dispara
-            if (window.__vestoUnlockedEarly) {
-                biometricLockScreen.classList.add('hidden');
-                document.body.style.overflow = '';
-                return;
-            }
-            document.body.style.overflow = 'hidden';
-            autenticarBiometria(); // Sem delay — dispara imediatamente
+        if (!bioEnabled || !currentUserId || justLoggedOut) {
+            esconderTelaBloqueioBiometrico();
+            return true;
         }
+
+        // Se o prompt inline já autenticou com sucesso, não re-disparamos.
+        if (window.__vestoUnlockedEarly) {
+            esconderTelaBloqueioBiometrico();
+            return true;
+        }
+
+        mostrarTelaBloqueioBiometrico(false);
+
+        // Se o script inline ainda está em execução, evita dupla chamada de WebAuthn.
+        if (window.__vestoBioPromptInFlight) return false;
+
+        return await autenticarBiometria({ source: 'auto' });
     }
 
     async function ativarBiometria() {
@@ -1483,6 +1513,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const credentialId = bufferToBase64(credential.rawId);
                 localStorage.setItem('vesto_bio_id', credentialId);
                 localStorage.setItem('vesto_bio_enabled', 'true');
+                window.__vestoUnlockedEarly = true;
                 verificarStatusBiometria();
                 showToast('Biometria ativada com sucesso!', 'success');
             }
@@ -1492,16 +1523,19 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
 
-    async function autenticarBiometria() {
-        if (!window.PublicKeyCredential) return;
+    async function autenticarBiometria({ source = 'manual' } = {}) {
+        if (!window.PublicKeyCredential || !navigator.credentials?.get) return false;
+        if (biometricAuthInFlight || window.__vestoBioPromptInFlight) return false;
         const savedCredId = localStorage.getItem('vesto_bio_id');
 
         if (!savedCredId) {
             console.warn("Nenhuma credencial salva encontrada.");
             desativarBiometria();
-            return;
+            return false;
         }
 
+        biometricAuthInFlight = true;
+        window.__vestoBioPromptInFlight = true;
         try {
             const challenge = new Uint8Array(32);
             window.crypto.getRandomValues(challenge);
@@ -1520,30 +1554,54 @@ document.addEventListener('DOMContentLoaded', async () => {
             const assertion = await navigator.credentials.get({ publicKey });
 
             if (assertion) {
-                biometricLockScreen.classList.add('hidden');
-                document.body.style.overflow = '';
+                window.__vestoUnlockedEarly = true;
+                esconderTelaBloqueioBiometrico();
+                window.dispatchEvent(new CustomEvent('vesto-bio-unlocked'));
+                return true;
             }
+            mostrarTelaBloqueioBiometrico(true);
+            return false;
         } catch (e) {
             console.warn("Biometria cancelada ou falhou:", e);
-            // Silencioso — o botão de retry na lock screen já dá feedback suficiente
+
+            if (['EncodingError', 'DataError', 'TypeError'].includes(e?.name)) {
+                desativarBiometria();
+                showToast('Credencial biométrica inválida. Ative novamente nas configurações.');
+                return false;
+            }
 
             // Se falhou ou cancelou, exibe o botão na tela para tentar de novo
-            const btnBox = document.getElementById('btn-desbloquear');
-            if (btnBox) {
-                btnBox.classList.remove('opacity-0', 'pointer-events-none');
+            mostrarTelaBloqueioBiometrico(true);
+            if (source === 'manual' && !['NotAllowedError', 'AbortError'].includes(e?.name)) {
+                showToast(`Falha na biometria: ${e.name || 'erro desconhecido'}.`);
             }
+            return false;
+        } finally {
+            biometricAuthInFlight = false;
+            window.__vestoBioPromptInFlight = false;
         }
     }
 
     function desativarBiometria() {
         localStorage.removeItem('vesto_bio_enabled');
         localStorage.removeItem('vesto_bio_id');
+        window.__vestoUnlockedEarly = false;
+        esconderTelaBloqueioBiometrico();
         verificarStatusBiometria();
     }
 
     if (btnDesbloquear) {
-        btnDesbloquear.addEventListener('click', autenticarBiometria);
+        btnDesbloquear.addEventListener('click', () => autenticarBiometria({ source: 'manual' }));
     }
+
+    window.addEventListener('vesto-bio-unlocked', () => {
+        window.__vestoUnlockedEarly = true;
+        esconderTelaBloqueioBiometrico();
+    });
+
+    window.addEventListener('vesto-bio-failed', () => {
+        mostrarTelaBloqueioBiometrico(true);
+    });
 
     if (btnSairLock) {
         btnSairLock.addEventListener('click', async () => {
@@ -2820,17 +2878,16 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (newsSearchTerm) {
             const term = newsSearchTerm.toLowerCase();
             articlesToRender = articles.filter(a => {
-                const titleMatch = (a.title || '').toLowerCase().includes(term);
-                const sourceMatch = (a.sourceName || '').toLowerCase().includes(term);
-                const summaryMatch = (a.summary || '').toLowerCase().includes(term);
-                const tickerRegex = /[A-Z]{4}(3|4|5|6|11)/g;
-                const tickers = (a.title || '').match(tickerRegex) || [];
-                const tickerMatch = tickers.some(t => t.toLowerCase().includes(term));
-                return titleMatch || sourceMatch || summaryMatch || tickerMatch;
+                if (!a._searchBlob) {
+                    const tickers = (a.title || '').match(/[A-Z]{4}(3|4|5|6|11)/g) || [];
+                    a._searchBlob = `${a.title || ''} ${a.sourceName || ''} ${a.summary || ''} ${tickers.join(' ')}`.toLowerCase();
+                }
+                return a._searchBlob.includes(term);
             });
         }
 
-        const newSignature = JSON.stringify(articlesToRender) + newsSearchTerm;
+        const newSignature = `${newsSearchTerm}|${articlesToRender.length}|` +
+            articlesToRender.map(a => `${a.link || a.title || ''}|${a.publicationDate || ''}`).join('||');
         if (newSignature === lastNewsSignature && fiiNewsList.children.length > 0) {
             return;
         }
@@ -6342,6 +6399,15 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
         };
     }
 
+    function runDeferred(task, timeout = 1200) {
+        if (typeof task !== 'function') return;
+        if (typeof window.requestIdleCallback === 'function') {
+            window.requestIdleCallback(() => task(), { timeout });
+        } else {
+            setTimeout(task, 120);
+        }
+    }
+
     // Versão debounced de renderizarCarteira (100 ms).
     // Garante que, se preços e proventos resolverem quase ao mesmo tempo,
     // a re-renderização visual ocorra apenas UMA vez com os dados consolidados.
@@ -6349,26 +6415,32 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
     window.renderizarCarteiraGlobal = renderizarCarteiraDebounced;
 
     async function atualizarTodosDados(force = false) {
-
-        if (force) {
-            // 1. Feedback Tátil (Vibração leve em Android — requer gesto do usuário)
-            try { navigator.vibrate?.(50); } catch (_) { /* Chrome bloqueia sem gesto */ }
-
-            // 2. Feedback Visual (Mostra os esqueletos de carregamento)
-            renderizarDashboardSkeletons(true);
-            renderizarCarteiraSkeletons(true);
-
-            // 3. Mostra Timeline com skeleton
-            const timelineContainer = document.getElementById('timeline-pagamentos-container');
-            const timelineSkeleton = document.getElementById('timeline-skeleton');
-            const timelineLista = document.getElementById('timeline-lista');
-            if (timelineContainer) timelineContainer.classList.remove('hidden');
-            if (timelineSkeleton) timelineSkeleton.classList.remove('hidden');
-            if (timelineLista) timelineLista.innerHTML = '';
-
-            // Opcional: Esconder status antigos enquanto carrega
-            dashboardStatus.classList.add('hidden');
+        if (updateInFlight) {
+            pendingForceUpdate = pendingForceUpdate || force;
+            return;
         }
+        updateInFlight = true;
+        try {
+
+            if (force) {
+                // 1. Feedback Tátil (Vibração leve em Android — requer gesto do usuário)
+                try { navigator.vibrate?.(50); } catch (_) { /* Chrome bloqueia sem gesto */ }
+
+                // 2. Feedback Visual (Mostra os esqueletos de carregamento)
+                renderizarDashboardSkeletons(true);
+                renderizarCarteiraSkeletons(true);
+
+                // 3. Mostra Timeline com skeleton
+                const timelineContainer = document.getElementById('timeline-pagamentos-container');
+                const timelineSkeleton = document.getElementById('timeline-skeleton');
+                const timelineLista = document.getElementById('timeline-lista');
+                if (timelineContainer) timelineContainer.classList.remove('hidden');
+                if (timelineSkeleton) timelineSkeleton.classList.remove('hidden');
+                if (timelineLista) timelineLista.innerHTML = '';
+
+                // Opcional: Esconder status antigos enquanto carrega
+                dashboardStatus.classList.add('hidden');
+            }
 
         // Calcula a carteira sempre (necessário para saber quais ativos buscar)
         calcularCarteira();
@@ -6513,6 +6585,14 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
 
             // Radar de notícias — só roda aqui porque depende de carteiraCalculada
             carregarRadarNoticias();
+        }
+        } finally {
+            updateInFlight = false;
+            if (pendingForceUpdate) {
+                const rerunForce = pendingForceUpdate;
+                pendingForceUpdate = false;
+                setTimeout(() => atualizarTodosDados(rerunForce), 0);
+            }
         }
     }
 
@@ -10840,14 +10920,16 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
             // Renderiza a watchlist (leve)
             renderizarWatchlist();
 
-            // Carrega índices de mercado e rankings (não bloqueiam)
-            carregarMarketIndices();
-            carregarRankings();
+            // Carrega índices/rankings fora da trilha crítica do primeiro paint
+            runDeferred(() => {
+                carregarMarketIndices();
+                carregarRankings();
+            }, 1800);
 
             // Inicia cálculos pesados e chamadas externas
             // Usa force=true no load inicial para ativar os skeletons de carregamento
             atualizarTodosDados(true);
-            handleAtualizarNoticias(false);
+            runDeferred(() => handleAtualizarNoticias(false), 1500);
 
             // Refresh periódico com force=false (sem skeletons, silencioso)
             if (refreshIntervalId) clearInterval(refreshIntervalId);
@@ -11212,6 +11294,8 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
         if (session) {
             verificarStatusPush(); // Fire-and-forget — não bloqueia biometria
             currentUserId = session.user.id;
+            // A flag é usada só no ciclo de logout; ao iniciar nova sessão, remove.
+            sessionStorage.removeItem('vesto_just_logged_out');
             authContainer.classList.add('hidden');
             appWrapper.classList.remove('hidden');
 
@@ -11230,45 +11314,60 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
                 userEmailDisplay.textContent = session.user.email;
             }
 
-            await verificarStatusBiometria();
+            const continuarBootSessao = async () => {
+                // 1. Captura parâmetros da URL (Atalhos e Compartilhamento)
+                const urlParams = new URLSearchParams(window.location.search);
+                const tabParam = urlParams.get('tab');
+                const ativoShared = urlParams.get('ativo');
 
-            // 1. Captura parâmetros da URL (Atalhos e Compartilhamento)
-            const urlParams = new URLSearchParams(window.location.search);
-            const tabParam = urlParams.get('tab');
-            const ativoShared = urlParams.get('ativo');
+                // 2. Lógica de Atalhos (App Shortcuts)
+                if (tabParam && document.getElementById(tabParam)) {
+                    mudarAba(tabParam);
+                    window.history.replaceState({}, document.title, window.location.pathname);
+                } else {
+                    mudarAba('tab-dashboard');
+                }
 
-            // 2. Lógica de Atalhos (App Shortcuts)
-            if (tabParam && document.getElementById(tabParam)) {
-                mudarAba(tabParam);
-                window.history.replaceState({}, document.title, window.location.pathname);
-            } else {
-                mudarAba('tab-dashboard');
+                const carouselWrapper = document.getElementById('carousel-wrapper');
+                if (carouselWrapper) {
+                    // Impede que o evento de toque suba para o documento (onde está o listener do swipe de abas)
+                    carouselWrapper.addEventListener('touchstart', (e) => e.stopPropagation(), { passive: true });
+                    carouselWrapper.addEventListener('touchmove', (e) => e.stopPropagation(), { passive: true });
+                    carouselWrapper.addEventListener('touchend', (e) => e.stopPropagation(), { passive: true });
+                }
+
+                await carregarDadosIniciais();
+
+                // 3. Lógica de Ativo Compartilhado (Deep Link)
+                if (ativoShared) {
+                    const newUrl = window.location.protocol + "//" + window.location.host + window.location.pathname;
+                    window.history.replaceState({ path: newUrl }, '', newUrl);
+
+                    setTimeout(() => {
+                        let symbolClean = ativoShared.toUpperCase().replace('.SA', '').trim();
+                        if (symbolClean) {
+                            showDetalhesModal(symbolClean);
+                        }
+                    }, 800);
+                }
+            };
+
+            const biometriaLiberada = await verificarStatusBiometria();
+            if (!biometriaLiberada) {
+                window.addEventListener('vesto-bio-unlocked', () => {
+                    continuarBootSessao().catch((err) => {
+                        console.error("Erro após desbloqueio biométrico:", err);
+                        showToast("Erro ao carregar dados após desbloqueio.");
+                    });
+                }, { once: true });
+                return;
             }
 
-            const carouselWrapper = document.getElementById('carousel-wrapper');
-            if (carouselWrapper) {
-                // Impede que o evento de toque suba para o documento (onde está o listener do swipe de abas)
-                carouselWrapper.addEventListener('touchstart', (e) => e.stopPropagation(), { passive: true });
-                carouselWrapper.addEventListener('touchmove', (e) => e.stopPropagation(), { passive: true });
-                carouselWrapper.addEventListener('touchend', (e) => e.stopPropagation(), { passive: true });
-            }
-
-            await carregarDadosIniciais();
-
-            // 3. Lógica de Ativo Compartilhado (Deep Link)
-            if (ativoShared) {
-                const newUrl = window.location.protocol + "//" + window.location.host + window.location.pathname;
-                window.history.replaceState({ path: newUrl }, '', newUrl);
-
-                setTimeout(() => {
-                    let symbolClean = ativoShared.toUpperCase().replace('.SA', '').trim();
-                    if (symbolClean) {
-                        showDetalhesModal(symbolClean);
-                    }
-                }, 800);
-            }
+            await continuarBootSessao();
 
         } else {
+            esconderTelaBloqueioBiometrico();
+            window.__vestoUnlockedEarly = false;
             showAuthLoading(false);
             loginForm.classList.remove('hidden');
         }

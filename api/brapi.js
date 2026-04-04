@@ -41,6 +41,15 @@ const log = {
     error: (msg, meta = {}) => log._w('error', msg, meta),
 };
 
+function applyCors(response, allowedOrigin) {
+    response.setHeader('Access-Control-Allow-Origin', allowedOrigin);
+    if (allowedOrigin !== '*') {
+        response.setHeader('Access-Control-Allow-Credentials', 'true');
+    }
+    response.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+    response.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+}
+
 // ---------------------------------------------------------
 // ERROS TIPADOS
 // ---------------------------------------------------------
@@ -103,14 +112,11 @@ function validatePath(raw) {
 // ---------------------------------------------------------
 // HANDLER PRINCIPAL
 // ---------------------------------------------------------
-export default async function handler(request, response) {
+module.exports = async function handler(request, response) {
     const rid = requestId();
 
     // CORS
-    response.setHeader('Access-Control-Allow-Credentials', true);
-    response.setHeader('Access-Control-Allow-Origin', CONFIG.allowedOrigin);
-    response.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
-    response.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+    applyCors(response, CONFIG.allowedOrigin);
     response.setHeader('X-Request-Id', rid);
 
     if (request.method === 'OPTIONS') return response.status(200).end();
@@ -128,8 +134,9 @@ export default async function handler(request, response) {
 
     let cleanPath;
     try {
-        const urlParts = new URL(request.url, `https://${request.headers.host}`);
-        const pathArg  = urlParts.searchParams.get('path');
+        const pathArg = typeof request.query?.path === 'string'
+            ? request.query.path
+            : new URL(request.url, `https://${request.headers.host}`).searchParams.get('path');
         cleanPath = validatePath(pathArg);
     } catch (err) {
         if (err instanceof AppError) {

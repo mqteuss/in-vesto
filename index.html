@@ -179,6 +179,7 @@
                         <label for="login-password" class="floating-label text-gray-400">Senha</label>
                         <button type="button"
                             class="password-toggle absolute right-3 top-0 bottom-0 flex items-center text-gray-500 hover:text-white transition-colors"
+                            aria-label="Mostrar ou ocultar senha"
                             data-target="login-password">
                             <svg class="eye-icon-open w-5 h-5">
                                 <use href="#ico-eye" />
@@ -343,7 +344,7 @@
                                         <div class="flex items-center gap-2">
                                             <button id="btn-clear-notifications"
                                                 class="text-[9px] font-bold text-gray-600 hover:text-white transition-colors hidden uppercase">Limpar</button>
-                                            <button id="close-notif-drawer-btn"
+                                            <button id="close-notif-drawer-btn" aria-label="Fechar notificações"
                                                 class="text-gray-600 hover:text-white transition-colors">
                                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4"
                                                     viewBox="0 0 20 20" fill="currentColor">
@@ -391,7 +392,7 @@
 
                                     <div class="flex items-center justify-between">
                                         <h2 id="total-carteira-valor" class="text-[1.85rem] font-bold text-white tracking-tight leading-none hidden" style="font-feature-settings:'tnum'; font-variant-numeric:tabular-nums;">R$ 0,00</h2>
-                                        <button id="btn-open-patrimonio-hero" class="flex items-center justify-center active:scale-90 transition-all hidden">
+                                        <button id="btn-open-patrimonio-hero" aria-label="Abrir visão detalhada do patrimônio" class="flex items-center justify-center active:scale-90 transition-all hidden">
                                             <svg class="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
                                                 <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/>
                                             </svg>
@@ -912,7 +913,7 @@
                                         class="compact-search-input">
                                 </div>
 
-                                <button id="btn-history-filter" class="filter-funnel-btn">
+                                <button id="btn-history-filter" aria-label="Filtrar histórico" class="filter-funnel-btn">
                                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none"
                                         viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                                         <path stroke-linecap="round" stroke-linejoin="round"
@@ -1038,6 +1039,7 @@
                                     </div>
                                 </div>
                                 <button id="toggle-theme-btn"
+                                    aria-label="Alternar tema claro"
                                     class="relative inline-flex h-6 w-11 items-center rounded-full bg-gray-700 transition-colors focus:outline-none">
                                     <span id="theme-toggle-knob"
                                         class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform translate-x-1"></span>
@@ -1155,6 +1157,7 @@
                                     <span class="settings-label">Notificações Push</span>
                                 </div>
                                 <button id="toggle-notif-btn"
+                                    aria-label="Alternar notificações push"
                                     class="relative inline-flex h-6 w-11 items-center rounded-full bg-gray-700 transition-colors focus:outline-none">
                                     <span id="notif-toggle-knob"
                                         class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform translate-x-1"></span>
@@ -1173,6 +1176,7 @@
                                     <span class="settings-label">Biometria</span>
                                 </div>
                                 <button id="toggle-bio-btn"
+                                    aria-label="Alternar autenticação por biometria"
                                     class="relative inline-flex h-6 w-11 items-center rounded-full bg-gray-700 transition-colors focus:outline-none">
                                     <span id="bio-toggle-knob"
                                         class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform translate-x-1"></span>
@@ -1558,6 +1562,7 @@
                         </div>
                         <div class="flex items-center gap-1 shrink-0">
                             <button id="detalhes-share-btn"
+                                aria-label="Compartilhar ativo"
                                 class="p-2 text-[#666666] hover:text-white rounded-full transition-colors">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24"
                                     stroke="currentColor" stroke-width="2">
@@ -1566,6 +1571,7 @@
                                 </svg>
                             </button>
                             <button id="detalhes-favorito-btn"
+                                aria-label="Favoritar ativo"
                                 class="p-2 text-[#666666] hover:text-yellow-400 rounded-full transition-colors">
                                 <svg id="detalhes-favorito-icon-empty" xmlns="http://www.w3.org/2000/svg"
                                     class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"
@@ -1581,6 +1587,7 @@
                                 </svg>
                             </button>
                             <button id="detalhes-voltar-btn"
+                                aria-label="Voltar"
                                 class="p-2 text-[#666666] hover:text-white rounded-full transition-colors">
                                 <svg class="h-5 w-5">
                                     <use href="#ico-x" />
@@ -1783,6 +1790,7 @@
                 <div class="sticky top-0 bg-[#0a0a0a] z-30 border-b border-white/5">
                     <div class="flex items-center gap-3 px-4 py-3">
                         <button id="patrimonio-voltar-btn"
+                            aria-label="Voltar"
                             class="p-1.5 text-white hover:text-gray-300 rounded-full transition-colors active:scale-90">
                             <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" />
@@ -2014,6 +2022,7 @@
                         </div>
 
                         <button id="proventos-voltar-btn"
+                            aria-label="Voltar"
                             class="p-2 text-[#666666] hover:text-white rounded-full transition-colors">
                             <svg class="h-6 w-6">
                                 <use href="#ico-x" />
@@ -2109,6 +2118,7 @@
                         </div>
 
                         <button id="alocacao-voltar-btn"
+                            aria-label="Voltar"
                             class="p-2 text-[#666666] hover:text-white rounded-full transition-colors">
                             <svg class="h-6 w-6">
                                 <use href="#ico-x" />
@@ -2191,6 +2201,7 @@
                         </div>
 
                         <button id="ipca-voltar-btn"
+                            aria-label="Voltar"
                             class="p-2 text-[#666666] hover:text-white rounded-full transition-colors">
                             <svg class="h-6 w-6">
                                 <use href="#ico-x" />
@@ -2274,6 +2285,7 @@
                         </div>
 
                         <button id="objetivos-voltar-btn"
+                            aria-label="Voltar"
                             class="p-2 text-[#666666] hover:text-white rounded-full transition-colors">
                             <svg class="h-6 w-6">
                                 <use href="#ico-x" />
@@ -2344,7 +2356,7 @@
                         <input type="password" id="new-password-input" placeholder="Nova senha (mín. 6 caracteres)"
                             autocomplete="new-password" required
                             class="w-full p-3 bg-gray-900 border border-gray-800 rounded-full focus:outline-none focus:border-purple-400 text-white pr-10">
-                        <button type="button" class="password-toggle" data-target="new-password-input">
+                        <button type="button" class="password-toggle" aria-label="Mostrar ou ocultar senha" data-target="new-password-input">
                             <svg class="eye-icon-open w-5 h-5">
                                 <use href="#ico-eye" />
                             </svg>
@@ -2366,7 +2378,7 @@
                 style="opacity: 0; transform: scale(0.95);">
                 <div class="flex justify-between items-center mb-4">
                     <h3 class="text-xl font-semibold text-white">Alterar Senha</h3>
-                    <button id="close-change-password-btn" class="text-gray-500 hover:text-white">
+                    <button id="close-change-password-btn" aria-label="Fechar modal de alterar senha" class="text-gray-500 hover:text-white">
                         <svg class="h-6 w-6">
                             <use href="#ico-x" />
                         </svg>
@@ -2380,7 +2392,7 @@
                         <input type="password" id="current-password-input" placeholder="Senha Atual"
                             autocomplete="current-password" required
                             class="w-full p-3 bg-gray-900 border border-gray-800 rounded-full focus:outline-none focus:border-purple-400 text-white pr-10">
-                        <button type="button" class="password-toggle" data-target="current-password-input">
+                        <button type="button" class="password-toggle" aria-label="Mostrar ou ocultar senha" data-target="current-password-input">
                             <svg class="eye-icon-open w-5 h-5">
                                 <use href="#ico-eye" />
                             </svg>
@@ -2394,7 +2406,7 @@
                         <input type="password" id="change-new-password-input"
                             placeholder="Nova Senha (mín. 6 caracteres)" autocomplete="new-password" required
                             class="w-full p-3 bg-gray-900 border border-gray-800 rounded-full focus:outline-none focus:border-purple-400 text-white pr-10">
-                        <button type="button" class="password-toggle" data-target="change-new-password-input">
+                        <button type="button" class="password-toggle" aria-label="Mostrar ou ocultar senha" data-target="change-new-password-input">
                             <svg class="eye-icon-open w-5 h-5">
                                 <use href="#ico-eye" />
                             </svg>
@@ -2408,7 +2420,7 @@
                         <input type="password" id="change-confirm-password-input" placeholder="Confirme a Nova Senha"
                             autocomplete="new-password" required
                             class="w-full p-3 bg-gray-900 border border-gray-800 rounded-full focus:outline-none focus:border-purple-400 text-white pr-10">
-                        <button type="button" class="password-toggle" data-target="change-confirm-password-input">
+                        <button type="button" class="password-toggle" aria-label="Mostrar ou ocultar senha" data-target="change-confirm-password-input">
                             <svg class="eye-icon-open w-5 h-5">
                                 <use href="#ico-eye" />
                             </svg>
@@ -2431,7 +2443,7 @@
             <div class="modal-content card-bg rounded-[2rem] p-6 w-full max-w-sm shadow-2xl border border-white/5">
                 <div class="flex justify-between items-center mb-6">
                     <h3 class="text-lg font-bold text-white tracking-wide">Foto de Perfil</h3>
-                    <button id="close-profile-modal-btn" class="text-gray-500 hover:text-white transition-colors">
+                    <button id="close-profile-modal-btn" aria-label="Fechar modal de perfil" class="text-gray-500 hover:text-white transition-colors">
                         <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                 d="M6 18L18 6M6 6l12 12" />
@@ -2442,7 +2454,7 @@
                 <div class="flex flex-col items-center mb-6 relative">
                     <div id="modal-preview-avatar"
                         class="w-24 h-24 rounded-full bg-[#1C1C1E] border-[3px] border-[#2C2C2E] overflow-hidden flex items-center justify-center mb-4 shadow-lg shrink-0">
-                        <img id="modal-preview-img" src="" class="w-full h-full object-cover hidden" />
+                        <img id="modal-preview-img" src="" alt="Pré-visualização da foto de perfil" class="w-full h-full object-cover hidden" />
                         <div id="modal-preview-fallback"
                             class="w-full h-full bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center">
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 text-white opacity-80"
@@ -2586,6 +2598,7 @@
                         </div>
 
                         <button id="comparador-voltar-btn"
+                            aria-label="Voltar"
                             class="p-2 text-[#666666] hover:text-white rounded-full transition-colors">
                             <svg class="h-6 w-6">
                                 <use href="#ico-x" />

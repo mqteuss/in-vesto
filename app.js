@@ -106,6 +106,36 @@ function base64ToBuffer(base64) {
     return Uint8Array.from(atob(base64), c => c.charCodeAt(0));
 }
 
+function escapeHtml(value) {
+    return String(value ?? '').replace(/[&<>"']/g, (char) => {
+        switch (char) {
+            case '&': return '&amp;';
+            case '<': return '&lt;';
+            case '>': return '&gt;';
+            case '"': return '&quot;';
+            case '\'': return '&#39;';
+            default: return char;
+        }
+    });
+}
+
+function sanitizeHttpUrl(url, fallback = '') {
+    if (typeof url !== 'string' || !url.trim()) return fallback;
+    try {
+        const parsed = new URL(url, window.location.origin);
+        if (parsed.protocol === 'http:' || parsed.protocol === 'https:') {
+            return parsed.href;
+        }
+    } catch (_) { }
+    return fallback;
+}
+
+function decodeHtmlEntities(value) {
+    const textarea = document.createElement('textarea');
+    textarea.innerHTML = String(value ?? '');
+    return textarea.value;
+}
+
 // OTIMIZAÇÃO: Intl.NumberFormat instanciado UMA vez e reutilizado.
 // Evita criar um novo objeto de formatação a cada chamada (até 10x mais rápido em loops).
 const _fmtBRL = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -166,7 +196,7 @@ const KNOWN_UNITS_BDRS = new Set([
     'MODL11', 'BRBI11', 'SULA11', 'SAPR11', 'IGTI11', 'CPLE11', 'ABEV11', 'PETR11',
     'ITUB11', 'BBDC11', 'VALE11', 'AMER11', 'MGLU11', 'VIIA11', 'WEGE11', 'EMBR11',
     'SUZB11', 'ELET11', 'CSNA11', 'GGBR11', 'GOAU11', 'USIM11', 'CSAN11', 'RRRP11',
-    'Prio11', 'ENAT11', 'VBBR11', 'UGPA11', 'BBSE11', 'CXSE11', 'PSSA11', 'IRBR11',
+    'PRIO11', 'ENAT11', 'VBBR11', 'UGPA11', 'BBSE11', 'CXSE11', 'PSSA11', 'IRBR11',
     'MULT11', 'CYRE11', 'LREN11', 'SBFG11', 'ASAI11', 'CRFB11', 'NTCO11', 'CASH11',
     'TOTS11', 'LWSA11', 'AERI11', 'INTB11', 'VIVT11', 'TIMS11', 'EQTL11', 'NEOE11',
     'HYPE11', 'RDOR11', 'RADL11', 'FLRY11', 'MDIA11', 'SMTO11', 'JBSS11', 'MRFG11',
@@ -177,6 +207,7 @@ const KNOWN_UNITS_BDRS = new Set([
     'VULC11', 'ALPA11', 'DXCO11', 'LEVE11', 'MYPK11', 'RCSL11', 'TUPY11', 'WIZC11',
     'AESB11'
 ]);
+const TICKER_REGEX = /^[A-Z]{4}\d{1,2}[A-Z]?$/;
 
 const isFII = (symbol) => {
     if (!symbol) return false;
@@ -221,6 +252,7 @@ function isB3Open() {
 }
 
 const REFRESH_INTERVAL = 300000;
+let refreshIntervalId = null;
 const CACHE_PRECO_MERCADO_ABERTO = 1000 * 60 * 5;
 const CACHE_PRECO_MERCADO_FECHADO = 1000 * 60 * 60 * 12;
 const CACHE_NOTICIAS = 1000 * 60 * 15;
@@ -2606,28 +2638,38 @@ document.addEventListener('DOMContentLoaded', async () => {
     let _newsIsFirstItem = true;
 
     function _criarNoticiaElemento(article, dataLabel, index, isFirstItem) {
-        const sourceName = article.sourceName || 'Fonte';
-        const faviconUrl = article.favicon || `https://www.google.com/s2/favicons?domain=${article.sourceHostname || 'google.com'}&sz=64`;
+        const rawSourceName = article.sourceName || 'Fonte';
+        const sourceName = escapeHtml(rawSourceName);
+        const defaultFavicon = `https://www.google.com/s2/favicons?domain=${article.sourceHostname || 'google.com'}&sz=64`;
+        const faviconUrl = sanitizeHttpUrl(article.favicon, defaultFavicon);
+        const safeLink = sanitizeHttpUrl(article.link, '#');
+        const safeSummary = escapeHtml(article.summary || 'Resumo não disponível.');
+        const rawTitle = article.title || 'Título indisponível';
         let horaPub = '';
         try { horaPub = new Date(article.publicationDate).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }); } catch (e) { horaPub = '--:--'; }
         const safeLabel = dataLabel.replace(/[^a-zA-Z0-9]/g, '');
         const drawerId = `news-drawer-${safeLabel}-${index}`;
 
         const tickerRegex = /[A-Z]{4}(3|4|5|6|11)/g;
-        const foundTickers = [...new Set(article.title.match(tickerRegex) || [])];
-        
-        let displayTitle = article.title || 'Título indisponível';
+        const foundTickers = [...new Set((rawTitle.match(tickerRegex) || []).map(t => t.toUpperCase()))];
+
+        let displayTitle = escapeHtml(rawTitle);
         if (foundTickers.length > 0) {
             foundTickers.forEach(ticker => {
                 const rx = new RegExp(`\\b${ticker}\\b`, 'g');
-                displayTitle = displayTitle.replace(rx, `<span class="news-ticker-tag hover:underline cursor-pointer transition-colors" style="color:#8ab4f8" data-action="view-ticker" data-symbol="${ticker}">${ticker}</span>`);
+                const safeTicker = escapeHtml(ticker);
+                displayTitle = displayTitle.replace(
+                    rx,
+                    `<span class="news-ticker-tag hover:underline cursor-pointer transition-colors" style="color:#8ab4f8" data-action="view-ticker" data-symbol="${safeTicker}">${safeTicker}</span>`
+                );
             });
         }
 
-        const hasImage = article.imageUrl;
+        const safeImageUrl = sanitizeHttpUrl(article.imageUrl);
+        const hasImage = !!safeImageUrl;
         let coverHtml = '';
         if (hasImage) {
-            coverHtml = `<img src="${article.imageUrl}" alt="" class="news-cover-img" loading="lazy" decoding="async" onload="this.classList.add('loaded')" onerror="this.parentElement.style.display='none'" />`;
+            coverHtml = `<img src="${safeImageUrl}" alt="" class="news-cover-img" loading="lazy" decoding="async" onload="this.classList.add('loaded')" onerror="this.parentElement.style.display='none'" />`;
         }
 
         const item = document.createElement('div');
@@ -2649,7 +2691,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         item.setAttribute('data-action', 'toggle-news');
         item.setAttribute('data-target', drawerId);
 
-        const safeShareTitle = (article.title || '').replace(/"/g, '&quot;');
+        const safeShareTitle = escapeHtml(rawTitle);
 
         let tempoRelativo = '';
         try {
@@ -2701,7 +2743,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                         <button class="share-news-btn text-gray-600 hover:text-white transition-colors p-1.5 rounded-full hover:bg-white/5 active:scale-90"
                                 data-action="share-news" 
                                 data-title="${safeShareTitle}" 
-                                data-link="${article.link || ''}">
+                                data-link="${safeLink}"
+                                aria-label="Compartilhar notícia">
                             <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
                             </svg>
@@ -2712,10 +2755,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                 <div id="${drawerId}" class="card-drawer">
                     <div class="drawer-content pb-4 px-2">
                         <div class="text-[13px] text-gray-400 leading-relaxed border-l-2 border-[#2C2C2E] pl-3">
-                            ${article.summary ? article.summary : 'Resumo não disponível.'}
+                            ${safeSummary}
                         </div>
                         <div class="mt-4 pl-3">
-                            <a href="${article.link}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1.5 text-xs font-bold transition-colors hover:underline active:scale-95" style="color:#8ab4f8">
+                            <a href="${safeLink}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1.5 text-xs font-bold transition-colors hover:underline active:scale-95" style="color:#8ab4f8">
                                 Ler notícia completa
                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
                             </a>
@@ -6565,6 +6608,13 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
 
         if (ticker.endsWith('.SA')) ticker = ticker.replace('.SA', '');
 
+        if (ticker && !TICKER_REGEX.test(ticker)) {
+            showToast("Ticker inválido. Use o formato da B3 (ex.: PETR4, HGLG11).");
+            tickerInput.classList.add('border-red-500');
+            setTimeout(() => tickerInput.classList.remove('border-red-500'), 2000);
+            return;
+        }
+
         if (!ticker || !novaQuantidade || novaQuantidade <= 0 || !novoPreco || novoPreco < 0 || !dataTransacao) {
             showToast("Preencha todos os campos.");
             if (!ticker) tickerInput.classList.add('border-red-500');
@@ -9764,7 +9814,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
         const shareBtn = e.target.closest('[data-action="share-news"]');
         if (shareBtn) {
             e.stopPropagation();
-            const title = shareBtn.dataset.title;
+            const title = decodeHtmlEntities(shareBtn.dataset.title || '');
             const link = shareBtn.dataset.link;
             
             if (navigator.share) {
@@ -10692,31 +10742,37 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
                         tempoRelativo = `${diffD}d`;
                     }
 
-                    const favicon = article.favicon || `https://www.google.com/s2/favicons?domain=${article.sourceHostname}&sz=64`;
-                    const hasImage = !!article.imageUrl;
+                    const rawSourceName = article.sourceName || 'Notícia';
+                    const safeSourceName = escapeHtml(rawSourceName);
+                    const safeTitle = escapeHtml(article.title || 'Título indisponível');
+                    const safeLink = sanitizeHttpUrl(article.link, '#');
+                    const faviconFallback = `https://www.google.com/s2/favicons?domain=${article.sourceHostname || 'google.com'}&sz=64`;
+                    const favicon = sanitizeHttpUrl(article.favicon, faviconFallback);
+                    const safeImageUrl = sanitizeHttpUrl(article.imageUrl);
+                    const hasImage = !!safeImageUrl;
                     const isLast = index === topArticles.length - 1;
                     const borderClass = isLast ? '' : 'border-b border-white/5';
                     
                     html += `
-                    <a href="${article.link || '#'}" target="_blank" rel="noopener noreferrer" class="block py-4 px-4 ${borderClass} hover:bg-white/5 active:bg-white/10 transition-colors">
+                    <a href="${safeLink}" target="_blank" rel="noopener noreferrer" class="block py-4 px-4 ${borderClass} hover:bg-white/5 active:bg-white/10 transition-colors">
                         <div class="flex gap-4 items-start">
                             <div class="flex-1 min-w-0 flex flex-col justify-between">
                                 <div>
                                     <div class="flex items-center gap-2 mb-2">
                                         <div class="w-4 h-4 rounded-full flex-shrink-0 overflow-hidden bg-white/10">
-                                            <img src="${favicon}" loading="lazy" class="w-full h-full object-contain" onerror="this.src='/icons/icon-72x72.png';" />
+                                            <img src="${favicon}" loading="lazy" class="w-full h-full object-contain" onerror="this.src='/icons/icon-192x192.png';" />
                                         </div>
-                                        <span class="text-[10px] font-bold text-gray-400 truncate uppercase tracking-widest">${article.sourceName || 'Notícia'}</span>
+                                        <span class="text-[10px] font-bold text-gray-400 truncate uppercase tracking-widest">${safeSourceName}</span>
                                         <div class="w-1 h-1 rounded-full bg-gray-600"></div>
                                         <span class="text-[10px] font-bold text-gray-500">${tempoRelativo}</span>
                                     </div>
-                                    <h3 class="text-[13px] font-bold text-gray-200 leading-snug line-clamp-3">${article.title}</h3>
+                                    <h3 class="text-[13px] font-bold text-gray-200 leading-snug line-clamp-3">${safeTitle}</h3>
                                 </div>
                             </div>
                             
                             ${hasImage ? `
                             <div class="w-20 h-20 flex-shrink-0 bg-[#1c1c1e] rounded-xl overflow-hidden border border-white/5 relative">
-                                <img src="${article.imageUrl}" loading="lazy" class="w-full h-full object-cover absolute inset-0" onerror="this.parentElement.style.display='none';"/>
+                                <img src="${safeImageUrl}" loading="lazy" class="w-full h-full object-cover absolute inset-0" onerror="this.parentElement.style.display='none';"/>
                             </div>
                             ` : ''}
                         </div>
@@ -10794,7 +10850,8 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
             handleAtualizarNoticias(false);
 
             // Refresh periódico com force=false (sem skeletons, silencioso)
-            setInterval(() => {
+            if (refreshIntervalId) clearInterval(refreshIntervalId);
+            refreshIntervalId = setInterval(() => {
                 atualizarTodosDados(false);
             }, REFRESH_INTERVAL);
 

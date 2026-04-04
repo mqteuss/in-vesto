@@ -2,7 +2,7 @@
 // CONFIGURAÇÃO
 // Incremente CACHE_VERSION a cada deploy para forçar atualização.
 // ---------------------------------------------------------
-const CACHE_VERSION = 'v31'; // Forced cache refresh for IDB V2
+const CACHE_VERSION = 'v32'; // Ajustes de cache e badge path
 const CACHE_NAME = `vesto-cache-${CACHE_VERSION}`;
 const DEFAULT_URL = '/?tab=tab-carteira';
 
@@ -28,7 +28,7 @@ const LOCAL_FILES = [
     '/style-tailwind.css',
     '/manifest.json',
     '/logo-vesto.png',
-    '/public/sininhov2.png',
+    '/sininhov2.png',
     '/icons/carteira.png',
     '/icons/noticias.png',
     '/icons/historico.png',
@@ -229,7 +229,7 @@ self.addEventListener('push', event => {
     const options = {
         body: data.body || '',
         icon: data.icon || '/icons/icon-192x192.png',
-        badge: data.badge || '/public/sininhov2.png',
+        badge: data.badge || '/sininhov2.png',
         vibrate: [100, 50, 100],
         data: {
             url: data.url || DEFAULT_URL,

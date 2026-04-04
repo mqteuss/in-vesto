@@ -1,4 +1,4 @@
-import Parser from 'rss-parser';
+const Parser = require('rss-parser');
 
 // ---------------------------------------------------------
 // CONFIGURAÇÃO
@@ -24,6 +24,15 @@ const log = {
     warn:  (msg, meta = {}) => log._w('warn',  msg, meta),
     error: (msg, meta = {}) => log._w('error', msg, meta),
 };
+
+function applyCors(response, allowedOrigin) {
+    response.setHeader('Access-Control-Allow-Origin', allowedOrigin);
+    if (allowedOrigin !== '*') {
+        response.setHeader('Access-Control-Allow-Credentials', 'true');
+    }
+    response.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+    response.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+}
 
 // ---------------------------------------------------------
 // SINGLETON: Parser instanciado uma única vez no módulo.
@@ -216,14 +225,11 @@ function extractArticles(feedItems) {
 // ---------------------------------------------------------
 // HANDLER PRINCIPAL
 // ---------------------------------------------------------
-export default async function handler(request, response) {
+module.exports = async function handler(request, response) {
     const rid = requestId();
 
     // CORS — headers mínimos necessários para uma API GET pública
-    response.setHeader('Access-Control-Allow-Credentials', true);
-    response.setHeader('Access-Control-Allow-Origin', CONFIG.allowedOrigin);
-    response.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
-    response.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+    applyCors(response, CONFIG.allowedOrigin);
     response.setHeader('X-Request-Id', rid);
 
     if (request.method === 'OPTIONS') return response.status(200).end();
@@ -240,23 +246,22 @@ export default async function handler(request, response) {
         return response.status(400).json({ error: "Parâmetro 'q' inválido." });
     }
 
-    const queryTerm  = rawQ ? sanitizeQuery(rawQ) : CONFIG.defaultQuery;
+    const sanitizedQ = rawQ ? sanitizeQuery(rawQ) : '';
+    const queryTerm  = sanitizedQ || CONFIG.defaultQuery;
     const fullQuery  = `${queryTerm} when:${CONFIG.windowDays}d`;
     const feedUrl    = `https://news.google.com/rss/search?q=${encodeURIComponent(fullQuery)}&hl=pt-BR&gl=BR&ceid=BR:pt-419`;
 
     log.info('News request', { rid, query: queryTerm });
 
+    let timeoutId;
     try {
         // Timeout via Promise.race — rss-parser não expõe AbortController,
         // então competimos com uma Promise que rejeita após o limite.
-        const timeoutPromise = new Promise((_, reject) =>
-            setTimeout(() => reject(new Error('TIMEOUT')), CONFIG.timeoutMs)
-        );
+        const timeoutPromise = new Promise((_, reject) => {
+            timeoutId = setTimeout(() => reject(new Error('TIMEOUT')), CONFIG.timeoutMs);
+        });
 
-        const feed = await Promise.race([
-            rssParser.parseURL(feedUrl),
-            timeoutPromise,
-        ]);
+        const feed = await Promise.race([rssParser.parseURL(feedUrl), timeoutPromise]);
 
         let targetItems = feed.items;
         
@@ -271,7 +276,7 @@ export default async function handler(request, response) {
                 targetItems = feed.items.filter(item => {
                     const textContent = `${item.title || ''} ${item.contentSnippet || item.content || ''}`.toUpperCase();
                     // Exige a palavra exata usando word boundaries
-                    return allowedTickers.some(ticker => new RegExp(`\\b${ticker}\\b`).test(textContent));
+                    return allowedTickers.some(ticker => new RegExp(`\\b${escapeRegExp(ticker)}\\b`).test(textContent));
                 });
             }
         }
@@ -312,5 +317,7 @@ export default async function handler(request, response) {
                 ? 'Não foi possível obter o feed de notícias. Tente novamente.'
                 : 'Erro interno ao processar notícias.',
         });
+    } finally {
+        if (timeoutId) clearTimeout(timeoutId);
     }
 }

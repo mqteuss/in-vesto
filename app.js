@@ -5840,12 +5840,14 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
                 });
 
                 // Quando background terminar, atualiza preços
-                Promise.all(bgPromises).then(freshResults => {
+                Promise.all(bgPromises).then(async freshResults => {
                     const freshMap = new Map();
                     freshResults.filter(Boolean).forEach(r => freshMap.set(r.symbol, r));
                     if (freshMap.size > 0) {
                         precosAtuais = precosAtuais.map(p => freshMap.get(p.symbol) || p);
-                        renderizarCarteiraDebounced();
+                        // Sincroniza dashboard e gráfico intradiário na mesma base de preços.
+                        await renderizarCarteira();
+                        atualizarGraficoIntradiario();
                     }
                 });
 
@@ -6623,16 +6625,17 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
         promessaPrecos.then(async precos => {
             if (precos.length > 0) {
                 precosAtuais = precos;
-                renderizarCarteiraDebounced(); // debounced — aguarda 100 ms antes de renderizar
-                // Atualiza o gráfico intradiário da carteira (fire-and-forget)
+                // Renderiza imediatamente para gravar dashboardIntradayState antes do gráfico.
+                await renderizarCarteira();
+                // Atualiza o gráfico intradiário usando a mesma base consolidada do dashboard.
                 atualizarGraficoIntradiario();
             } else if (precosAtuais.length === 0) {
-                renderizarCarteiraDebounced();
+                await renderizarCarteira();
             }
         }).catch(async err => {
             console.error("Erro ao buscar preços (BFF):", err);
             showToast("Erro ao buscar preços.");
-            if (precosAtuais.length === 0) { renderizarCarteiraDebounced(); }
+            if (precosAtuais.length === 0) { await renderizarCarteira(); }
         });
 
         promessaProventos.then(async proventosFuturos => {

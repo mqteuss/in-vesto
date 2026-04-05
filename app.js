@@ -244,6 +244,34 @@ function getSaoPauloDateTime() {
     }
 }
 
+function getDatePartsInSaoPaulo(referenceTimestamp = Date.now()) {
+    try {
+        const parts = new Intl.DateTimeFormat('en-CA', {
+            timeZone: 'America/Sao_Paulo',
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit'
+        }).formatToParts(new Date(referenceTimestamp));
+
+        return {
+            year: parts.find(p => p.type === 'year')?.value || null,
+            month: parts.find(p => p.type === 'month')?.value || null,
+            day: parts.find(p => p.type === 'day')?.value || null
+        };
+    } catch (_) {
+        return { year: null, month: null, day: null };
+    }
+}
+
+function getB3SessionStartTimestamp(referenceTimestamp = Date.now()) {
+    const { year, month, day } = getDatePartsInSaoPaulo(referenceTimestamp);
+    if (!year || !month || !day) return null;
+
+    // B3: abertura regular às 10:00 no horário de São Paulo.
+    const sessionStart = new Date(`${year}-${month}-${day}T10:00:00-03:00`).getTime();
+    return Number.isFinite(sessionStart) ? sessionStart : null;
+}
+
 function isB3Open() {
     const { dayOfWeek, hour } = getSaoPauloDateTime();
     if (dayOfWeek === 0 || dayOfWeek === 6) { return false; }
@@ -5075,9 +5103,21 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
             
             // Variação do dia: calcula a partir do % APENAS se houver cotação real de mercado
             if (dadoPreco && precoMercado > 0) {
-                const varPercent = dadoPreco.regularMarketChangePercent ?? 0;
-                const precoAnterior = precoMercado / (1 + varPercent / 100);
-                totalVariacaoDia += ((precoMercado - precoAnterior) * ativo.quantity);
+                const prevCloseRaw = Number(dadoPreco.regularMarketPreviousClose);
+                let precoAnterior = prevCloseRaw > 0 ? prevCloseRaw : 0;
+
+                // Fallback para ativos sem previousClose explícito.
+                if (!(precoAnterior > 0)) {
+                    const varPercent = Number(dadoPreco.regularMarketChangePercent ?? 0);
+                    const divisor = 1 + (varPercent / 100);
+                    if (Number.isFinite(divisor) && divisor > 0) {
+                        precoAnterior = precoMercado / divisor;
+                    }
+                }
+
+                if (precoAnterior > 0) {
+                    totalVariacaoDia += ((precoMercado - precoAnterior) * ativo.quantity);
+                }
             }
         });
 
@@ -5351,13 +5391,14 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
     // =============================================
     let intradayPortfolioChartInstance = null;
     const CACHE_INTRADAY = 5 * 60 * 1000; // 5 minutos
+    const INTRADAY_CACHE_KEY = 'intraday_portfolio_chart_v2';
 
     async function buscarDadosIntradiariosCarteira() {
         if (carteiraCalculada.length === 0) return null;
 
         // Verifica cache primeiro
         try {
-            const cached = await getCache('intraday_portfolio_chart');
+            const cached = await getCache(INTRADAY_CACHE_KEY);
             if (cached) return cached;
         } catch (_) { }
 
@@ -5373,6 +5414,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
         // Cada ativo guarda sua série de preços separadamente
         const assetSeries = [];
         const allTimestamps = new Set();
+        const intradayPrecosMap = new Map(precosAtuais.map(p => [p.symbol, p]));
 
         // Busca sequencial (for...of) via Yahoo Finance scraper — sem Promise.all
         for (const ativo of carteiraCalculada) {
@@ -5383,18 +5425,43 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
                 if (points && points.length > 0) {
                     const qtdCotas = ativo.quantity || 0;
                     const series = new Map();
+                    let firstTimestamp = null;
+                    let firstPointPrice = 0;
 
                     for (const ponto of points) {
-                        const ts = ponto.timestamp || new Date(ponto.date).getTime();
-                        const preco = ponto.price ?? ponto.close ?? ponto.open ?? 0;
+                        const ts = Number(ponto.timestamp || new Date(ponto.date).getTime());
+                        const preco = Number(ponto.price ?? ponto.close ?? ponto.open ?? 0);
+                        if (!Number.isFinite(ts)) continue;
+
                         if (preco > 0) {
                             series.set(ts, preco);
                             allTimestamps.add(ts);
+
+                            if (firstTimestamp === null || ts < firstTimestamp) {
+                                firstTimestamp = ts;
+                                const openValue = Number(ponto.open ?? preco);
+                                firstPointPrice = openValue > 0 ? openValue : preco;
+                            }
                         }
                     }
 
                     if (series.size > 0) {
-                        assetSeries.push({ symbol: ativo.symbol, qtd: qtdCotas, series });
+                        const dadoPreco = intradayPrecosMap.get(ativo.symbol);
+                        const fallbackCandidates = [
+                            Number(dadoPreco?.regularMarketPreviousClose),
+                            Number(firstPointPrice),
+                            Number(dadoPreco?.regularMarketPrice),
+                            Number(ativo.precoMedio)
+                        ];
+                        const fallbackStartPrice = fallbackCandidates.find(v => Number.isFinite(v) && v > 0) || 0;
+
+                        assetSeries.push({
+                            symbol: ativo.symbol,
+                            qtd: qtdCotas,
+                            series,
+                            firstTimestamp: firstTimestamp ?? Number.MAX_SAFE_INTEGER,
+                            fallbackStartPrice
+                        });
                     }
                 }
             } catch (err) {
@@ -5409,6 +5476,12 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
         if (allTimestamps.size === 0 || assetSeries.length === 0) {
             if (intradayContainer) intradayContainer.classList.add('hidden');
             return null;
+        }
+
+        const earliestTimestamp = Math.min(...allTimestamps);
+        const b3SessionStart = getB3SessionStartTimestamp(earliestTimestamp);
+        if (Number.isFinite(b3SessionStart) && b3SessionStart > 0 && b3SessionStart < earliestTimestamp) {
+            allTimestamps.add(b3SessionStart);
         }
 
         // Ordena todos os timestamps
@@ -5426,8 +5499,18 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
                 if (asset.series.has(ts)) {
                     lastKnownPrice.set(asset.symbol, asset.series.get(ts));
                 }
-                const preco = lastKnownPrice.get(asset.symbol) || 0;
-                totalValue += preco * asset.qtd;
+
+                let preco = lastKnownPrice.get(asset.symbol);
+                if (!(preco > 0) && ts <= asset.firstTimestamp) {
+                    preco = asset.fallbackStartPrice;
+                    if (preco > 0) {
+                        lastKnownPrice.set(asset.symbol, preco);
+                    }
+                }
+
+                if (preco > 0) {
+                    totalValue += preco * asset.qtd;
+                }
             }
 
             dataPoints.push({ date: ts, value: totalValue });
@@ -5435,7 +5518,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
 
         // Cacheia por 5 minutos
         try {
-            await setCache('intraday_portfolio_chart', dataPoints, CACHE_INTRADAY);
+            await setCache(INTRADAY_CACHE_KEY, dataPoints, CACHE_INTRADAY);
         } catch (_) { }
 
         return dataPoints;

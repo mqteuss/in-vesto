@@ -231,16 +231,118 @@ function parseMesAno(mesAnoStr) {
     }
 }
 
-function getSaoPauloDateTime() {
+const _b3HolidayCacheByYear = new Map();
+
+function pad2(value) {
+    return String(value).padStart(2, '0');
+}
+
+function toDateKey(year, month, day) {
+    return `${year}-${pad2(month)}-${pad2(day)}`;
+}
+
+function shiftDateKey(dateKey, dayDelta) {
+    const [y, m, d] = String(dateKey).split('-').map(Number);
+    if (!y || !m || !d) return dateKey;
+    const utc = new Date(Date.UTC(y, m - 1, d));
+    utc.setUTCDate(utc.getUTCDate() + dayDelta);
+    return toDateKey(utc.getUTCFullYear(), utc.getUTCMonth() + 1, utc.getUTCDate());
+}
+
+function calculateEasterDateKey(year) {
+    // Meeus/Jones/Butcher algorithm for Gregorian calendar.
+    const a = year % 19;
+    const b = Math.floor(year / 100);
+    const c = year % 100;
+    const d = Math.floor(b / 4);
+    const e = b % 4;
+    const f = Math.floor((b + 8) / 25);
+    const g = Math.floor((b - f + 1) / 3);
+    const h = (19 * a + b - d - g + 15) % 30;
+    const i = Math.floor(c / 4);
+    const k = c % 4;
+    const l = (32 + 2 * e + 2 * i - h - k) % 7;
+    const m = Math.floor((a + 11 * h + 22 * l) / 451);
+    const month = Math.floor((h + l - 7 * m + 114) / 31); // 3=Mar, 4=Apr
+    const day = ((h + l - 7 * m + 114) % 31) + 1;
+    return toDateKey(year, month, day);
+}
+
+function getB3HolidaySet(year) {
+    if (_b3HolidayCacheByYear.has(year)) {
+        return _b3HolidayCacheByYear.get(year);
+    }
+
+    const easter = calculateEasterDateKey(year);
+    const carnavalSegunda = shiftDateKey(easter, -48);
+    const carnavalTerca = shiftDateKey(easter, -47);
+    const sextaSanta = shiftDateKey(easter, -2);
+    const corpusChristi = shiftDateKey(easter, 60);
+
+    const holidays = new Set([
+        `${year}-01-01`, // Confraternizacao Universal
+        `${year}-01-25`, // Aniversario de Sao Paulo (B3 fechada)
+        carnavalSegunda,
+        carnavalTerca,
+        sextaSanta,
+        `${year}-04-21`, // Tiradentes
+        `${year}-05-01`, // Dia do Trabalho
+        corpusChristi,
+        `${year}-09-07`, // Independencia
+        `${year}-10-12`, // Nossa Senhora Aparecida
+        `${year}-11-02`, // Finados
+        `${year}-11-15`, // Proclamacao da Republica
+        `${year}-11-20`, // Dia da Consciencia Negra
+        `${year}-12-24`, // Vespera de Natal (sem sessao regular)
+        `${year}-12-25`, // Natal
+        `${year}-12-31`  // Vespera de Ano Novo (sem sessao regular)
+    ]);
+
+    _b3HolidayCacheByYear.set(year, holidays);
+    return holidays;
+}
+
+function isB3Holiday(dateKey) {
+    if (!dateKey) return false;
+    const year = Number(dateKey.slice(0, 4));
+    if (!Number.isInteger(year)) return false;
+    return getB3HolidaySet(year).has(dateKey);
+}
+
+function getB3SessionWindow(dateKey) {
+    const regularWindow = { openHour: 10, openMinute: 0, closeHour: 18, closeMinute: 0 };
+    if (!dateKey) return regularWindow;
+
+    const year = Number(dateKey.slice(0, 4));
+    if (!Number.isInteger(year)) return regularWindow;
+
+    // Na Quarta-feira de Cinzas, a sessao regular inicia apos o meio-dia.
+    const ashWednesday = shiftDateKey(calculateEasterDateKey(year), -46);
+    if (dateKey === ashWednesday) {
+        return { openHour: 13, openMinute: 0, closeHour: 18, closeMinute: 0 };
+    }
+
+    return regularWindow;
+}
+
+function getSaoPauloDateTime(referenceTimestamp = Date.now()) {
     try {
-        const spTimeStr = new Date().toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' });
+        const spTimeStr = new Date(referenceTimestamp).toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' });
         const spDate = new Date(spTimeStr);
         const dayOfWeek = spDate.getDay();
         const hour = spDate.getHours();
-        return { dayOfWeek, hour };
+        const minute = spDate.getMinutes();
+        const { year, month, day } = getDatePartsInSaoPaulo(referenceTimestamp);
+        const dateKey = (year && month && day) ? `${year}-${month}-${day}` : null;
+        return { dayOfWeek, hour, minute, dateKey };
     } catch (e) {
-        const localDate = new Date();
-        return { dayOfWeek: localDate.getDay(), hour: localDate.getHours() };
+        const localDate = new Date(referenceTimestamp);
+        return {
+            dayOfWeek: localDate.getDay(),
+            hour: localDate.getHours(),
+            minute: localDate.getMinutes(),
+            dateKey: toDateKey(localDate.getFullYear(), localDate.getMonth() + 1, localDate.getDate())
+        };
     }
 }
 
@@ -267,16 +369,40 @@ function getB3SessionStartTimestamp(referenceTimestamp = Date.now()) {
     const { year, month, day } = getDatePartsInSaoPaulo(referenceTimestamp);
     if (!year || !month || !day) return null;
 
-    // B3: abertura regular às 10:00 no horário de São Paulo.
-    const sessionStart = new Date(`${year}-${month}-${day}T10:00:00-03:00`).getTime();
+    const dateKey = `${year}-${month}-${day}`;
+    const session = getB3SessionWindow(dateKey);
+    const sessionStart = new Date(
+        `${year}-${month}-${day}T${pad2(session.openHour)}:${pad2(session.openMinute)}:00-03:00`
+    ).getTime();
     return Number.isFinite(sessionStart) ? sessionStart : null;
 }
 
-function isB3Open() {
-    const { dayOfWeek, hour } = getSaoPauloDateTime();
-    if (dayOfWeek === 0 || dayOfWeek === 6) { return false; }
-    if (hour >= 10 && hour < 18) { return true; }
-    return false;
+function getB3MarketStatus(referenceTimestamp = Date.now()) {
+    const { dayOfWeek, hour, minute, dateKey } = getSaoPauloDateTime(referenceTimestamp);
+
+    if (dayOfWeek === 0 || dayOfWeek === 6) {
+        return { open: false, reason: 'Fim de semana' };
+    }
+    if (isB3Holiday(dateKey)) {
+        return { open: false, reason: 'Feriado B3' };
+    }
+
+    const session = getB3SessionWindow(dateKey);
+    const nowMinutes = (hour * 60) + minute;
+    const openMinutes = (session.openHour * 60) + session.openMinute;
+    const closeMinutes = (session.closeHour * 60) + session.closeMinute;
+
+    if (nowMinutes < openMinutes) {
+        return { open: false, reason: `Abre ${pad2(session.openHour)}:${pad2(session.openMinute)}` };
+    }
+    if (nowMinutes >= closeMinutes) {
+        return { open: false, reason: `Encerrada ${pad2(session.closeHour)}:${pad2(session.closeMinute)}` };
+    }
+    return { open: true, reason: 'Sessao regular' };
+}
+
+function isB3Open(referenceTimestamp = Date.now()) {
+    return getB3MarketStatus(referenceTimestamp).open;
 }
 
 const REFRESH_INTERVAL = 300000;
@@ -2974,14 +3100,18 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // ── Status do Mercado (B3 Aberta/Fechada) ──
     function atualizarStatusMercado() {
-        const open = isB3Open();
+        const status = getB3MarketStatus();
+        const open = status.open;
         const pill = document.getElementById('market-status-pill');
         if (marketStatusDot) {
             marketStatusDot.className = `market-status-dot ${open ? 'open' : 'closed'}`;
             if (pill) {
                 pill.classList.toggle('open', open);
-                pill.title = open ? 'B3 Aberta' : 'B3 Fechada';
+                pill.title = open ? 'B3 Aberta' : `B3 Fechada (${status.reason})`;
             }
+        }
+        if (marketStatusText) {
+            marketStatusText.textContent = open ? 'B3 aberta' : `B3 fechada (${status.reason})`;
         }
     }
 
@@ -2989,9 +3119,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     const marketPill = document.getElementById('market-status-pill');
     if (marketPill) {
         marketPill.addEventListener('click', () => {
-            const open = isB3Open();
+            const status = getB3MarketStatus();
+            const open = status.open;
             showToast(
-                open ? 'A Bolsa de Valores (B3) está Aberta' : 'A Bolsa de Valores (B3) está Fechada',
+                open
+                    ? 'A Bolsa de Valores (B3) esta Aberta'
+                    : `A Bolsa de Valores (B3) esta Fechada (${status.reason})`,
                 open ? 'success' : 'error'
             );
         });
@@ -5400,8 +5533,30 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
     // GRÁFICO INTRADIÁRIO DA CARTEIRA
     // =============================================
     let intradayPortfolioChartInstance = null;
-    const CACHE_INTRADAY = 5 * 60 * 1000; // 5 minutos
+    const CACHE_INTRADAY_OPEN = 5 * 60 * 1000; // 5 minutos
+    const CACHE_INTRADAY_CLOSED = 4 * 60 * 60 * 1000; // 4 horas
     const INTRADAY_CACHE_KEY = 'intraday_portfolio_chart_v2';
+    let lastIntradayChartSignature = '';
+
+    function buildIntradayChartSignature(dataPoints) {
+        if (!Array.isArray(dataPoints) || dataPoints.length === 0) return '';
+
+        const first = dataPoints[0];
+        const mid = dataPoints[Math.floor(dataPoints.length / 2)];
+        const last = dataPoints[dataPoints.length - 1];
+        const dash = window.dashboardIntradayState || {};
+
+        const parts = [
+            dataPoints.length,
+            Number(first?.date || 0), Number(first?.value || 0).toFixed(2),
+            Number(mid?.date || 0), Number(mid?.value || 0).toFixed(2),
+            Number(last?.date || 0), Number(last?.value || 0).toFixed(2),
+            Number(dash.currentValue || 0).toFixed(2),
+            Number(dash.variation || 0).toFixed(2)
+        ];
+
+        return parts.join('|');
+    }
 
     async function buscarDadosIntradiariosCarteira() {
         if (carteiraCalculada.length === 0) return null;
@@ -5528,7 +5683,8 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
 
         // Cacheia por 5 minutos
         try {
-            await setCache(INTRADAY_CACHE_KEY, dataPoints, CACHE_INTRADAY);
+            const intradayTtl = isB3Open() ? CACHE_INTRADAY_OPEN : CACHE_INTRADAY_CLOSED;
+            await setCache(INTRADAY_CACHE_KEY, dataPoints, intradayTtl);
         } catch (_) { }
 
         return dataPoints;
@@ -5694,10 +5850,15 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
         });
     }
 
-    async function atualizarGraficoIntradiario() {
+    async function atualizarGraficoIntradiario(force = false) {
         try {
             const dataPoints = await buscarDadosIntradiariosCarteira();
             if (dataPoints && dataPoints.length >= 2) {
+                const signature = buildIntradayChartSignature(dataPoints);
+                if (!force && intradayPortfolioChartInstance && signature === lastIntradayChartSignature) {
+                    return;
+                }
+                lastIntradayChartSignature = signature;
                 renderizarGraficoIntradiarioCarteira(dataPoints);
             }
         } catch (err) {
@@ -6628,7 +6789,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
                 // Renderiza imediatamente para gravar dashboardIntradayState antes do gráfico.
                 await renderizarCarteira();
                 // Atualiza o gráfico intradiário usando a mesma base consolidada do dashboard.
-                atualizarGraficoIntradiario();
+                atualizarGraficoIntradiario(force);
             } else if (precosAtuais.length === 0) {
                 await renderizarCarteira();
             }

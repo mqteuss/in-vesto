@@ -5095,14 +5095,24 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
         // PASS 1: Calcular totais globais
         carteiraOrdenada.forEach(ativo => {
             const dadoPreco = precosMap.get(ativo.symbol);
-            const precoMercado = dadoPreco ? (dadoPreco.regularMarketPrice ?? 0) : 0;
-            const precoAtual = precoMercado > 0 ? precoMercado : (ativo.precoMedio || 0); // Fallback para renda fixa / missing data
+            const quantidade = Number(ativo.quantity) || 0;
+            const precoMedio = Number(ativo.precoMedio) || 0;
+            const precoMercadoRaw = Number(dadoPreco?.regularMarketPrice);
+            const precoMercado = Number.isFinite(precoMercadoRaw) ? precoMercadoRaw : 0;
+            const precoAtual = precoMercado > 0 ? precoMercado : precoMedio; // Fallback para renda fixa / missing data
 
-            totalValorCarteira += (precoAtual * ativo.quantity);
-            totalCustoCarteira += (ativo.precoMedio * ativo.quantity);
+            totalValorCarteira += (precoAtual * quantidade);
+            totalCustoCarteira += (precoMedio * quantidade);
             
             // Variação do dia: calcula a partir do % APENAS se houver cotação real de mercado
-            if (dadoPreco && precoMercado > 0) {
+            if (dadoPreco && precoMercado > 0 && quantidade > 0) {
+                // Prioriza variação absoluta quando disponível (mais precisa que reconstruir por %).
+                const variacaoAbsoluta = Number(dadoPreco.regularMarketChange);
+                if (Number.isFinite(variacaoAbsoluta)) {
+                    totalVariacaoDia += (variacaoAbsoluta * quantidade);
+                    return;
+                }
+
                 const prevCloseRaw = Number(dadoPreco.regularMarketPreviousClose);
                 let precoAnterior = prevCloseRaw > 0 ? prevCloseRaw : 0;
 
@@ -5116,7 +5126,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
                 }
 
                 if (precoAnterior > 0) {
-                    totalVariacaoDia += ((precoMercado - precoAnterior) * ativo.quantity);
+                    totalVariacaoDia += ((precoMercado - precoAnterior) * quantidade);
                 }
             }
         });

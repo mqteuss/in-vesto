@@ -11,7 +11,7 @@
     <link rel="apple-touch-icon" href="icons/icon-192x192.png">
     <link rel="manifest" href="/manifest.json">
     <meta name="theme-color" content="#010101">
-    <meta name="description" content="Vesto - GestÃ£o inteligente de proventos e investimentos.">
+    <meta name="description" content="Vesto - Gestão inteligente de proventos e investimentos.">
     <link rel="canonical" href="https://appvesto.vercel.app/">
     <script>
         (() => {
@@ -36,7 +36,7 @@
     <link href="./style-tailwind.css" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
 
-    <!-- Anti-FOUC (MÃ£o pesada provisÃ³ria p/ ocultar zeros antes do Tailwind renderizar) -->
+    <!-- Anti-FOUC (Mão pesada provisória p/ ocultar zeros antes do Tailwind renderizar) -->
     <style>
         .hidden { display: none !important; }
     </style>
@@ -116,12 +116,12 @@
                 const isLikelyMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent || '');
                 const btnRetry = document.getElementById('btn-desbloquear');
 
-                // â”€â”€ BIOMETRIA INSTANTÃ‚NEA â”€â”€
+                // ── BIOMETRIA INSTANTÂNEA ──
                 // Dispara o prompt ANTES de app.js carregar (~50ms vs ~1-2s).
-                // Tudo que precisamos estÃ¡ no localStorage; sem dependÃªncia de rede.
+                // Tudo que precisamos está no localStorage; sem dependência de rede.
                 const credId = localStorage.getItem('vesto_bio_id');
                 if (isLikelyMobile && btnRetry) {
-                    // Em mobile, priorizamos tap explÃ­cito para abrir o prompt de biometria.
+                    // Em mobile, priorizamos tap explícito para abrir o prompt de biometria.
                     btnRetry.classList.remove('opacity-0', 'pointer-events-none');
                 } else if (credId && window.PublicKeyCredential && navigator.credentials?.get) {
                     const _b64 = (b) => Uint8Array.from(atob(b), c => c.charCodeAt(0));
@@ -142,15 +142,15 @@
                         }
                     }).then(assertion => {
                         if (assertion) {
-                            // Sucesso â€” desbloqueia imediatamente
+                            // Sucesso — desbloqueia imediatamente
                             document.getElementById('biometric-lock-screen').classList.add('hidden');
                             document.body.style.overflow = '';
-                            window.__vestoUnlockedEarly = true; // Flag p/ app.js nÃ£o re-disparar
+                            window.__vestoUnlockedEarly = true; // Flag p/ app.js não re-disparar
                             window.dispatchEvent(new CustomEvent('vesto-bio-unlocked'));
                         }
                     }).catch(err => {
                         console.warn('Bio early-prompt falhou:', err.name);
-                        // Mostra botÃ£o de retry
+                        // Mostra botão de retry
                         if (btnRetry) btnRetry.classList.remove('opacity-0', 'pointer-events-none');
                         window.dispatchEvent(new CustomEvent('vesto-bio-failed', { detail: { name: err.name } }));
                     }).finally(() => {
@@ -182,7 +182,7 @@
             <form id="login-form" class="w-full space-y-5 animate-scale-in shrink-0">
                 <div class="space-y-1">
                     <h2 class="text-xl font-bold text-white tracking-tight">Acesse sua conta</h2>
-                    <p class="text-gray-400 text-sm">GestÃ£o inteligente de proventos.</p>
+                    <p class="text-gray-400 text-sm">Gestão inteligente de proventos.</p>
                 </div>
 
                 <div id="login-error"
@@ -231,7 +231,7 @@
             <form id="signup-form" class="w-full space-y-5 hidden animate-scale-in shrink-0">
                 <div class="space-y-1">
                     <h2 class="text-xl font-bold text-white tracking-tight">Crie sua conta</h2>
-                    <p class="text-gray-400 text-sm">Junte-se a nÃ³s.</p>
+                    <p class="text-gray-400 text-sm">Junte-se a nós.</p>
                 </div>
 
                 <div id="signup-error"
@@ -271,7 +271,7 @@
 
                 <div class="text-center pt-2">
                     <button type="button" id="show-login-btn"
-                        class="text-xs text-gray-400 hover:text-white transition-colors">JÃ¡ tem conta? <span
+                        class="text-xs text-gray-400 hover:text-white transition-colors">Já tem conta? <span
                             class="font-bold text-white">Entrar</span></button>
                 </div>
             </form>
@@ -324,9 +324,9 @@
                 <div id="tab-dashboard"
                     class="tab-content w-full flex-shrink-0 h-full overflow-y-auto pb-32 custom-scroll active">
 
-                    <!-- HERÃ“I NATIVO DE PONTA A PONTA -->
+                    <!-- HERÓI NATIVO DE PONTA A PONTA -->
                     <div class="relative rounded-b-[2rem] pb-2 mb-6">
-                        <!-- Fundo sÃ³lido roxo com saturaÃ§Ã£o levemente reduzida -->
+                        <!-- Fundo sólido roxo com saturação levemente reduzida -->
                         <div class="absolute inset-0 bg-[#2e154f] rounded-b-[2rem] z-0"></div>
 
 
@@ -335,7 +335,7 @@
 
                                 <button id="btn-notifications"
                                     class="relative mt-1 p-1 text-gray-400 hover:text-white transition-colors focus:outline-none"
-                                    title="NotificaÃ§Ãµes">
+                                    title="Notificações">
                                     <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none"
                                         viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                                         <path stroke-linecap="round" stroke-linejoin="round"
@@ -362,12 +362,12 @@
                                         <h3
                                             class="text-[10px] font-bold text-gray-400 uppercase tracking-widest flex items-center gap-2">
                                             <span class="w-1.5 h-1.5 rounded-full bg-gray-400"></span>
-                                            NotificaÃ§Ãµes
+                                            Notificações
                                         </h3>
                                         <div class="flex items-center gap-2">
                                             <button id="btn-clear-notifications"
                                                 class="text-[9px] font-bold text-gray-600 hover:text-white transition-colors hidden uppercase">Limpar</button>
-                                            <button id="close-notif-drawer-btn" aria-label="Fechar notificaÃ§Ãµes"
+                                            <button id="close-notif-drawer-btn" aria-label="Fechar notificações"
                                                 class="text-gray-600 hover:text-white transition-colors">
                                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4"
                                                     viewBox="0 0 20 20" fill="currentColor">
@@ -403,7 +403,7 @@
                                 <div class="flex flex-col w-full mt-2 relative z-20 px-1">
 
                                     <div class="flex items-center gap-1.5 mb-2 relative z-30">
-                                        <span class="text-[11px] uppercase tracking-[0.12em] font-semibold text-[#71717a]">PatrimÃ´nio Total</span>
+                                        <span class="text-[11px] uppercase tracking-[0.12em] font-semibold text-[#71717a]">Patrimônio Total</span>
                                         <button data-info-toggle="info-popover-patrimonio" class="w-3.5 h-3.5 rounded-full border border-gray-600 bg-transparent text-[9px] text-gray-400 hover:text-white hover:border-gray-400 transition-all flex items-center justify-center font-bold" style="line-height:1;">?</button>
                                         <!-- Popover -->
                                         <div id="info-popover-patrimonio" class="absolute left-0 top-full mt-2 w-48 bg-[#1C1C1E] border border-[#2C2C2E] rounded-xl p-3 shadow-xl z-50 transition-all duration-200" style="display: none; opacity: 0;">
@@ -415,7 +415,7 @@
 
                                     <div class="flex items-center justify-between">
                                         <h2 id="total-carteira-valor" class="text-[1.85rem] font-bold text-white tracking-tight leading-none hidden" style="font-feature-settings:'tnum'; font-variant-numeric:tabular-nums;">R$ 0,00</h2>
-                                        <button id="btn-open-patrimonio-hero" aria-label="Abrir visÃ£o detalhada do patrimÃ´nio" class="flex items-center justify-center active:scale-90 transition-all hidden">
+                                        <button id="btn-open-patrimonio-hero" aria-label="Abrir visão detalhada do patrimônio" class="flex items-center justify-center active:scale-90 transition-all hidden">
                                             <svg class="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
                                                 <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/>
                                             </svg>
@@ -427,7 +427,7 @@
                                         <p id="total-carteira-pl" class="text-[13px] font-semibold text-gray-300 hidden">
                                             R$ 0,00 (0%)
                                         </p>
-                                        <span class="text-[#525252] text-[10px] hidden" id="pl-separator">â€¢</span>
+                                        <span class="text-[#525252] text-[10px] hidden" id="pl-separator">•</span>
                                         <div id="skeleton-total-dia" class="h-3 w-24 skeleton rounded"></div>
                                         <p id="total-carteira-dia" class="text-[11px] font-medium text-gray-500 hidden">
                                             Hoje: R$ 0,00 (0.00%)
@@ -459,7 +459,7 @@
                                             <span class="premium-stat-sub" style="margin-top:0">Na Carteira</span>
                                             <button data-info-toggle="info-popover-mercado" class="w-3.5 h-3.5 rounded-full border border-gray-600 bg-transparent text-[9px] text-gray-400 hover:text-white hover:border-gray-400 transition-all flex items-center justify-center font-bold" style="line-height:1;">?</button>
                                             <div id="info-popover-mercado" class="absolute left-1/2 -translate-x-1/2 top-full mt-2 w-40 bg-[#1C1C1E] border border-[#2C2C2E] rounded-xl p-3 shadow-xl z-50 transition-all duration-200" style="display: none; opacity: 0;">
-                                                <p class="text-[11px] text-gray-300 leading-relaxed normal-case tracking-normal">Valor atual de mercado real se vocÃª vendesse todos os seus ativos hoje.</p>
+                                                <p class="text-[11px] text-gray-300 leading-relaxed normal-case tracking-normal">Valor atual de mercado real se você vendesse todos os seus ativos hoje.</p>
                                             </div>
                                         </div>
                                         <div id="skeleton-total-mercado" class="h-4 w-16 skeleton rounded mt-1"></div>
@@ -474,7 +474,7 @@
                                             <span class="premium-stat-sub" style="margin-top:0">Caixa Livre</span>
                                             <button data-info-toggle="info-popover-caixa" class="w-3.5 h-3.5 rounded-full border border-gray-600 bg-transparent text-[9px] text-gray-400 hover:text-white hover:border-gray-400 transition-all flex items-center justify-center font-bold" style="line-height:1;">?</button>
                                             <div id="info-popover-caixa" class="absolute right-0 top-full mt-2 w-40 bg-[#1C1C1E] border border-[#2C2C2E] rounded-xl p-3 shadow-xl z-50 transition-all duration-200" style="display: none; opacity: 0;">
-                                                <p class="text-[11px] text-gray-300 leading-relaxed normal-case tracking-normal">Saldo lÃ­quido proveniente apenas do acÃºmulo de dividendos recebidos.</p>
+                                                <p class="text-[11px] text-gray-300 leading-relaxed normal-case tracking-normal">Saldo líquido proveniente apenas do acúmulo de dividendos recebidos.</p>
                                             </div>
                                         </div>
                                         <div id="skeleton-total-caixa"
@@ -485,13 +485,13 @@
                                 </div>
                             </div>
                         </div>
-                    </div> <!-- FECHA O HERÃ“I NATIVO -->
-                    <!-- CONTEÃšDO RESTANTE (EDGE-TO-EDGE FLUIDO) -->
+                    </div> <!-- FECHA O HERÓI NATIVO -->
+                    <!-- CONTEÚDO RESTANTE (EDGE-TO-EDGE FLUIDO) -->
                     <div class="">
 
 
 
-                        <!-- â”€â”€ ATALHOS â”€â”€ -->
+                        <!-- ── ATALHOS ── -->
                         <div>
                             <div class="grid grid-cols-2 gap-3 px-5">
                             
@@ -508,7 +508,7 @@
                                 <svg class="w-4 h-4 text-gray-600"><use href="#ico-chevron-r" /></svg>
                             </div>
 
-                            <!-- AlocaÃ§Ã£o -->
+                            <!-- Alocação -->
                             <div id="btn-open-alocacao" class="bg-[#151515] rounded-2xl p-3 cursor-pointer active:scale-[0.98] transition-all flex justify-between items-center shadow-sm">
                                 <div class="flex items-center gap-3">
                                     <div class="w-8 h-8 flex items-center justify-center text-white">
@@ -517,7 +517,7 @@
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z" />
                                         </svg>
                                     </div>
-                                    <span class="text-[13px] font-bold text-white tracking-wide">AlocaÃ§Ã£o</span>
+                                    <span class="text-[13px] font-bold text-white tracking-wide">Alocação</span>
                                 </div>
                                 <svg class="w-4 h-4 text-gray-600"><use href="#ico-chevron-r" /></svg>
                             </div>
@@ -552,7 +552,7 @@
                         </div>
                         
                         <div id="timeline-pagamentos-container" class="hidden px-4">
-                            <h2 class="text-[12px] font-bold text-white uppercase tracking-widest px-1 mt-10 mb-3">PrÃ³ximos Pagamentos</h2>
+                            <h2 class="text-[12px] font-bold text-white uppercase tracking-widest px-1 mt-10 mb-3">Próximos Pagamentos</h2>
                             <div id="timeline-skeleton" class="flex gap-3 px-1 mt-0">
                                 <div class="w-28 h-28 flex-shrink-0 bg-[#151515] rounded-3xl p-3.5 flex flex-col justify-between">
                                     <div class="w-6 h-6 skeleton" style="border-radius:8px"></div>
@@ -581,7 +581,7 @@
                         </div>
 
                         <div>
-                            <h2 class="text-[12px] font-bold text-white uppercase tracking-widest px-5 mt-10 mb-3">Acesso RÃ¡pido</h2>
+                            <h2 class="text-[12px] font-bold text-white uppercase tracking-widest px-5 mt-10 mb-3">Acesso Rápido</h2>
                             <div id="carousel-wrapper" class="w-full overflow-x-auto pl-5 pr-1 hide-scrollbar"
                                 style="-webkit-overflow-scrolling: touch;">
                                 <div id="dashboard-favorites-list" class="flex gap-4 min-w-max">
@@ -595,11 +595,11 @@
                             </div>
                         </div>
 
-                        <!-- â”€â”€ MERCADO HOJE (Ãndices + Rankings) â”€â”€ -->
+                        <!-- ── MERCADO HOJE (Índices + Rankings) ── -->
                         <div id="mercado-hoje-container" class="hidden">
                             <h2 class="text-[12px] font-bold text-white uppercase tracking-widest px-5 mt-10 mb-3">Mercado Hoje</h2>
                             
-                            <!-- Ãndices de Mercado -->
+                            <!-- Índices de Mercado -->
                             <div id="market-indices-container" class="mb-4">
                                 <div class="indices-marquee-wrapper overflow-hidden">
                                     <div class="indices-marquee-track flex gap-6" id="market-indices-list">
@@ -653,13 +653,13 @@
                             </div>
                         </div>
 
-                        <!-- â”€â”€ NOTÃCIAS (Radar) â”€â”€ -->
+                        <!-- ── NOTÍCIAS (Radar) ── -->
                         <div id="news-feed-container" class="hidden">
                             <h2 class="text-[12px] font-bold text-white uppercase tracking-widest px-5 mt-10 mb-3">Radar do Mercado</h2>
                             
-                            <!-- Lista Vazia Que SerÃ¡ Preenchida Pelo JS -->
+                            <!-- Lista Vazia Que Será Preenchida Pelo JS -->
                             <div id="news-feed-list" class="flex flex-col">
-                                <!-- JS Injeta os cartÃµes aqui -->
+                                <!-- JS Injeta os cartões aqui -->
                             </div>
 
                             <!-- Skeletons (Carregando) -->
@@ -737,7 +737,7 @@
                                     </div>
                                 </div>
 
-                                <button id="btn-carteira-options" class="filter-funnel-btn transition-transform duration-300 relative z-10 flex-shrink-0" title="Mais OpÃ§Ãµes">
+                                <button id="btn-carteira-options" class="filter-funnel-btn transition-transform duration-300 relative z-10 flex-shrink-0" title="Mais Opções">
                                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                                         <path stroke-linecap="round" stroke-linejoin="round" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
                                     </svg>
@@ -752,7 +752,7 @@
                                     </svg>
                                 </button>
                                 <button class="filter-dropdown-item carteira-sort-item" data-value="posicao">
-                                    PosiÃ§Ã£o
+                                    Posição
                                     <svg class="h-4 w-4 opacity-0 check-icon">
                                         <use href="#ico-check" />
                                     </svg>
@@ -772,10 +772,10 @@
                             </div>
                         </div>
 
-                        <!-- DIVISÃ“RIA -->
+                        <!-- DIVISÓRIA -->
                         <div class="h-px bg-white/10 -mx-4 mb-4"></div>
 
-                        <!-- GRÃFICO INTRADIÃRIO DA CARTEIRA -->
+                        <!-- GRÁFICO INTRADIÁRIO DA CARTEIRA -->
                         <div id="intraday-chart-container" class="hidden mb-4">
                             <div class="flex items-baseline justify-between px-1 mb-2">
                                 <div>
@@ -790,7 +790,7 @@
                             <div id="intraday-chart-skeleton" class="hidden w-full rounded-xl bg-[#151515] animate-pulse" style="height: 160px;"></div>
                         </div>
 
-                        <!-- RESUMO RÃPIDO DA CARTEIRA -->
+                        <!-- RESUMO RÁPIDO DA CARTEIRA -->
                         <div id="carteira-resumo" class="hidden mb-3">
                             <div class="flex items-center justify-between gap-2 px-1">
                                 <div class="flex-1 text-center">
@@ -799,7 +799,7 @@
                                 </div>
                                 <div class="w-px h-6 bg-white/10"></div>
                                 <div class="flex-1 text-center">
-                                    <span class="text-[9px] text-gray-500 uppercase tracking-wider font-bold block">PosiÃ§Ã£o</span>
+                                    <span class="text-[9px] text-gray-500 uppercase tracking-wider font-bold block">Posição</span>
                                     <span id="carteira-resumo-posicao" class="text-xs font-semibold text-gray-300">R$ 0</span>
                                 </div>
                                 <div class="w-px h-6 bg-white/10"></div>
@@ -848,7 +848,7 @@
                                     d="M21 12a2.25 2.25 0 0 0-2.25-2.25H15a3 3 0 1 1-6 0H5.25A2.25 2.25 0 0 0 3 12m18 0v6a2.25 2.25 0 0 1-2.25-2.25H5.25A2.25 2.25 0 0 1 3 18v-6m18 0m-9-6.75h.008v.008H12v-.008Z" />
                             </svg>
                             <p id="carteira-mensagem" class="text-lg mt-4 font-semibold text-gray-200">A sua carteira
-                                estÃ¡ vazia.</p>
+                                está vazia.</p>
                             <button id="empty-state-add-btn"
                                 class="mt-6 py-2 px-5 bg-white text-black font-bold rounded-full shadow-lg transition-transform active:scale-95 hover:bg-gray-200">
                                 Adicionar primeiro ativo
@@ -865,7 +865,7 @@
                         <div class="hist-tabs-container relative mb-4">
                             <button class="hist-tab-btn news-cat-btn active" style="font-size: 13px;" data-category="geral">Geral</button>
                             <button class="hist-tab-btn news-cat-btn" style="font-size: 13px;" data-category="fiis">FIIs</button>
-                            <button class="hist-tab-btn news-cat-btn" style="font-size: 13px;" data-category="acoes">AÃ§Ãµes</button>
+                            <button class="hist-tab-btn news-cat-btn" style="font-size: 13px;" data-category="acoes">Ações</button>
                             <button class="hist-tab-btn news-cat-btn" style="font-size: 13px;" data-category="economia">Economia</button>
                             <div id="news-tab-indicator" class="active-tab-indicator" style="width: 25%;"></div>
                         </div>
@@ -876,7 +876,7 @@
                                 <svg xmlns="http://www.w3.org/2000/svg" class="compact-search-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                                 </svg>
-                                <input type="text" id="news-search-input" placeholder="Buscar notÃ­cia..." class="compact-search-input min-w-0">
+                                <input type="text" id="news-search-input" placeholder="Buscar notícia..." class="compact-search-input min-w-0">
                             </div>
 
                             <div class="flex items-center gap-1.5 flex-shrink-0">
@@ -890,7 +890,7 @@
                             </div>
                         </div>
 
-                        <!-- CONTEÃšDO -->
+                        <!-- CONTEÚDO -->
                         <div class="relative z-20">
                             <div id="fii-news-skeleton" class="space-y-4 animate-shimmer-parent hidden">
                                 <div class="card-bg rounded-3xl p-4">
@@ -915,7 +915,7 @@
 
                         <div class="pt-2 px-4">
                             <div class="hist-tabs-container relative">
-                                <button id="btn-hist-transacoes" class="hist-tab-btn active">TransaÃ§Ãµes</button>
+                                <button id="btn-hist-transacoes" class="hist-tab-btn active">Transações</button>
                                 <button id="btn-hist-proventos" class="hist-tab-btn">Proventos</button>
 
                                 <div id="tab-indicator" class="active-tab-indicator"></div>
@@ -936,7 +936,7 @@
                                         class="compact-search-input">
                                 </div>
 
-                                <button id="btn-history-filter" aria-label="Filtrar histÃ³rico" class="filter-funnel-btn">
+                                <button id="btn-history-filter" aria-label="Filtrar histórico" class="filter-funnel-btn">
                                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none"
                                         viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                                         <path stroke-linecap="round" stroke-linejoin="round"
@@ -1025,7 +1025,7 @@
                                     </svg>
                                 </div>
 
-                                <!-- Hover Overlay: CÃ¢mera -->
+                                <!-- Hover Overlay: Câmera -->
                                 <div
                                     class="absolute inset-0 bg-black/60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-white" fill="none"
@@ -1040,7 +1040,7 @@
 
                             <div class="flex-1">
                                 <span class="text-white font-bold text-base block leading-tight">Minha Conta</span>
-                                <span id="user-email-display" class="text-xs text-gray-500 font-medium">UsuÃ¡rio
+                                <span id="user-email-display" class="text-xs text-gray-500 font-medium">Usuário
                                     Vesto</span>
                             </div>
                         </div>
@@ -1126,7 +1126,7 @@
                                         </div>
                                         <div class="flex flex-col gap-1">
                                             <label
-                                                class="text-[10px] font-bold text-gray-500 uppercase tracking-wider">PerÃ­odo
+                                                class="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Período
                                                 (Anos)</label>
                                             <input id="calc-anos" type="number" inputmode="numeric" placeholder="0"
                                                 min="1" max="100"
@@ -1272,7 +1272,7 @@
 
                         </div>
 
-                        <h3 class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 ml-2">SeguranÃ§a
+                        <h3 class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 ml-2">Segurança
                         </h3>
                         <div class="settings-group">
 
@@ -1285,10 +1285,10 @@
                                                 d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
                                         </svg>
                                     </div>
-                                    <span class="settings-label">NotificaÃ§Ãµes Push</span>
+                                    <span class="settings-label">Notificações Push</span>
                                 </div>
                                 <button id="toggle-notif-btn"
-                                    aria-label="Alternar notificaÃ§Ãµes push"
+                                    aria-label="Alternar notificações push"
                                     class="relative inline-flex h-6 w-11 items-center rounded-full bg-gray-700 transition-colors focus:outline-none">
                                     <span id="notif-toggle-knob"
                                         class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform translate-x-1"></span>
@@ -1307,7 +1307,7 @@
                                     <span class="settings-label">Biometria</span>
                                 </div>
                                 <button id="toggle-bio-btn"
-                                    aria-label="Alternar autenticaÃ§Ã£o por biometria"
+                                    aria-label="Alternar autenticação por biometria"
                                     class="relative inline-flex h-6 w-11 items-center rounded-full bg-gray-700 transition-colors focus:outline-none">
                                     <span id="bio-toggle-knob"
                                         class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform translate-x-1"></span>
@@ -1474,7 +1474,7 @@
                         <rect x="3" y="14" width="7" height="7"></rect>
                     </svg>
                 </div>
-                <span class="text-xs mt-1 font-medium">InÃ­cio</span>
+                <span class="text-xs mt-1 font-medium">Início</span>
             </button>
 
             <button class="tab-button flex flex-col items-center justify-center p-1.5" data-tab="tab-carteira"
@@ -1488,11 +1488,11 @@
                         <path d="M18 12a2 2 0 0 0 0 4h4v-4Z"></path>
                     </svg>
                 </div>
-                <span class="text-xs mt-1 font-medium">PortfÃ³lio</span>
+                <span class="text-xs mt-1 font-medium">Portfólio</span>
             </button>
 
             <button class="tab-button flex flex-col items-center justify-center p-1.5" data-tab="tab-noticias"
-                title="NotÃ­cias">
+                title="Notícias">
                 <div class="tab-button-icon-wrapper">
                     <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" viewBox="0 0 24 24" fill="none"
                         stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -1505,7 +1505,7 @@
             </button>
 
             <button class="tab-button flex flex-col items-center justify-center p-1.5" data-tab="tab-historico"
-                title="HistÃ³rico">
+                title="Histórico">
                 <div class="tab-button-icon-wrapper">
                     <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" viewBox="0 0 24 24" fill="none"
                         stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -1539,7 +1539,7 @@
             <div id="custom-modal-content"
                 class="modal-content card-bg rounded-3xl p-6 w-full max-w-sm shadow-xl transition-all"
                 style="opacity: 0; transform: scale(0.95);">
-                <h3 id="custom-modal-title" class="text-lg font-semibold text-white text-center mb-4">Confirmar AÃ§Ã£o
+                <h3 id="custom-modal-title" class="text-lg font-semibold text-white text-center mb-4">Confirmar Ação
                 </h3>
                 <p id="custom-modal-message" class="text-sm text-gray-300 text-center mb-6">Tem certeza?</p>
                 <div class="flex justify-end gap-3">
@@ -1558,7 +1558,7 @@
                 style="opacity: 0; transform: scale(0.95);">
 
                 <h3 id="add-modal-title" class="text-base font-bold text-white mb-4 text-center tracking-wide">Nova
-                    TransaÃ§Ã£o</h3>
+                    Transação</h3>
 
                 <form id="add-ativo-form">
                     <input type="hidden" id="transacao-id-input">
@@ -1635,7 +1635,7 @@
                                     <span
                                         class="text-gray-500 font-bold group-focus-within:text-purple-400 text-xs">R$</span>
                                 </div>
-                                <input type="number" id="preco-medio-input" placeholder="PreÃ§o" step="0.01"
+                                <input type="number" id="preco-medio-input" placeholder="Preço" step="0.01"
                                     class="w-full py-2.5 pl-7 pr-2 bg-[#151515] border border-[#2C2C2E] rounded-xl focus:outline-none focus:border-purple-500 focus:bg-black transition-all text-white text-sm font-bold text-center">
                             </div>
                         </div>
@@ -1658,7 +1658,7 @@
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 inline-block mr-1 -mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                         </svg>
-                        Excluir TransaÃ§Ã£o
+                        Excluir Transação
                     </button>
                 </form>
             </div>
@@ -1669,9 +1669,9 @@
             <div id="tab-detalhes"
                 class="page-content flex flex-col w-full h-[92vh] rounded-t-[2rem] shadow-2xl bg-black border-t border-[#2C2C2E] fixed bottom-0 left-0 z-50 transform translate-y-full transition-transform duration-300 ease-in-out will-change-transform">
 
-                <!-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-         CABEÃ‡ALHO FIXO â€” Sempre visÃ­vel
-    â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• -->
+                <!-- ═══════════════════════════════════════════════════
+         CABEÇALHO FIXO — Sempre visível
+    ═══════════════════════════════════════════════════ -->
                 <div class="shrink-0 bg-[#0a0a0a] rounded-t-[2rem]">
 
                     <!-- Drag handle -->
@@ -1679,7 +1679,7 @@
                         <div class="w-12 h-1.5 bg-[#2C2C2E] rounded-full"></div>
                     </div>
 
-                    <!-- Linha 1: Ãcone + Ticker/Nome + AÃ§Ãµes -->
+                    <!-- Linha 1: Ícone + Ticker/Nome + Ações -->
                     <div class="flex justify-between items-center px-5 pt-1 pb-2">
                         <div class="flex items-center gap-3 flex-1 min-w-0">
                             <div id="detalhes-icone-container"></div>
@@ -1727,7 +1727,7 @@
                         </div>
                     </div>
 
-                    <!-- Linha 2: PreÃ§o + VariaÃ§Ãµes -->
+                    <!-- Linha 2: Preço + Variações -->
                     <div class="px-5 pb-3">
                         <div id="detalhes-loading" class="hidden flex justify-center items-center py-2"><span
                                 class="loader"></span></div>
@@ -1749,24 +1749,24 @@
                             data-tab="indicadores">Indicadores</button>
                         <button
                             class="detalhe-tab-btn py-3 px-4 text-xs font-bold text-gray-500 hover:text-gray-300 whitespace-nowrap transition-colors"
-                            data-tab="analise">AnÃ¡lise</button>
+                            data-tab="analise">Análise</button>
                         <button id="tab-portfolio-btn"
                             class="detalhe-tab-btn py-3 px-4 text-xs font-bold text-gray-500 hover:text-gray-300 whitespace-nowrap transition-colors hidden"
-                            data-tab="portfolio">PortfÃ³lio</button>
+                            data-tab="portfolio">Portfólio</button>
                     </div>
                 </div>
 
-                <!-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-         ÃREA SCROLLÃVEL â€” ConteÃºdo das Tabs
-    â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• -->
+                <!-- ═══════════════════════════════════════════════════
+         ÁREA SCROLLÁVEL — Conteúdo das Tabs
+    ═══════════════════════════════════════════════════ -->
                 <div id="detalhes-conteudo-scroll" class="flex-1 overflow-y-auto custom-scroll pb-8">
 
-                    <!-- â”€â”€ TAB 1: RESUMO (padrÃ£o) â”€â”€ -->
+                    <!-- ── TAB 1: RESUMO (padrão) ── -->
                     <div id="detalhe-tab-resumo" class="detalhe-tab-panel p-4 pt-4 w-full">
 
                         <h4 class="text-[10px] font-bold text-gray-300 uppercase tracking-widest pl-1 mb-3">
                             Indicadores
-                            RÃ¡pidos</h4>
+                            Rápidos</h4>
                         <div id="detalhes-grid-topo" class="grid grid-cols-3 gap-2 w-full"></div>
 
                         <div class="my-8 h-px bg-[#1F1F1F] w-full"></div>
@@ -1785,15 +1785,15 @@
 
                     </div>
 
-                    <!-- â”€â”€ TAB 2: INDICADORES â”€â”€ -->
+                    <!-- ── TAB 2: INDICADORES ── -->
                     <div id="detalhe-tab-indicadores" class="detalhe-tab-panel hidden p-4 pt-3">
                         <div id="detalhes-listas-fundamentos"></div>
                     </div>
 
-                    <!-- â”€â”€ TAB 3: ANÃLISE â”€â”€ -->
+                    <!-- ── TAB 3: ANÁLISE ── -->
                     <div id="detalhe-tab-analise" class="detalhe-tab-panel hidden p-4 pt-3">
                         <div id="detalhes-rentabilidade-container" class="hidden w-full mb-8">
-                            <!-- GrÃ¡fico com filtros integrados -->
+                            <!-- Gráfico com filtros integrados -->
                             <div class="relative w-full h-[380px] bg-[#121212] rounded-xl overflow-hidden">
                                 <div class="flex justify-between items-center mx-3 mt-3 z-20 relative">
                                     <h4 class="text-[10px] font-bold text-gray-400 uppercase tracking-widest pl-1">
@@ -1817,24 +1817,24 @@
                             </div>
                         </div>
 
-                        <!-- NOVO: Grid de Indicadores AvanÃ§ados (Apenas AÃ§Ãµes) -->
+                        <!-- NOVO: Grid de Indicadores Avançados (Apenas Ações) -->
                         <div id="detalhes-advanced-metrics" class="hidden w-full mb-8">
                             <h4 class="text-[10px] font-bold text-gray-300 uppercase tracking-widest pl-1 mb-3">
-                                Indicadores AvanÃ§ados</h4>
+                                Indicadores Avançados</h4>
                             <div id="detalhes-advanced-grid" class="grid grid-cols-2 sm:grid-cols-3 gap-2 w-full">
                             </div>
                         </div>
 
-                        <!-- NOVO: GrÃ¡ficos de DiversificaÃ§Ã£o de Receita (Apenas AÃ§Ãµes) -->
+                        <!-- NOVO: Gráficos de Diversificação de Receita (Apenas Ações) -->
                         <div id="detalhes-revenue-charts" class="hidden w-full mb-8">
                             <h4 class="text-[10px] font-bold text-gray-300 uppercase tracking-widest pl-1 mb-4">
-                                DiversificaÃ§Ã£o de Receita</h4>
+                                Diversificação de Receita</h4>
                             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 <!-- Receita por Geografia -->
                                 <div id="detalhes-rev-geo-wrap" class="hidden rounded-2xl bg-[#141414] p-4">
                                     <p
                                         class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-3 text-center">
-                                        Por RegiÃ£o</p>
+                                        Por Região</p>
                                     <div class="relative mx-auto" style="max-width:160px; max-height:160px;">
                                         <canvas id="chart-rev-geo"></canvas>
                                     </div>
@@ -1855,7 +1855,7 @@
                             </div>
                         </div>
 
-                        <!-- â”€â”€ GRÃFICOS FINANCEIROS (Apenas AÃ§Ãµes) â”€â”€ -->
+                        <!-- ── GRÁFICOS FINANCEIROS (Apenas Ações) ── -->
                         <div id="detalhes-charts-financeiros" class="hidden w-full mb-6 space-y-5">
                             <h4 class="text-[10px] font-bold text-gray-300 uppercase tracking-widest pl-1">
                                 Dados Financeiros</h4>
@@ -1868,22 +1868,22 @@
                                     <canvas id="chart-receitas-lucros"></canvas>
                                 </div>
                             </div>
-                            <!-- Lucro x CotaÃ§Ã£o -->
+                            <!-- Lucro x Cotação -->
                             <div id="chart-lucro-cotacao-wrap" class="hidden rounded-2xl bg-[#141414] p-4">
                                 <p id="chart-lucro-cotacao-title"
                                     class="text-[10px] font-bold text-gray-300 uppercase tracking-widest mb-4">Lucro
                                     x
-                                    CotaÃ§Ã£o</p>
+                                    Cotação</p>
                                 <div class="relative w-full h-[280px]">
                                     <canvas id="chart-lucro-cotacao"></canvas>
                                 </div>
                             </div>
-                            <!-- EvoluÃ§Ã£o do PatrimÃ´nio -->
+                            <!-- Evolução do Patrimônio -->
                             <div id="chart-evolucao-patrimonio-wrap" class="hidden rounded-2xl bg-[#141414] p-4">
                                 <p id="chart-evolucao-patrimonio-title"
                                     class="text-[10px] font-bold text-gray-300 uppercase tracking-widest mb-4">
-                                    EvoluÃ§Ã£o
-                                    do PatrimÃ´nio</p>
+                                    Evolução
+                                    do Patrimônio</p>
                                 <div class="relative w-full h-[280px]">
                                     <canvas id="chart-evolucao-patrimonio"></canvas>
                                 </div>
@@ -1903,7 +1903,7 @@
                         <div id="detalhes-sobre-comparacao"></div>
                     </div>
 
-                    <!-- â”€â”€ TAB 4: PORTFÃ“LIO (apenas FIIs) â”€â”€ -->
+                    <!-- ── TAB 4: PORTFÓLIO (apenas FIIs) ── -->
                     <div id="detalhe-tab-portfolio" class="detalhe-tab-panel hidden p-4 pt-3">
                         <div id="detalhes-imoveis-container"></div>
                     </div>
@@ -1928,19 +1928,19 @@
                             </svg>
                         </button>
                         <div class="flex-1 min-w-0">
-                            <h1 class="text-lg font-bold text-white leading-none">EvoluÃ§Ã£o</h1>
-                            <p class="text-[11px] font-normal text-[#888888] mt-0.5">HistÃ³rico Patrimonial</p>
+                            <h1 class="text-lg font-bold text-white leading-none">Evolução</h1>
+                            <p class="text-[11px] font-normal text-[#888888] mt-0.5">Histórico Patrimonial</p>
                         </div>
                     </div>
                 </div>
                 <div class="overflow-y-auto h-[calc(100vh-56px)] p-4 pt-0 custom-scroll">
 
-                    <!-- TÃ­tulo + Dropdown PerÃ­odo -->
+                    <!-- Título + Dropdown Período -->
                     <div class="flex items-center justify-between mt-4 mb-4">
-                        <h2 class="text-base font-bold text-white">EvoluÃ§Ã£o patrimonial</h2>
+                        <h2 class="text-base font-bold text-white">Evolução patrimonial</h2>
                         <button id="evolucao-periodo-btn"
                             class="flex items-center gap-1 text-xs font-medium text-gray-400 bg-[#1a1a1a] px-3 py-1.5 rounded-lg border border-[#2a2a2a] active:scale-95 transition-all">
-                            <span id="evolucao-periodo-label">MÃ¡ximo</span>
+                            <span id="evolucao-periodo-label">Máximo</span>
                             <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/>
                             </svg>
@@ -1958,39 +1958,39 @@
                         </div>
                     </div>
 
-                    <!-- PerÃ­odo texto -->
+                    <!-- Período texto -->
                     <div class="flex items-center justify-center gap-1.5 mt-3 mb-4">
                         <svg class="w-3.5 h-3.5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
                         </svg>
-                        <span id="evolucao-periodo-texto" class="text-[11px] text-gray-500 font-medium">PerÃ­odo de --</span>
+                        <span id="evolucao-periodo-texto" class="text-[11px] text-gray-500 font-medium">Período de --</span>
                     </div>
 
                     <!-- Stats Grid 2x3 -->
                     <div class="grid grid-cols-2 gap-3 mt-4">
 
                         <div class="bg-[#111] p-3 rounded-xl flex flex-col justify-center">
-                            <span class="text-[10px] text-gray-500 font-medium">PatrimÃ´nio inicial</span>
+                            <span class="text-[10px] text-gray-500 font-medium">Patrimônio inicial</span>
                             <p id="evolucao-pat-inicial" class="text-sm font-bold text-white mt-0.5">R$ 0,00</p>
                         </div>
 
                         <div class="bg-[#111] p-3 rounded-xl flex flex-col justify-center">
-                            <span class="text-[10px] text-gray-500 font-medium">PatrimÃ´nio final</span>
+                            <span class="text-[10px] text-gray-500 font-medium">Patrimônio final</span>
                             <p id="evolucao-pat-final" class="text-sm font-bold text-white mt-0.5">R$ 0,00</p>
                         </div>
 
                         <div class="bg-[#111] p-3 rounded-xl flex flex-col justify-center">
-                            <span class="text-[10px] text-gray-500 font-medium">VariaÃ§Ã£o em R$</span>
+                            <span class="text-[10px] text-gray-500 font-medium">Variação em R$</span>
                             <p id="evolucao-var-reais" class="text-sm font-bold text-green-400 mt-0.5">R$ 0,00</p>
                         </div>
 
                         <div class="bg-[#111] p-3 rounded-xl flex flex-col justify-center">
-                            <span class="text-[10px] text-gray-500 font-medium">VariaÃ§Ã£o em %</span>
+                            <span class="text-[10px] text-gray-500 font-medium">Variação em %</span>
                             <p id="evolucao-var-pct" class="text-sm font-bold text-green-400 mt-0.5">0,00%</p>
                         </div>
 
                         <div class="bg-[#111] p-3 rounded-xl flex flex-col justify-center">
-                            <span class="text-[10px] text-gray-500 font-medium">MovimentaÃ§Ãµes</span>
+                            <span class="text-[10px] text-gray-500 font-medium">Movimentações</span>
                             <p id="evolucao-movimentacoes" class="text-sm font-bold text-green-400 mt-0.5">R$ 0,00</p>
                         </div>
 
@@ -2022,7 +2022,7 @@
                         </div>
                         <button id="risco-periodo-btn"
                             class="flex items-center gap-1 text-xs font-medium text-gray-400 bg-[#1a1a1a] px-3 py-1.5 rounded-lg border border-[#2a2a2a] active:scale-95 transition-all">
-                            <span id="risco-periodo-label">MÃ¡ximo</span>
+                            <span id="risco-periodo-label">Máximo</span>
                             <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/>
                             </svg>
@@ -2032,7 +2032,7 @@
                     <!-- Sharpe Tooltip -->
                     <div id="sharpe-tooltip" class="hidden bg-[#1a1a1a] border border-[#2a2a2a] rounded-xl p-3.5 mb-4 transition-all">
                         <p class="text-[11px] text-gray-400 leading-relaxed">
-                            O <strong class="text-white">Ãndice Sharpe</strong> mede o retorno ajustado ao risco. Quanto maior, melhor Ã© a relaÃ§Ã£o risco x retorno. Valores acima de <strong class="text-white">1.0</strong> indicam bom desempenho, enquanto valores negativos sugerem que o CDI rendeu mais.
+                            O <strong class="text-white">Índice Sharpe</strong> mede o retorno ajustado ao risco. Quanto maior, melhor é a relação risco x retorno. Valores acima de <strong class="text-white">1.0</strong> indicam bom desempenho, enquanto valores negativos sugerem que o CDI rendeu mais.
                         </p>
                     </div>
 
@@ -2048,7 +2048,7 @@
                             </div>
                         </div>
 
-                        <!-- MÃ©tricas Risco -->
+                        <!-- Métricas Risco -->
                         <div class="flex-1 flex flex-col gap-2">
                             <div class="bg-[#111] p-3 rounded-xl">
                                 <span class="text-[10px] text-gray-500 font-medium">Retorno Carteira</span>
@@ -2071,7 +2071,7 @@
                     <!-- Dividend Yield Anualizado -->
                     <div class="flex items-center justify-between mb-4">
                         <h2 class="text-base font-bold text-white">Dividend Yield</h2>
-                        <span class="text-xs font-medium text-gray-500">Ãšltimos 12 meses</span>
+                        <span class="text-xs font-medium text-gray-500">Últimos 12 meses</span>
                     </div>
 
                     <div class="flex items-center gap-4">
@@ -2086,18 +2086,18 @@
                             </div>
                         </div>
 
-                        <!-- MÃ©tricas DY -->
+                        <!-- Métricas DY -->
                         <div class="flex-1 flex flex-col gap-2">
                             <div class="bg-[#111] p-3 rounded-xl">
                                 <span class="text-[10px] text-gray-500 font-medium">Proventos 12m</span>
                                 <p id="dy-proventos-12m" class="text-sm font-bold text-white mt-0.5">R$ 0,00</p>
                             </div>
                             <div class="bg-[#111] p-3 rounded-xl">
-                                <span class="text-[10px] text-gray-500 font-medium">MÃ©dia Mensal Est.</span>
+                                <span class="text-[10px] text-gray-500 font-medium">Média Mensal Est.</span>
                                 <p id="dy-media-mensal" class="text-sm font-bold text-white mt-0.5">R$ 0,00</p>
                             </div>
                             <div class="bg-[#111] p-3 rounded-xl">
-                                <span class="text-[10px] text-gray-500 font-medium">AvaliaÃ§Ã£o</span>
+                                <span class="text-[10px] text-gray-500 font-medium">Avaliação</span>
                                 <p id="dy-avaliacao" class="text-sm font-bold text-gray-400 mt-0.5">--</p>
                             </div>
                         </div>
@@ -2105,7 +2105,7 @@
 
                 </div>
 
-                <!-- Bottom Sheet PerÃ­odo -->
+                <!-- Bottom Sheet Período -->
                 <div id="evolucao-periodo-sheet"
                     class="fixed inset-0 z-[200] pointer-events-none" style="opacity:0; transition: opacity 0.2s ease;">
                     <div class="absolute inset-0 bg-black/60" id="evolucao-periodo-backdrop"></div>
@@ -2113,13 +2113,13 @@
                         class="absolute bottom-0 left-0 right-0 bg-[#1c1c1e] rounded-t-2xl p-5 pb-8 transform translate-y-full transition-transform duration-300 ease-out">
                         <div class="w-12 h-1.5 bg-[#3a3a3c] rounded-full mx-auto mb-5"></div>
 
-                        <h3 class="text-sm font-bold text-white mb-3">PerÃ­odo</h3>
+                        <h3 class="text-sm font-bold text-white mb-3">Período</h3>
                         <div class="flex flex-wrap gap-2 mb-5" id="evolucao-periodo-options">
-                            <button class="evol-period-opt px-3 py-1.5 rounded-lg text-xs font-medium border border-[#3a3a3c] text-gray-400 transition-all" data-range="1M">MÃªs atual</button>
-                            <button class="evol-period-opt px-3 py-1.5 rounded-lg text-xs font-medium border border-[#3a3a3c] text-gray-400 transition-all" data-range="3M">Ãšltimos 3 meses</button>
-                            <button class="evol-period-opt px-3 py-1.5 rounded-lg text-xs font-medium border border-[#3a3a3c] text-gray-400 transition-all" data-range="6M">Ãšltimos 6 meses</button>
-                            <button class="evol-period-opt px-3 py-1.5 rounded-lg text-xs font-medium border border-[#3a3a3c] text-gray-400 transition-all" data-range="1Y">Ãšltimo ano</button>
-                            <button class="evol-period-opt px-3 py-1.5 rounded-lg text-xs font-medium bg-[#3a3a3c] border border-[#3a3a3c] text-white transition-all" data-range="ALL">MÃ¡ximo</button>
+                            <button class="evol-period-opt px-3 py-1.5 rounded-lg text-xs font-medium border border-[#3a3a3c] text-gray-400 transition-all" data-range="1M">Mês atual</button>
+                            <button class="evol-period-opt px-3 py-1.5 rounded-lg text-xs font-medium border border-[#3a3a3c] text-gray-400 transition-all" data-range="3M">Últimos 3 meses</button>
+                            <button class="evol-period-opt px-3 py-1.5 rounded-lg text-xs font-medium border border-[#3a3a3c] text-gray-400 transition-all" data-range="6M">Últimos 6 meses</button>
+                            <button class="evol-period-opt px-3 py-1.5 rounded-lg text-xs font-medium border border-[#3a3a3c] text-gray-400 transition-all" data-range="1Y">Último ano</button>
+                            <button class="evol-period-opt px-3 py-1.5 rounded-lg text-xs font-medium bg-[#3a3a3c] border border-[#3a3a3c] text-white transition-all" data-range="ALL">Máximo</button>
                         </div>
                     </div>
                 </div>
@@ -2148,7 +2148,7 @@
                             </div>
                             <div>
                                 <h1 class="text-xl font-bold text-white leading-none">Proventos</h1>
-                                <p class="text-xs font-normal text-[#888888] mt-1">HistÃ³rico de Pagamentos</p>
+                                <p class="text-xs font-normal text-[#888888] mt-1">Histórico de Pagamentos</p>
                             </div>
                         </div>
 
@@ -2171,11 +2171,11 @@
                             <div id="prov-total-recebido" class="text-sm font-bold text-white mt-1">...</div>
                         </div>
                         <div class="bg-[#151515] rounded-xl p-3">
-                            <div class="text-[10px] text-gray-500 font-bold uppercase tracking-wider">MÃ©dia Mensal</div>
+                            <div class="text-[10px] text-gray-500 font-bold uppercase tracking-wider">Média Mensal</div>
                             <div id="prov-media-mensal" class="text-sm font-bold text-white mt-1">...</div>
                         </div>
                         <div class="bg-[#151515] rounded-xl p-3">
-                            <div class="text-[10px] text-gray-500 font-bold uppercase tracking-wider">Melhor MÃªs</div>
+                            <div class="text-[10px] text-gray-500 font-bold uppercase tracking-wider">Melhor Mês</div>
                             <div id="prov-melhor-mes" class="text-sm font-bold text-white mt-1">...</div>
                         </div>
                         <div class="bg-[#151515] rounded-xl p-3 relative">
@@ -2186,7 +2186,7 @@
                             <div id="prov-yoc" class="text-sm font-bold text-white mt-1">...</div>
                             <!-- Popover -->
                             <div id="yoc-popover" class="absolute left-0 right-0 top-full mt-2 bg-[#1C1C1E] border border-[#2C2C2E] rounded-xl p-3 shadow-xl z-50 transition-all duration-200" style="display: none; opacity: 0;">
-                                <p class="text-[11px] text-gray-300 leading-relaxed">Mede quanto seus proventos dos Ãºltimos 12 meses representam em relaÃ§Ã£o ao custo total que vocÃª pagou. Quanto maior, melhor o retorno sobre seu investimento original.</p>
+                                <p class="text-[11px] text-gray-300 leading-relaxed">Mede quanto seus proventos dos últimos 12 meses representam em relação ao custo total que você pagou. Quanto maior, melhor o retorno sobre seu investimento original.</p>
                             </div>
                         </div>
                     </div>
@@ -2207,11 +2207,11 @@
                         <h3 class="text-xs font-bold text-gray-400 uppercase tracking-wider">Detalhamento</h3>
                         <span id="proventos-mes-selecionado"
                             class="text-[10px] text-gray-500 font-bold bg-[#1C1C1E] px-2 py-1 rounded-full border border-[#2C2C2E]">Selecione
-                            um mÃªs</span>
+                            um mês</span>
                     </div>
 
                     <div id="proventos-lista-container" class="space-y-3 pb-10">
-                        <p class="text-center text-gray-600 text-xs py-8">Toque em uma barra do grÃ¡fico para ver os
+                        <p class="text-center text-gray-600 text-xs py-8">Toque em uma barra do gráfico para ver os
                             detalhes.</p>
                     </div>
 
@@ -2243,8 +2243,8 @@
                                 </svg>
                             </div>
                             <div>
-                                <h1 class="text-xl font-bold text-white leading-none">AlocaÃ§Ã£o</h1>
-                                <p class="text-xs font-normal text-[#888888] mt-1">DiversificaÃ§Ã£o da Carteira</p>
+                                <h1 class="text-xl font-bold text-white leading-none">Alocação</h1>
+                                <p class="text-xs font-normal text-[#888888] mt-1">Diversificação da Carteira</p>
                             </div>
                         </div>
 
@@ -2260,7 +2260,7 @@
 
                 <div class="overflow-hidden flex flex-col flex-1 min-h-0">
                     
-                    <!-- CabeÃ§alho (Filtros e Total) -->
+                    <!-- Cabeçalho (Filtros e Total) -->
                     <div class="p-4 flex flex-col gap-4 border-b border-[#1c1c1e]">
                         <div class="flex items-center justify-between">
                             <div class="flex items-center gap-2">
@@ -2276,13 +2276,13 @@
                         </div>
                     </div>
 
-                    <!-- Ãrea do GrÃ¡fico e Lista (Lado a Lado) -->
+                    <!-- Área do Gráfico e Lista (Lado a Lado) -->
                     <div class="relative flex flex-1 min-h-0 overflow-hidden" id="alocacao-split-view">
                         
-                        <!-- SVG para as Linhas de ConexÃ£o -->
+                        <!-- SVG para as Linhas de Conexão -->
                         <svg id="alocacao-svg-lines" class="absolute inset-0 w-full h-full pointer-events-none z-10 opacity-70"></svg>
                         
-                        <!-- Coluna do GrÃ¡fico de Barra (Fixa, nÃ£o rola) -->
+                        <!-- Coluna do Gráfico de Barra (Fixa, não rola) -->
                         <div class="w-16 sm:w-20 pl-4 py-4 pr-8 flex flex-col items-center justify-end border-r border-[#151515] min-h-0">
                             <!-- O Barra 2D Stacked -->
                             <div id="alocacao-stacked-bar" class="w-10 sm:w-12 h-full max-h-full bg-[#151515] rounded-[30px] overflow-hidden flex flex-col-reverse shadow-inner border border-[#2C2C2E]">
@@ -2347,7 +2347,7 @@
                     <div class="w-full bg-[#151515] rounded-2xl p-5 mb-4 flex items-center justify-between shadow-xl mt-2 relative overflow-hidden">
                         <div class="absolute inset-0 bg-gradient-to-r from-orange-500/5 to-transparent"></div>
                         <div class="relative z-10">
-                            <p class="text-[11px] text-gray-400 font-bold uppercase tracking-widest mb-1">InflaÃ§Ã£o (12 Meses)</p>
+                            <p class="text-[11px] text-gray-400 font-bold uppercase tracking-widest mb-1">Inflação (12 Meses)</p>
                             <div class="flex items-baseline gap-1.5">
                                 <h2 id="ipca-acumulado-12m" class="text-3xl font-black text-white tabular-nums">--%</h2>
                             </div>
@@ -2359,13 +2359,13 @@
                         </div>
                     </div>
 
-                    <!-- GrÃ¡fico -->
+                    <!-- Gráfico -->
                     <div class="relative w-full h-56 bg-[#151515] rounded-2xl p-4 pt-5 mb-6 shadow-xl flex flex-col justify-end">
                         <canvas id="ipca-chart"></canvas>
                     </div>
 
                     <div class="flex items-center justify-between px-2 mb-3">
-                        <h3 class="text-[11px] font-bold text-gray-500 uppercase tracking-wider">HistÃ³rico Mensal</h3>
+                        <h3 class="text-[11px] font-bold text-gray-500 uppercase tracking-wider">Histórico Mensal</h3>
                     </div>
 
                     <div id="ipca-lista-container" class="space-y-3 pb-10">
@@ -2459,10 +2459,10 @@
                     </div>
 
                     <div class="hist-tabs-container relative mb-4">
-                        <button class="hist-tab-btn objetivo-filter-btn active" style="font-size: 12px;" data-target="cota_gratis">Cota GrÃ¡tis</button>
-                        <button class="hist-tab-btn objetivo-filter-btn" style="font-size: 12px;" data-target="100">R$ 100/mÃªs</button>
-                        <button class="hist-tab-btn objetivo-filter-btn" style="font-size: 12px;" data-target="500">R$ 500/mÃªs</button>
-                        <button class="hist-tab-btn objetivo-filter-btn" style="font-size: 12px;" data-target="1000">R$ 1.000/mÃªs</button>
+                        <button class="hist-tab-btn objetivo-filter-btn active" style="font-size: 12px;" data-target="cota_gratis">Cota Grátis</button>
+                        <button class="hist-tab-btn objetivo-filter-btn" style="font-size: 12px;" data-target="100">R$ 100/mês</button>
+                        <button class="hist-tab-btn objetivo-filter-btn" style="font-size: 12px;" data-target="500">R$ 500/mês</button>
+                        <button class="hist-tab-btn objetivo-filter-btn" style="font-size: 12px;" data-target="1000">R$ 1.000/mês</button>
                         <div id="objetivos-tab-indicator" class="active-tab-indicator" style="width: 25%;"></div>
                     </div>
 
@@ -2484,7 +2484,7 @@
                     <input type="text" autocomplete="username" class="hidden">
 
                     <div class="relative">
-                        <input type="password" id="new-password-input" placeholder="Nova senha (mÃ­n. 6 caracteres)"
+                        <input type="password" id="new-password-input" placeholder="Nova senha (mín. 6 caracteres)"
                             autocomplete="new-password" required
                             class="w-full p-3 bg-gray-900 border border-gray-800 rounded-full focus:outline-none focus:border-purple-400 text-white pr-10">
                         <button type="button" class="password-toggle" aria-label="Mostrar ou ocultar senha" data-target="new-password-input">
@@ -2535,7 +2535,7 @@
 
                     <div class="relative">
                         <input type="password" id="change-new-password-input"
-                            placeholder="Nova Senha (mÃ­n. 6 caracteres)" autocomplete="new-password" required
+                            placeholder="Nova Senha (mín. 6 caracteres)" autocomplete="new-password" required
                             class="w-full p-3 bg-gray-900 border border-gray-800 rounded-full focus:outline-none focus:border-purple-400 text-white pr-10">
                         <button type="button" class="password-toggle" aria-label="Mostrar ou ocultar senha" data-target="change-new-password-input">
                             <svg class="eye-icon-open w-5 h-5">
@@ -2585,7 +2585,7 @@
                 <div class="flex flex-col items-center mb-6 relative">
                     <div id="modal-preview-avatar"
                         class="w-24 h-24 rounded-full bg-[#1C1C1E] border-[3px] border-[#2C2C2E] overflow-hidden flex items-center justify-center mb-4 shadow-lg shrink-0">
-                        <img id="modal-preview-img" src="" alt="PrÃ©-visualizaÃ§Ã£o da foto de perfil" class="w-full h-full object-cover hidden" />
+                        <img id="modal-preview-img" src="" alt="Pré-visualização da foto de perfil" class="w-full h-full object-cover hidden" />
                         <div id="modal-preview-fallback"
                             class="w-full h-full bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center">
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 text-white opacity-80"
@@ -2614,13 +2614,13 @@
                             Remover
                         </button>
                     </div>
-                    <p class="text-[10px] text-gray-500 mt-3 text-center px-4">Tamanho mÃ¡ximo: 2MB. A imagem serÃ¡ salva
+                    <p class="text-[10px] text-gray-500 mt-3 text-center px-4">Tamanho máximo: 2MB. A imagem será salva
                         localmente no seu dispositivo.</p>
                 </div>
 
                 <div class="pt-4 border-t border-white/5">
                     <p class="text-[11px] font-bold text-gray-500 mb-3 text-center uppercase tracking-wider">Avatares
-                        PrÃ©-definidos</p>
+                        Pré-definidos</p>
                     <div class="grid grid-cols-3 gap-4 px-2">
 
                         <!-- Tema: Porco/Cofrinho (Piggy Bank) - Dourado -->
@@ -2647,7 +2647,7 @@
                             </svg>
                         </button>
 
-                        <!-- Tema: Crescimento/GrÃ¡fico Ascendente -->
+                        <!-- Tema: Crescimento/Gráfico Ascendente -->
                         <button type="button"
                             class="preset-avatar-btn w-16 h-16 mx-auto rounded-full border-[3px] border-transparent hover:border-purple-500 focus:border-purple-500 focus:outline-none transition-all flex items-center justify-center shadow-md relative group bg-gradient-to-tr from-green-600 to-emerald-400"
                             data-avatar='data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" viewBox="0 0 100 100"><defs><linearGradient id="grad3" x1="0%" y1="100%" x2="100%" y2="0%"><stop offset="0%" style="stop-color:%2316a34a;stop-opacity:1" /><stop offset="100%" style="stop-color:%2334d399;stop-opacity:1" /></linearGradient></defs><rect width="100" height="100" fill="url(%23grad3)"/><svg x="20" y="20" width="60" height="60" fill="none" viewBox="0 0 24 24" stroke="white" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" /></svg></svg>'>
@@ -2670,7 +2670,7 @@
                             </svg>
                         </button>
 
-                        <!-- Tema: ProteÃ§Ã£o/Escudo Seguro -->
+                        <!-- Tema: Proteção/Escudo Seguro -->
                         <button type="button"
                             class="preset-avatar-btn w-16 h-16 mx-auto rounded-full border-[3px] border-transparent hover:border-purple-500 focus:border-purple-500 focus:outline-none transition-all flex items-center justify-center shadow-md relative group bg-gradient-to-tr from-indigo-600 to-purple-500"
                             data-avatar='data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" viewBox="0 0 100 100"><defs><linearGradient id="grad5" x1="0%" y1="100%" x2="100%" y2="0%"><stop offset="0%" style="stop-color:%234f46e5;stop-opacity:1" /><stop offset="100%" style="stop-color:%23a855f7;stop-opacity:1" /></linearGradient></defs><rect width="100" height="100" fill="url(%23grad5)"/><svg x="20" y="20" width="60" height="60" fill="none" viewBox="0 0 24 24" stroke="white" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg></svg>'>
@@ -2807,7 +2807,7 @@
                     d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
             </svg>
             <div class="flex flex-col">
-                <span class="text-xs font-bold uppercase tracking-wider">Nova VersÃ£o</span>
+                <span class="text-xs font-bold uppercase tracking-wider">Nova Versão</span>
                 <span class="text-[10px] opacity-90">Toque para atualizar</span>
             </div>
         </div>

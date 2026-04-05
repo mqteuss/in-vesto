@@ -932,6 +932,14 @@ document.addEventListener('DOMContentLoaded', async () => {
                 request.onerror = (e) => reject(e.target.error);
             });
         },
+        count(storeName) {
+            return new Promise((resolve, reject) => {
+                const store = this._getStore(storeName);
+                const request = store.count();
+                request.onsuccess = () => resolve(request.result || 0);
+                request.onerror = (e) => reject(e.target.error);
+            });
+        },
         destroy() {
             return new Promise((resolve, reject) => {
                 if (this.db) {
@@ -999,6 +1007,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     const togglePrivacyBtn = document.getElementById('toggle-privacy-btn');
     const exportCsvBtn = document.getElementById('export-csv-btn');
     const clearCacheBtn = document.getElementById('clear-cache-btn');
+    const toolSyncNowBtn = document.getElementById('tool-sync-now-btn');
+    const toolCopyResumoBtn = document.getElementById('tool-copy-resumo-btn');
+    const toolDiagnosticoBtn = document.getElementById('tool-diagnostico-btn');
     const appWrapper = document.getElementById('app-wrapper');
     const logoutBtn = document.getElementById('logout-btn');
     const passwordToggleButtons = document.querySelectorAll('.password-toggle');
@@ -3363,6 +3374,50 @@ function processarDadosAlocacao() {
     return { lista: listaFinal, total: totalGeral };
 }
 
+function calcularAlturasVisuaisAlocacao(lista = [], total = 0) {
+    if (!Array.isArray(lista) || lista.length === 0 || !(total > 0)) return [];
+
+    const rawPct = lista.map(item => (Number(item.value) > 0 ? (item.value / total) * 100 : 0));
+    const n = rawPct.length;
+    const minPct = Math.min(0.8, (100 / n) * 0.6);
+
+    const adjusted = [...rawPct];
+    const locked = new Set();
+
+    for (let i = 0; i < adjusted.length; i++) {
+        if (adjusted[i] > 0 && adjusted[i] < minPct) {
+            adjusted[i] = minPct;
+            locked.add(i);
+        }
+    }
+
+    const sumAdjusted = adjusted.reduce((acc, v) => acc + v, 0);
+    if (sumAdjusted > 100.0001) {
+        const lockedTotal = [...locked].reduce((acc, idx) => acc + adjusted[idx], 0);
+        const targetUnlockedTotal = Math.max(0, 100 - lockedTotal);
+        const unlockedIdx = adjusted.map((_, idx) => idx).filter(idx => !locked.has(idx));
+        const unlockedCurrentTotal = unlockedIdx.reduce((acc, idx) => acc + adjusted[idx], 0);
+
+        if (unlockedCurrentTotal > 0) {
+            const scale = targetUnlockedTotal / unlockedCurrentTotal;
+            unlockedIdx.forEach(idx => {
+                adjusted[idx] = Math.max(0, adjusted[idx] * scale);
+            });
+        } else {
+            const equalPct = 100 / n;
+            for (let i = 0; i < adjusted.length; i++) adjusted[i] = equalPct;
+        }
+    }
+
+    const normalizedTotal = adjusted.reduce((acc, v) => acc + v, 0);
+    const drift = 100 - normalizedTotal;
+    if (adjusted.length > 0) {
+        adjusted[adjusted.length - 1] = Math.max(0, adjusted[adjusted.length - 1] + drift);
+    }
+
+    return adjusted;
+}
+
 function renderizarGraficoAlocacao(isRetry = false) {
     if(!document.getElementById('alocacao-stacked-bar')) return;
     
@@ -3399,13 +3454,14 @@ function renderizarGraficoAlocacao(isRetry = false) {
     }
     
     window.alocacaoSelectedIdx = -1;
+    const alturasVisuais = calcularAlturasVisuaisAlocacao(lista, total);
 
     lista.forEach((item, index) => {
         const pctReal = total > 0 ? (item.value / total) * 100 : 0;
         const pctStr = pctReal.toFixed(1);
         
         // --- 1. BAR SEGMENT ---
-        const hVisual = Math.max(pctReal, 1);
+        const hVisual = alturasVisuais[index] ?? pctReal;
         const seg = document.createElement('div');
         seg.id = 'alocacao-segment-' + index;
         seg.className = 'alocacao-bar-seg w-full transition-all duration-300';
@@ -10742,8 +10798,113 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
         URL.revokeObjectURL(link.href);
     }
 
+    async function copyToClipboardSafe(text) {
+        const normalized = String(text ?? '').trim();
+        if (!normalized) return false;
+
+        try {
+            if (navigator.clipboard?.writeText) {
+                await navigator.clipboard.writeText(normalized);
+                return true;
+            }
+        } catch (_) { }
+
+        try {
+            const area = document.createElement('textarea');
+            area.value = normalized;
+            area.setAttribute('readonly', 'readonly');
+            area.style.position = 'fixed';
+            area.style.opacity = '0';
+            area.style.pointerEvents = 'none';
+            document.body.appendChild(area);
+            area.select();
+            const ok = document.execCommand('copy');
+            document.body.removeChild(area);
+            return !!ok;
+        } catch (_) {
+            return false;
+        }
+    }
+
+    function montarResumoCarteiraTexto() {
+        const agora = new Date().toLocaleString('pt-BR');
+        const patrimonio = totalCarteiraValor?.textContent?.trim() || formatBRL(0);
+        const hoje = totalCarteiraDia?.textContent?.replace(/\s+/g, ' ').trim() || 'Hoje: N/A';
+        const lp = totalCarteiraPL?.textContent?.replace(/\s+/g, ' ').trim() || 'L/P: N/A';
+        const caixa = totalCaixaValor?.textContent?.trim() || formatBRL(0);
+        const naCarteira = totalCarteiraMercado?.textContent?.trim() || formatBRL(0);
+
+        return [
+            'Resumo da Carteira - Vesto',
+            `Atualizado em: ${agora}`,
+            `Patrimonio Total: ${patrimonio}`,
+            `Na Carteira: ${naCarteira}`,
+            `Caixa Livre: ${caixa}`,
+            hoje,
+            `L/P: ${lp}`
+        ].join('\n');
+    }
+
+    async function montarDiagnosticoRapidoTexto() {
+        const status = getB3MarketStatus();
+        let cacheCount = 'N/A';
+        try {
+            cacheCount = String(await vestoDB.count('apiCache'));
+        } catch (_) { }
+
+        return [
+            'Diagnostico Rapido - Vesto',
+            `Data/Hora: ${new Date().toLocaleString('pt-BR')}`,
+            `B3: ${status.open ? 'Aberta' : 'Fechada'} (${status.reason})`,
+            `Ativos na carteira: ${Array.isArray(carteiraCalculada) ? carteiraCalculada.length : 0}`,
+            `Transacoes: ${Array.isArray(transacoes) ? transacoes.length : 0}`,
+            `Proventos conhecidos: ${Array.isArray(proventosConhecidos) ? proventosConhecidos.length : 0}`,
+            `Registros cache (apiCache): ${cacheCount}`
+        ].join('\n');
+    }
+
     const importExcelBtn = document.getElementById('import-excel-btn');
     const importExcelInput = document.getElementById('import-excel-input');
+
+    if (toolSyncNowBtn) {
+        toolSyncNowBtn.addEventListener('click', async () => {
+            const labelEl = toolSyncNowBtn.querySelector('.settings-label');
+            const oldLabel = labelEl ? labelEl.textContent : '';
+
+            toolSyncNowBtn.disabled = true;
+            if (labelEl) labelEl.textContent = 'Atualizando...';
+            try {
+                await atualizarTodosDados(true);
+                showToast('Dados atualizados com sucesso!', 'success');
+            } catch (e) {
+                console.error('Erro na atualizacao manual:', e);
+                showToast('Falha ao atualizar agora.');
+            } finally {
+                if (labelEl && oldLabel) labelEl.textContent = oldLabel;
+                toolSyncNowBtn.disabled = false;
+            }
+        });
+    }
+
+    if (toolCopyResumoBtn) {
+        toolCopyResumoBtn.addEventListener('click', async () => {
+            const resumo = montarResumoCarteiraTexto();
+            const ok = await copyToClipboardSafe(resumo);
+            showToast(ok ? 'Resumo copiado para a area de transferencia.' : 'Nao foi possivel copiar o resumo.');
+        });
+    }
+
+    if (toolDiagnosticoBtn) {
+        toolDiagnosticoBtn.addEventListener('click', async () => {
+            const diagnostico = await montarDiagnosticoRapidoTexto();
+            const ok = await copyToClipboardSafe(diagnostico);
+            if (ok) {
+                showToast('Diagnostico copiado. Cole para enviar ao suporte.', 'success');
+            } else {
+                showToast('Nao foi possivel copiar o diagnostico.');
+            }
+        });
+    }
 
     if (importExcelBtn && importExcelInput) {
         importExcelBtn.addEventListener('click', () => {

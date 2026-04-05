@@ -1162,6 +1162,54 @@
                                     </div>
                                 </div>
                             </div>
+
+                            <button id="tool-sync-now-btn" class="settings-item w-full">
+                                <div class="flex items-center">
+                                    <div class="settings-icon-box icon-box-blue">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none"
+                                            viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                            <path stroke-linecap="round" stroke-linejoin="round"
+                                                d="M4 4v5h.582m14.836 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0A8.003 8.003 0 015.163 15m14.255 0H15" />
+                                        </svg>
+                                    </div>
+                                    <div>
+                                        <span class="settings-label">Atualizar Agora</span>
+                                        <p class="settings-sub">Sincroniza cotações e gráficos</p>
+                                    </div>
+                                </div>
+                            </button>
+
+                            <button id="tool-copy-resumo-btn" class="settings-item w-full">
+                                <div class="flex items-center">
+                                    <div class="settings-icon-box icon-box-purple">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none"
+                                            viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                            <path stroke-linecap="round" stroke-linejoin="round"
+                                                d="M8 16h8M8 12h8m-8-4h8m-9 12h10a2 2 0 002-2V6a2 2 0 00-2-2H7a2 2 0 00-2 2v12a2 2 0 002 2zm-2 0a2 2 0 01-2-2V8a2 2 0 012-2h1" />
+                                        </svg>
+                                    </div>
+                                    <div>
+                                        <span class="settings-label">Copiar Resumo</span>
+                                        <p class="settings-sub">Patrimônio, hoje e L/P</p>
+                                    </div>
+                                </div>
+                            </button>
+
+                            <button id="tool-diagnostico-btn" class="settings-item w-full">
+                                <div class="flex items-center">
+                                    <div class="settings-icon-box icon-box-orange">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none"
+                                            viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                            <path stroke-linecap="round" stroke-linejoin="round"
+                                                d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                        </svg>
+                                    </div>
+                                    <div>
+                                        <span class="settings-label">Diagnóstico Rápido</span>
+                                        <p class="settings-sub">Copia status técnico do app</p>
+                                    </div>
+                                </div>
+                            </button>
                         </div>
 
                         <h3 class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 ml-2">Segurança
@@ -2115,7 +2163,7 @@
             aria-labelledby="alocacao-title" role="dialog" aria-modal="true">
 
             <div id="tab-alocacao-content"
-                class="page-content w-full h-[85vh] rounded-t-[2rem] shadow-2xl bg-black border-t border-[#2C2C2E] fixed bottom-0 left-0 z-50 transform translate-y-full transition-transform duration-300 ease-in-out will-change-transform">
+                class="page-content w-full h-[85vh] flex flex-col rounded-t-[2rem] shadow-2xl bg-black border-t border-[#2C2C2E] fixed bottom-0 left-0 z-50 transform translate-y-full transition-transform duration-300 ease-in-out will-change-transform">
 
                 <div class="sticky top-0 bg-[#0a0a0a] z-30 rounded-t-[2rem] border-b border-white/5">
                     <div class="w-full flex justify-center pt-3 pb-1">
@@ -2150,7 +2198,7 @@
                     </div>
                 </div>
 
-                <div class="overflow-hidden flex flex-col h-[85vh]">
+                <div class="overflow-hidden flex flex-col flex-1 min-h-0">
                     
                     <!-- Cabeçalho (Filtros e Total) -->
                     <div class="p-4 flex flex-col gap-4 border-b border-[#1c1c1e]">
@@ -2169,21 +2217,21 @@
                     </div>
 
                     <!-- Área do Gráfico e Lista (Lado a Lado) -->
-                    <div class="relative flex flex-1 overflow-hidden" id="alocacao-split-view">
+                    <div class="relative flex flex-1 min-h-0 overflow-hidden" id="alocacao-split-view">
                         
                         <!-- SVG para as Linhas de Conexão -->
                         <svg id="alocacao-svg-lines" class="absolute inset-0 w-full h-full pointer-events-none z-10 opacity-70"></svg>
                         
                         <!-- Coluna do Gráfico de Barra (Fixa, não rola) -->
-                        <div class="w-16 sm:w-20 pl-4 py-6 pr-8 flex flex-col items-center justify-end border-r border-[#151515]">
+                        <div class="w-16 sm:w-20 pl-4 py-4 pr-8 flex flex-col items-center justify-end border-r border-[#151515] min-h-0">
                             <!-- O Barra 2D Stacked -->
-                            <div id="alocacao-stacked-bar" class="w-10 sm:w-12 h-[95%] bg-[#151515] rounded-[30px] overflow-hidden flex flex-col-reverse shadow-inner border border-[#2C2C2E]">
+                            <div id="alocacao-stacked-bar" class="w-10 sm:w-12 h-full max-h-full bg-[#151515] rounded-[30px] overflow-hidden flex flex-col-reverse shadow-inner border border-[#2C2C2E]">
                                 <!-- Segmentos injetados via JS -->
                             </div>
                         </div>
 
                         <!-- Coluna da Lista de Ativos/Segmentos (Permite Scroll) -->
-                        <div class="flex-1 overflow-y-auto pb-10 pt-4 custom-scroll" id="alocacao-legend-scroll" onscroll="if(window.desenharLinhaAlocacao) window.desenharLinhaAlocacao()">
+                        <div class="flex-1 min-h-0 overflow-y-auto pb-10 pt-4 custom-scroll" id="alocacao-legend-scroll" onscroll="if(window.desenharLinhaAlocacao) window.desenharLinhaAlocacao()">
                             <div id="alocacao-legend-container" class="space-y-4 px-2 pr-4 relative z-20">
                                 <!-- Itens de legenda injetados via JS -->
                             </div>

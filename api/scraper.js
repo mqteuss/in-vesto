@@ -919,6 +919,69 @@ function getYahooParams(range) {
     }
 }
 
+function getB3SessionStartTimestamp(referenceTimestamp) {
+    try {
+        const parts = new Intl.DateTimeFormat('en-CA', {
+            timeZone: 'America/Sao_Paulo',
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit'
+        }).formatToParts(new Date(referenceTimestamp));
+
+        const year = parts.find(p => p.type === 'year')?.value;
+        const month = parts.find(p => p.type === 'month')?.value;
+        const day = parts.find(p => p.type === 'day')?.value;
+        if (!year || !month || !day) return null;
+
+        return new Date(`${year}-${month}-${day}T10:00:00-03:00`).getTime();
+    } catch (_) {
+        return null;
+    }
+}
+
+function normalizeIntradayOpenPoint(points, meta, rangeFilter) {
+    if (rangeFilter !== '1D' || !Array.isArray(points) || points.length === 0) {
+        return points;
+    }
+
+    const firstPoint = points[0];
+    const firstTs = Number(firstPoint?.timestamp);
+    if (!Number.isFinite(firstTs)) return points;
+
+    const sessionStart = getB3SessionStartTimestamp(firstTs);
+    if (!Number.isFinite(sessionStart) || firstTs <= sessionStart) {
+        return points;
+    }
+
+    // Evita inserir pontos sintéticos para séries fora do contexto intraday regular.
+    const maxGapMs = 3 * 60 * 60 * 1000;
+    if ((firstTs - sessionStart) > maxGapMs) {
+        return points;
+    }
+
+    const baselineCandidates = [
+        Number(meta?.regularMarketPreviousClose),
+        Number(meta?.chartPreviousClose),
+        Number(meta?.previousClose),
+        Number(firstPoint?.open),
+        Number(firstPoint?.price)
+    ];
+    const baseline = baselineCandidates.find(v => Number.isFinite(v) && v > 0);
+    if (!(baseline > 0)) return points;
+
+    const syntheticPoint = {
+        date: new Date(sessionStart).toISOString(),
+        timestamp: sessionStart,
+        price: baseline,
+        open: baseline,
+        high: baseline,
+        low: baseline,
+        synthetic: true
+    };
+
+    return [syntheticPoint, ...points];
+}
+
 async function fetchYahooFinance(ticker, rangeFilter = '1A') {
     try {
         const symbol = ticker.toUpperCase().endsWith('.SA') ? ticker.toUpperCase() : `${ticker.toUpperCase()}.SA`;
@@ -949,7 +1012,7 @@ async function fetchYahooFinance(ticker, rangeFilter = '1A') {
         const highs = quote.high;
         const lows = quote.low;
 
-        const points = timestamps.map((t, i) => {
+        let points = timestamps.map((t, i) => {
             if (prices[i] === null || prices[i] === undefined) return null;
             return {
                 date: new Date(t * 1000).toISOString(),
@@ -960,6 +1023,8 @@ async function fetchYahooFinance(ticker, rangeFilter = '1A') {
                 low: lows[i] ?? prices[i]
             };
         }).filter(p => p !== null);
+
+        points = normalizeIntradayOpenPoint(points, result.meta || {}, rangeFilter);
 
         return points;
 

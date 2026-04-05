@@ -210,6 +210,7 @@ body::-webkit-scrollbar {
 body.light-mode {
     background-color: #ffffff !important;
     color: #1f2937;
+    color-scheme: light;
 }
 
 /* 1. LAYOUT / CONTAINER (FUNDO BRANCO PURO) */
@@ -218,6 +219,13 @@ body.light-mode .bg-black\/95,
 body.light-mode .bg-\[\#151515\],
 body.light-mode .bg-\[\#0a0a0a\],
 body.light-mode .bg-\[\#0f0f0f\],
+body.light-mode .bg-\[\#0d0d0d\],
+body.light-mode .bg-\[\#0D0D0D\],
+body.light-mode .bg-\[\#141414\],
+body.light-mode .bg-\[\#1a1a1a\],
+body.light-mode .bg-\[\#1a1a1c\],
+body.light-mode .bg-\[\#222\],
+body.light-mode .bg-\[\#333\],
 body.light-mode .bg-\[\#09090b\],
 body.light-mode .bg-\[\#18181b\],
 body.light-mode .bg-\[\#1C1C1E\],
@@ -231,6 +239,10 @@ body.light-mode .page-content {
     border: none !important;
     /* Sem bordas */
     color: #1f2937 !important;
+}
+
+body.light-mode #dashboard-hero-bg {
+    background: linear-gradient(180deg, #efe7ff 0%, #e7dcff 100%) !important;
 }
 
 /* DIVISORES / BORDAS SUAVES (CINZA CLARO) */
@@ -441,8 +453,28 @@ body.light-mode .border-\[\#27272a\],
 body.light-mode .border-\[\#1F1F1F\],
 body.light-mode .border-\[\#333\],
 body.light-mode .border-neutral-700,
-body.light-mode .border-gray-800 {
+body.light-mode .border-gray-800,
+body.light-mode .border-white\/5,
+body.light-mode .border-white\/10,
+body.light-mode .border-white\/20,
+body.light-mode .border-white\/30 {
     border-color: #e5e7eb !important;
+}
+
+body.light-mode .bg-white\/5 {
+    background-color: #f3f4f6 !important;
+}
+
+body.light-mode .hover\:bg-white\/10:hover {
+    background-color: #eceff3 !important;
+}
+
+body.light-mode .text-white\/10,
+body.light-mode .text-white\/20,
+body.light-mode .text-white\/30,
+body.light-mode .text-white\/40,
+body.light-mode .text-white\/50 {
+    color: #9ca3af !important;
 }
 
 body.light-mode #biometric-lock-screen,
@@ -452,6 +484,11 @@ body.light-mode .custom-modal,
 body.light-mode .page-modal {
     background-color: rgba(255, 255, 255, 0.8) !important;
     backdrop-filter: blur(8px);
+}
+
+body.light-mode .side-panel-content {
+    background-color: #ffffff !important;
+    color: #1f2937 !important;
 }
 
 /* Bottom Nav */
@@ -555,6 +592,10 @@ body.light-mode .agenda-card.is-today {
 body.light-mode .agenda-card.is-today .agenda-header {
     background-color: #facc15;
     color: #000;
+}
+
+body.light-mode .text-purple-400 {
+    color: #7c3aed !important;
 }
 
 /* =========================================
@@ -883,6 +924,14 @@ input:-webkit-autofill:active {
     transition: background-color 5000s ease-in-out 0s;
 }
 
+body.light-mode input:-webkit-autofill,
+body.light-mode input:-webkit-autofill:hover,
+body.light-mode input:-webkit-autofill:focus,
+body.light-mode input:-webkit-autofill:active {
+    -webkit-box-shadow: 0 0 0 30px #ffffff inset !important;
+    -webkit-text-fill-color: #111827 !important;
+}
+
 /* Modais */
 .custom-modal {
     display: none;
@@ -899,6 +948,12 @@ input:-webkit-autofill:active {
     border-radius: 1.5rem;
     transition: background-color 0.3s ease;
     box-shadow: none;
+}
+
+body.light-mode .custom-modal.visible .modal-content {
+    background-color: #ffffff !important;
+    border: 1px solid #e5e7eb !important;
+    box-shadow: 0 14px 30px rgba(0, 0, 0, 0.08) !important;
 }
 
 .modal-content.modal-out {
@@ -1416,6 +1471,37 @@ input:-webkit-autofill:active {
 .month-filter-input:focus {
     color: #ffffff;
     background-color: #1a1a1c !important;
+}
+
+body.light-mode #add-ativo-modal input:focus,
+body.light-mode #auth-container input:focus,
+body.light-mode #new-password-form input:focus,
+body.light-mode #change-password-form input:focus,
+body.light-mode #recover-form input:focus,
+body.light-mode .compact-search-input:focus {
+    background-color: #ffffff !important;
+    color: #111827 !important;
+    box-shadow: 0 0 0 2px #e5e7eb inset !important;
+}
+
+body.light-mode .compact-search-wrapper:focus-within .compact-search-icon {
+    color: #6b7280;
+}
+
+body.light-mode .month-filter-input:hover,
+body.light-mode .month-filter-input:focus {
+    color: #1f2937;
+    background-color: #f3f4f6 !important;
+}
+
+body.light-mode .search-clear-btn:hover {
+    color: #374151;
+    background-color: #e5e7eb;
+}
+
+body.light-mode .filter-funnel-btn:active {
+    background-color: #e5e7eb !important;
+    color: #374151 !important;
 }
 
 .filter-funnel-btn:active {
@@ -2639,10 +2725,16 @@ body.light-mode .floating-input:-webkit-autofill {
    ========================================= */
 @media (min-width: 1024px) {
 
+    #app-wrapper {
+        min-height: 100dvh;
+    }
+
     /* 1. Container Principal destrava a largura máxima limitante e se ajusta à tela */
     #app-container {
         max-width: none !important;
         width: 100vw !important;
+        height: 100dvh !important;
+        padding-bottom: 0 !important;
     }
 
     /* Centraliza o conteúdo dentro de cada Tab para não esticar exageradamente as views */
@@ -2652,11 +2744,11 @@ body.light-mode .floating-input:-webkit-autofill {
     }
 
     .tab-content>div {
-        max-width: 1000px;
+        max-width: 1120px;
         margin: 0 auto;
-        padding-left: 120px;
+        padding-left: 132px;
         /* Compensa a Sidebar fixa lateral */
-        padding-right: 2rem;
+        padding-right: 2.5rem;
     }
 
     #tabs-slider {
@@ -2690,8 +2782,62 @@ body.light-mode .floating-input:-webkit-autofill {
 
     .tab-button {
         height: auto;
-        padding: 10px 0;
+        padding: 12px 0;
         width: 100%;
+        gap: 6px;
+    }
+
+    .tab-button.active {
+        transform: none;
+    }
+
+    .tab-button .tab-button-icon-wrapper {
+        transform: none;
+    }
+
+    .tab-button.active .tab-button-icon-wrapper {
+        transform: scale(1.05);
+    }
+
+    .tab-button span {
+        opacity: 1;
+        height: auto;
+        transform: none;
+        font-size: 11px;
+        line-height: 1.1;
+        color: #9ca3af;
+    }
+
+    .tab-button.active span {
+        color: #ffffff;
+        font-weight: 700;
+    }
+
+    body.light-mode .tab-button span {
+        color: #6b7280 !important;
+    }
+
+    body.light-mode .tab-button.active span {
+        color: #7c3aed !important;
+    }
+
+    #carteira-options-container {
+        max-width: 280px !important;
+        opacity: 1 !important;
+        overflow: visible !important;
+    }
+
+    #btn-carteira-options {
+        display: none !important;
+    }
+
+    .history-tools-container {
+        padding-left: 0;
+        padding-right: 0;
+    }
+
+    .filter-dropdown-menu {
+        right: 0;
     }
 
     /* 3. Ajuste de Layout Frontal no Dashboard */
@@ -2735,10 +2881,12 @@ body.light-mode .floating-input:-webkit-autofill {
     .page-content {
         top: 50% !important;
         bottom: auto !important;
-        left: 50% !important;
+        left: calc(50% + 50px) !important;
         transform: translate(-50%, 150%) !important;
-        height: 85vh !important;
-        max-width: 800px !important;
+        height: 85dvh !important;
+        max-height: 88dvh !important;
+        width: min(880px, calc(100vw - 180px)) !important;
+        max-width: min(880px, calc(100vw - 180px)) !important;
         border-radius: 2rem !important;
         border: 1px solid #27272a;
     }

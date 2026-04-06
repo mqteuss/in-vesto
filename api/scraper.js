@@ -215,6 +215,110 @@ function inferChecklistStatus(rawHtml) {
     return null;
 }
 
+function formatIndicatorHistoryValue(rawValue, rawType) {
+    const n = Number(rawValue);
+    if (!Number.isFinite(n)) {
+        return stripHtmlToText(String(rawValue || '-')) || '-';
+    }
+
+    const type = String(rawType || '').toLowerCase();
+    const formatDecimal = (value, decimals = 2) =>
+        value.toLocaleString('pt-BR', {
+            minimumFractionDigits: decimals,
+            maximumFractionDigits: decimals
+        });
+
+    const abbreviate = (value, decimals = 2, withSpace = true) => {
+        const abs = Math.abs(value);
+        if (abs >= 1e9) return `${formatDecimal(value / 1e9, decimals)}${withSpace ? ' ' : ''}B`;
+        if (abs >= 1e6) return `${formatDecimal(value / 1e6, decimals)}${withSpace ? ' ' : ''}M`;
+        if (abs >= 1e3) return `${formatDecimal(value / 1e3, decimals)}${withSpace ? ' ' : ''}K`;
+        return formatDecimal(value, 0);
+    };
+
+    if (type === 'money_abbr') return `R$ ${abbreviate(n, 2, true)}`;
+    if (type === 'number_abbr') return abbreviate(n, 0, false);
+    if (type === 'money') return `R$ ${formatDecimal(n, 2)}`;
+    if (type === 'percent') return `${formatDecimal(n, 2)}%`;
+    if (type === 'decimal') return formatDecimal(n, 2);
+    if (type === 'number') return formatDecimal(n, 0);
+    return formatDecimal(n, 2);
+}
+
+function extractFiiIdFromHtml(html) {
+    const source = String(html || '');
+    const patterns = [
+        /\/api\/fii\/comparador\/table\/(\d+)\//i,
+        /\/api\/fii\/historico-indicadores\/(\d+)\//i
+    ];
+
+    for (const pattern of patterns) {
+        const match = source.match(pattern);
+        if (match && match[1]) return match[1];
+    }
+    return null;
+}
+
+async function fetchFiiHistoricalIndicatorsApi(fiiId) {
+    if (!fiiId) return null;
+
+    const endpoint = `https://investidor10.com.br/api/fii/historico-indicadores/${fiiId}/10`;
+    const { data } = await fetchWithRetry(endpoint, {
+        headers: {
+            'Accept': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest',
+            'Referer': 'https://investidor10.com.br/'
+        }
+    });
+
+    if (!data || typeof data !== 'object') return null;
+
+    const entries = Object.entries(data).filter(([, values]) => Array.isArray(values) && values.length > 0);
+    if (entries.length === 0) return null;
+
+    const firstValues = entries[0][1];
+    const orderedYears = firstValues
+        .map(item => String(item?.year || '').trim())
+        .filter(Boolean);
+    const uniqueYears = [];
+    const seenYears = new Set();
+    for (const yearLabel of orderedYears) {
+        if (!seenYears.has(yearLabel)) {
+            uniqueYears.push(yearLabel);
+            seenYears.add(yearLabel);
+        }
+    }
+
+    const colunas = uniqueYears.length > 0 ? uniqueYears : ['Atual'];
+    const linhas = [];
+
+    for (const [indicador, values] of entries) {
+        const byYear = new Map();
+        for (const item of values) {
+            const yearLabel = String(item?.year || '').trim();
+            if (!yearLabel) continue;
+            byYear.set(yearLabel, item);
+        }
+
+        const valores = {};
+        for (const col of colunas) {
+            const item = byYear.get(col);
+            if (!item) {
+                valores[col] = '-';
+                continue;
+            }
+            valores[col] = formatIndicatorHistoryValue(item.value, item.type);
+        }
+
+        linhas.push({
+            indicador,
+            valores
+        });
+    }
+
+    return linhas.length > 0 ? { colunas, linhas } : null;
+}
+
 function extractFiiHistoricalIndicators(html) {
     const tables = String(html || '').match(/<table[^>]*>[\s\S]*?<\/table>/gi) || [];
     const metricHints = [
@@ -631,7 +735,17 @@ async function scrapeFundamentos(ticker) {
         dados.sobre = sobreTexto.replace(/[ \t]+/g, ' ').replace(/\n{3,}/g, '\n\n').trim();
 
         if (tipoAtivo === 'fii') {
-            dados.historico_indicadores = extractFiiHistoricalIndicators(html);
+            const fiiId = extractFiiIdFromHtml(html);
+            if (fiiId) {
+                try {
+                    dados.historico_indicadores = await fetchFiiHistoricalIndicatorsApi(fiiId);
+                } catch (e) {
+                    console.warn('Falha ao buscar histórico de indicadores via API:', e.message);
+                }
+            }
+            if (!dados.historico_indicadores) {
+                dados.historico_indicadores = extractFiiHistoricalIndicators(html);
+            }
             dados.checklist_buy_hold = extractFiiBuyAndHoldChecklist(html);
         }
 

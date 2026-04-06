@@ -128,6 +128,21 @@ export async function addTransacao(transacao) {
     if (error) throw new Error(handleSupabaseError(error, "addTransacao"));
 }
 
+export async function addTransacoesBatch(transacoesList = []) {
+    if (!Array.isArray(transacoesList) || transacoesList.length === 0) return;
+    const userId = await getUserId();
+    const chunkSize = 200;
+
+    for (let i = 0; i < transacoesList.length; i += chunkSize) {
+        const chunk = transacoesList.slice(i, i + chunkSize).map(tx => ({
+            ...tx,
+            user_id: userId
+        }));
+        const { error } = await supabaseClient.from('transacoes').insert(chunk);
+        if (error) throw new Error(handleSupabaseError(error, "addTransacoesBatch"));
+    }
+}
+
 export async function updateTransacao(id, transacaoUpdate) {
     const userId = await getUserId();
     const { error } = await supabaseClient.from('transacoes').update(transacaoUpdate).eq('id', id).eq('user_id', userId); 
@@ -206,6 +221,31 @@ export async function addProventoConhecido(provento) {
         .upsert(proventoParaDB, { onConflict: 'user_id, id' });
 
     if (error) throw new Error(handleSupabaseError(error, "addProventoConhecido"));
+}
+
+export async function addProventosConhecidosBatch(proventosList = []) {
+    if (!Array.isArray(proventosList) || proventosList.length === 0) return;
+    const userId = await getUserId();
+    const chunkSize = 200;
+
+    for (let i = 0; i < proventosList.length; i += chunkSize) {
+        const chunk = proventosList.slice(i, i + chunkSize).map(provento => ({
+            id: provento.id,
+            user_id: userId,
+            symbol: provento.symbol,
+            value: provento.value,
+            processado: !!provento.processado,
+            paymentdate: provento.paymentDate,
+            datacom: provento.dataCom,
+            type: provento.type || 'REND'
+        }));
+
+        const { error } = await supabaseClient
+            .from('proventosconhecidos')
+            .upsert(chunk, { onConflict: 'user_id, id' });
+
+        if (error) throw new Error(handleSupabaseError(error, "addProventosConhecidosBatch"));
+    }
 }
 
 export async function updateProventoProcessado(id) {

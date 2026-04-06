@@ -3,8 +3,10 @@ const Parser = require('rss-parser');
 // ---------------------------------------------------------
 // CONFIGURAÇÃO
 // ---------------------------------------------------------
+const DEFAULT_ALLOWED_ORIGIN = 'https://appvesto.vercel.app';
+
 const CONFIG = {
-    allowedOrigin:  process.env.ALLOWED_ORIGIN || '*',
+    allowedOrigin:  process.env.ALLOWED_ORIGIN || DEFAULT_ALLOWED_ORIGIN,
     cacheTTL:       900,   // 15 min (s-maxage)
     timeoutMs:      10000,
     maxQueryLength: 200,
@@ -25,11 +27,23 @@ const log = {
     error: (msg, meta = {}) => log._w('error', msg, meta),
 };
 
-function applyCors(response, allowedOrigin) {
-    response.setHeader('Access-Control-Allow-Origin', allowedOrigin);
-    if (allowedOrigin !== '*') {
-        response.setHeader('Access-Control-Allow-Credentials', 'true');
+function resolveAllowedOrigin(request) {
+    const configured = (CONFIG.allowedOrigin || DEFAULT_ALLOWED_ORIGIN).trim();
+    const requestOrigin = request.headers?.origin;
+    if (
+        typeof requestOrigin === 'string' &&
+        /^https:\/\/appvesto(?:-[a-z0-9-]+)?\.vercel\.app$/i.test(requestOrigin)
+    ) {
+        return requestOrigin;
     }
+    return configured || DEFAULT_ALLOWED_ORIGIN;
+}
+
+function applyCors(request, response) {
+    const allowedOrigin = resolveAllowedOrigin(request);
+    response.setHeader('Access-Control-Allow-Origin', allowedOrigin);
+    response.setHeader('Vary', 'Origin');
+    response.setHeader('Access-Control-Allow-Credentials', 'true');
     response.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
     response.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 }
@@ -229,7 +243,7 @@ module.exports = async function handler(request, response) {
     const rid = requestId();
 
     // CORS — headers mínimos necessários para uma API GET pública
-    applyCors(response, CONFIG.allowedOrigin);
+    applyCors(request, response);
     response.setHeader('X-Request-Id', rid);
 
     if (request.method === 'OPTIONS') return response.status(200).end();

@@ -50,9 +50,9 @@
       ]
     },
     {
-      "name": "Histórico",
-      "short_name": "Histórico",
-      "description": "Histórico de Transações",
+      "name": "Hist\u00F3rico",
+      "short_name": "Hist\u00F3rico",
+      "description": "Hist\u00F3rico de Transa\u00E7\u00F5es",
       "url": "/?tab=tab-historico",
       "icons": [
         {
@@ -63,9 +63,9 @@
       ]
     },
     {
-      "name": "Notícias",
-      "short_name": "Notícias",
-      "description": "Notícias FIIs",
+      "name": "Not\u00EDcias",
+      "short_name": "Not\u00EDcias",
+      "description": "Not\u00EDcias FIIs",
       "url": "/?tab=tab-noticias",
       "icons": [
         {

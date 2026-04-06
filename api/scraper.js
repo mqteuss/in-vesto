@@ -86,6 +86,49 @@ const guessType = (ticker) => {
     if (t.endsWith('11') || t.endsWith('12')) return 'fii';
     return 'acao';
 };
+const TICKER_REGEX = /^[A-Z]{4}\d{1,2}[A-Z]?$/;
+const ALLOWED_MODES = new Set([
+    'rankings',
+    'indices',
+    'ipca',
+    'fundamentos',
+    'proventos_carteira',
+    'historico_portfolio',
+    'historico_12m',
+    'proximo_provento',
+    'cotacao_historica'
+]);
+const ALLOWED_RANGES = new Set(['1D', '5D', '1M', '6M', 'YTD', '1Y', '1A', '5Y', '5A', 'Tudo', 'MAX']);
+const DEFAULT_ALLOWED_ORIGIN = 'https://appvesto.vercel.app';
+const MAX_FII_LIST_SIZE = 200;
+const MAX_HISTORY_LIMIT = 120;
+const FII_BATCH_SIZE = 5;
+
+function sanitizeTickerInput(rawTicker) {
+    if (typeof rawTicker !== 'string') return '';
+    let ticker = rawTicker.trim().toUpperCase();
+    if (ticker.endsWith('.SA')) ticker = ticker.slice(0, -3);
+    if (ticker.endsWith('F')) ticker = ticker.slice(0, -1);
+    return TICKER_REGEX.test(ticker) ? ticker : '';
+}
+
+function sanitizeRangeInput(rawRange) {
+    if (typeof rawRange !== 'string') return '1D';
+    const trimmed = rawRange.trim();
+    if (!trimmed) return '1D';
+
+    const upper = trimmed.toUpperCase();
+    if (upper === 'TUDO') return 'Tudo';
+    if (ALLOWED_RANGES.has(upper)) return upper;
+    if (ALLOWED_RANGES.has(trimmed)) return trimmed;
+    return '1D';
+}
+
+function sanitizePositiveLimit(rawLimit, fallback, max = MAX_HISTORY_LIMIT) {
+    const parsed = Number.parseInt(rawLimit, 10);
+    if (!Number.isFinite(parsed) || parsed <= 0) return fallback;
+    return Math.min(parsed, max);
+}
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -919,21 +962,145 @@ function getYahooParams(range) {
     }
 }
 
-function getB3SessionStartTimestamp(referenceTimestamp) {
+const _b3HolidayCacheByYear = new Map();
+
+function pad2(value) {
+    return String(value).padStart(2, '0');
+}
+
+function toDateKey(year, month, day) {
+    return `${year}-${pad2(month)}-${pad2(day)}`;
+}
+
+function shiftDateKey(dateKey, dayDelta) {
+    const [y, m, d] = String(dateKey).split('-').map(Number);
+    if (!y || !m || !d) return dateKey;
+    const utc = new Date(Date.UTC(y, m - 1, d));
+    utc.setUTCDate(utc.getUTCDate() + dayDelta);
+    return toDateKey(utc.getUTCFullYear(), utc.getUTCMonth() + 1, utc.getUTCDate());
+}
+
+function calculateEasterDateKey(year) {
+    const a = year % 19;
+    const b = Math.floor(year / 100);
+    const c = year % 100;
+    const d = Math.floor(b / 4);
+    const e = b % 4;
+    const f = Math.floor((b + 8) / 25);
+    const g = Math.floor((b - f + 1) / 3);
+    const h = (19 * a + b - d - g + 15) % 30;
+    const i = Math.floor(c / 4);
+    const k = c % 4;
+    const l = (32 + 2 * e + 2 * i - h - k) % 7;
+    const m = Math.floor((a + 11 * h + 22 * l) / 451);
+    const month = Math.floor((h + l - 7 * m + 114) / 31);
+    const day = ((h + l - 7 * m + 114) % 31) + 1;
+    return toDateKey(year, month, day);
+}
+
+function getB3HolidaySet(year) {
+    if (_b3HolidayCacheByYear.has(year)) {
+        return _b3HolidayCacheByYear.get(year);
+    }
+
+    const easter = calculateEasterDateKey(year);
+    const carnavalSegunda = shiftDateKey(easter, -48);
+    const carnavalTerca = shiftDateKey(easter, -47);
+    const sextaSanta = shiftDateKey(easter, -2);
+    const corpusChristi = shiftDateKey(easter, 60);
+
+    const holidays = new Set([
+        `${year}-01-01`,
+        `${year}-01-25`,
+        carnavalSegunda,
+        carnavalTerca,
+        sextaSanta,
+        `${year}-04-21`,
+        `${year}-05-01`,
+        corpusChristi,
+        `${year}-09-07`,
+        `${year}-10-12`,
+        `${year}-11-02`,
+        `${year}-11-15`,
+        `${year}-11-20`,
+        `${year}-12-24`,
+        `${year}-12-25`,
+        `${year}-12-31`
+    ]);
+
+    _b3HolidayCacheByYear.set(year, holidays);
+    return holidays;
+}
+
+function isB3Holiday(dateKey) {
+    if (!dateKey) return false;
+    const year = Number(dateKey.slice(0, 4));
+    if (!Number.isInteger(year)) return false;
+    return getB3HolidaySet(year).has(dateKey);
+}
+
+function getB3SessionWindow(dateKey) {
+    const regularWindow = { openHour: 10, openMinute: 0, closeHour: 18, closeMinute: 0 };
+    if (!dateKey) return regularWindow;
+
+    const year = Number(dateKey.slice(0, 4));
+    if (!Number.isInteger(year)) return regularWindow;
+
+    const ashWednesday = shiftDateKey(calculateEasterDateKey(year), -46);
+    if (dateKey === ashWednesday) {
+        return { openHour: 13, openMinute: 0, closeHour: 18, closeMinute: 0 };
+    }
+
+    return regularWindow;
+}
+
+function getSaoPauloDateParts(referenceTimestamp = Date.now()) {
     try {
-        const parts = new Intl.DateTimeFormat('en-CA', {
+        const parts = new Intl.DateTimeFormat('en-US', {
             timeZone: 'America/Sao_Paulo',
+            weekday: 'short',
             year: 'numeric',
             month: '2-digit',
             day: '2-digit'
         }).formatToParts(new Date(referenceTimestamp));
 
-        const year = parts.find(p => p.type === 'year')?.value;
-        const month = parts.find(p => p.type === 'month')?.value;
-        const day = parts.find(p => p.type === 'day')?.value;
-        if (!year || !month || !day) return null;
+        const weekdayToken = (parts.find(p => p.type === 'weekday')?.value || '').toLowerCase();
+        const weekdayMap = { sun: 0, mon: 1, tue: 2, wed: 3, thu: 4, fri: 5, sat: 6 };
+        const year = parts.find(p => p.type === 'year')?.value || null;
+        const month = parts.find(p => p.type === 'month')?.value || null;
+        const day = parts.find(p => p.type === 'day')?.value || null;
+        const dateKey = (year && month && day) ? `${year}-${month}-${day}` : null;
+        const dayOfWeek = Number.isInteger(weekdayMap[weekdayToken])
+            ? weekdayMap[weekdayToken]
+            : new Date(referenceTimestamp).getDay();
 
-        return new Date(`${year}-${month}-${day}T10:00:00-03:00`).getTime();
+        return { year, month, day, dateKey, dayOfWeek };
+    } catch (_) {
+        const localDate = new Date(referenceTimestamp);
+        const year = String(localDate.getFullYear());
+        const month = pad2(localDate.getMonth() + 1);
+        const day = pad2(localDate.getDate());
+        return {
+            year,
+            month,
+            day,
+            dateKey: `${year}-${month}-${day}`,
+            dayOfWeek: localDate.getDay()
+        };
+    }
+}
+
+function getB3SessionStartTimestamp(referenceTimestamp) {
+    try {
+        const { year, month, day, dateKey, dayOfWeek } = getSaoPauloDateParts(referenceTimestamp);
+        if (!year || !month || !day || !dateKey) return null;
+        if (dayOfWeek === 0 || dayOfWeek === 6) return null;
+        if (isB3Holiday(dateKey)) return null;
+
+        const session = getB3SessionWindow(dateKey);
+        return new Date(
+            `${year}-${month}-${day}T${pad2(session.openHour)}:${pad2(session.openMinute)}:00-03:00`
+        ).getTime();
     } catch (_) {
         return null;
     }
@@ -953,18 +1120,22 @@ function normalizeIntradayOpenPoint(points, meta, rangeFilter) {
         return points;
     }
 
-    // Evita inserir pontos sintéticos para séries fora do contexto intraday regular.
-    const maxGapMs = 3 * 60 * 60 * 1000;
-    if ((firstTs - sessionStart) > maxGapMs) {
+    const gapMs = firstTs - sessionStart;
+    const minGapMs = 2 * 60 * 1000;
+    const maxGapMs = 2 * 60 * 60 * 1000;
+    if (gapMs <= minGapMs || gapMs > maxGapMs) {
         return points;
     }
 
     const baselineCandidates = [
+        Number(meta?.regularMarketOpen),
+        Number(firstPoint?.open),
+        Number(firstPoint?.price),
         Number(meta?.regularMarketPreviousClose),
         Number(meta?.chartPreviousClose),
         Number(meta?.previousClose),
-        Number(firstPoint?.open),
-        Number(firstPoint?.price)
+        Number(firstPoint?.high),
+        Number(firstPoint?.low)
     ];
     const baseline = baselineCandidates.find(v => Number.isFinite(v) && v > 0);
     if (!(baseline > 0)) return points;
@@ -1051,24 +1222,38 @@ async function scrapeCotacaoHistory(ticker, range = '1A') {
 
 // ─── HANDLER ─────────────────────────────────────────────────────────────────
 
-module.exports = async function handler(req, res) {
-    const allowedOrigin = process.env.ALLOWED_ORIGIN || '*';
-    res.setHeader('Access-Control-Allow-Origin', allowedOrigin);
-    if (allowedOrigin !== '*') {
-        res.setHeader('Access-Control-Allow-Credentials', 'true');
+function resolveCorsOrigin(req) {
+    const configured = (process.env.ALLOWED_ORIGIN || '').trim();
+    if (configured && configured !== '*') return configured;
+
+    const requestOrigin = req.headers?.origin;
+    if (
+        typeof requestOrigin === 'string' &&
+        /^https:\/\/appvesto(?:-[a-z0-9-]+)?\.vercel\.app$/i.test(requestOrigin)
+    ) {
+        return requestOrigin;
     }
+
+    return DEFAULT_ALLOWED_ORIGIN;
+}
+
+module.exports = async function handler(req, res) {
+    const allowedOrigin = resolveCorsOrigin(req);
+    res.setHeader('Access-Control-Allow-Origin', allowedOrigin);
+    res.setHeader('Vary', 'Origin');
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
     res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,POST');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
+    const modeForCache = typeof req.body?.mode === 'string' ? req.body.mode : '';
     if (req.method === 'GET' || req.method === 'POST') {
-        const mode = req.body?.mode;
-        if (mode === 'fundamentos') {
+        if (modeForCache === 'fundamentos') {
             res.setHeader('Cache-Control', 's-maxage=14400, stale-while-revalidate=86400');
-        } else if (mode === 'cotacao_historica') {
+        } else if (modeForCache === 'cotacao_historica') {
             res.setHeader('Cache-Control', 's-maxage=300, stale-while-revalidate=3600');
-        } else if (mode === 'proximo_provento' || mode === 'historico_12m') {
+        } else if (modeForCache === 'proximo_provento' || modeForCache === 'historico_12m') {
             res.setHeader('Cache-Control', 's-maxage=7200, stale-while-revalidate=43200');
-        } else if (mode === 'rankings') {
+        } else if (modeForCache === 'rankings') {
             res.setHeader('Cache-Control', 's-maxage=900, stale-while-revalidate=3600');
         } else {
             res.setHeader('Cache-Control', 's-maxage=3600, stale-while-revalidate=86400');
@@ -1079,8 +1264,15 @@ module.exports = async function handler(req, res) {
     if (req.method !== 'POST') { return res.status(405).json({ error: "Use POST" }); }
 
     try {
-        if (!req.body || !req.body.mode) throw new Error("Payload inválido");
-        const { mode, payload = {} } = req.body;
+        if (!req.body || typeof req.body !== 'object') {
+            return res.status(400).json({ error: "Payload invalido" });
+        }
+
+        const mode = typeof req.body.mode === 'string' ? req.body.mode.trim() : '';
+        const payload = (req.body.payload && typeof req.body.payload === 'object') ? req.body.payload : {};
+        if (!ALLOWED_MODES.has(mode)) {
+            return res.status(400).json({ error: "Modo invalido" });
+        }
 
         if (mode === 'rankings') {
             const dados = await scrapeRankings();
@@ -1098,20 +1290,37 @@ module.exports = async function handler(req, res) {
         }
 
         if (mode === 'fundamentos') {
-            if (!payload.ticker) return res.json({ json: {} });
-            const dados = await scrapeFundamentos(payload.ticker);
+            const ticker = sanitizeTickerInput(payload.ticker);
+            if (!ticker) return res.status(400).json({ error: "Ticker invalido" });
+            const dados = await scrapeFundamentos(ticker);
             return res.status(200).json({ json: dados });
         }
 
         if (mode === 'proventos_carteira' || mode === 'historico_portfolio') {
-            if (!payload.fiiList) return res.json({ json: [] });
-            const batches = chunkArray(payload.fiiList, 5);
+            const rawList = Array.isArray(payload.fiiList) ? payload.fiiList : [];
+            if (rawList.length === 0) return res.status(200).json({ json: [] });
+            if (rawList.length > MAX_FII_LIST_SIZE) {
+                return res.status(400).json({ error: `Lista muito grande. Limite: ${MAX_FII_LIST_SIZE}` });
+            }
+
+            const defaultLimit = mode === 'historico_portfolio' ? 14 : 12;
+            const sanitizedList = rawList.map((item) => {
+                const ticker = sanitizeTickerInput(typeof item === 'string' ? item : item?.ticker);
+                if (!ticker) return null;
+                return {
+                    ticker,
+                    limit: sanitizePositiveLimit(item?.limit, defaultLimit, MAX_HISTORY_LIMIT)
+                };
+            }).filter(Boolean);
+
+            if (sanitizedList.length === 0) {
+                return res.status(200).json({ json: [] });
+            }
+
+            const batches = chunkArray(sanitizedList, FII_BATCH_SIZE);
             let finalResults = [];
             for (const [batchIdx, batch] of batches.entries()) {
-                const promises = batch.map(async (item) => {
-                    const ticker = typeof item === 'string' ? item : item.ticker;
-                    const defaultLimit = mode === 'historico_portfolio' ? 14 : 12;
-                    const limit = typeof item === 'string' ? defaultLimit : (item.limit || defaultLimit);
+                const promises = batch.map(async ({ ticker, limit }) => {
                     const history = await scrapeAsset(ticker);
                     const recents = history.filter(h => h.paymentDate && h.value > 0).slice(0, limit);
                     if (recents.length > 0) return recents.map(r => ({ symbol: ticker.toUpperCase(), ...r }));
@@ -1119,20 +1328,24 @@ module.exports = async function handler(req, res) {
                 });
                 const batchResults = await Promise.all(promises);
                 finalResults = finalResults.concat(batchResults);
-                if (batches.length > 1 && batchIdx < batches.length - 1) await new Promise(r => setTimeout(r, 200));
+                if (batches.length > 1 && batchIdx < batches.length - 1) {
+                    await new Promise(r => setTimeout(r, 200));
+                }
             }
             return res.status(200).json({ json: finalResults.filter(d => d !== null).flat() });
         }
 
         if (mode === 'historico_12m') {
-            if (!payload.ticker) return res.json({ json: [] });
-            const history = await scrapeAsset(payload.ticker);
+            const ticker = sanitizeTickerInput(payload.ticker);
+            if (!ticker) return res.status(400).json({ error: "Ticker invalido" });
+            const history = await scrapeAsset(ticker);
             return res.status(200).json({ json: history });
         }
 
         if (mode === 'proximo_provento') {
-            if (!payload.ticker) return res.json({ json: null });
-            const history = await scrapeAsset(payload.ticker);
+            const ticker = sanitizeTickerInput(payload.ticker);
+            if (!ticker) return res.status(400).json({ error: "Ticker invalido" });
+            const history = await scrapeAsset(ticker);
 
             const hoje = new Date();
             hoje.setHours(0, 0, 0, 0);
@@ -1162,8 +1375,10 @@ module.exports = async function handler(req, res) {
         }
 
         if (mode === 'cotacao_historica') {
-            const range = payload.range || '1D';
-            const dados = await scrapeCotacaoHistory(payload.ticker, range);
+            const ticker = sanitizeTickerInput(payload.ticker);
+            if (!ticker) return res.status(400).json({ error: "Ticker invalido" });
+            const range = sanitizeRangeInput(payload.range);
+            const dados = await scrapeCotacaoHistory(ticker, range);
             return res.status(200).json({ json: dados });
         }
 

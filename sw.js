@@ -2,7 +2,7 @@
 // CONFIGURAÇÃO
 // Incremente CACHE_VERSION a cada deploy para forçar atualização.
 // ---------------------------------------------------------
-const CACHE_VERSION = 'v34'; // Ajustes de responsividade desktop + melhorias do modo claro
+const CACHE_VERSION = 'v35'; // Ajustes de responsividade desktop + melhorias do modo claro
 const CACHE_NAME = `vesto-cache-${CACHE_VERSION}`;
 const DEFAULT_URL = '/?tab=tab-carteira';
 
@@ -56,10 +56,18 @@ async function cacheFile(cache, url, options = {}) {
     try {
         const request = new Request(url, options);
         const response = await fetch(request);
-        await cache.put(request, response);
+        const cacheable =
+            response &&
+            (response.status === 200 || response.type === 'opaque');
+
+        if (!cacheable) {
+            throw new Error(`Resposta nao cacheavel (status ${response?.status ?? 'n/a'})`);
+        }
+
+        await cache.put(request, response.clone());
     } catch (err) {
         log.warn(`Falha ao cachear ${url}:`, err.message);
-        // Não relança — instalação continua mesmo se um arquivo falhar
+        // Nao relanca - instalacao continua mesmo se um arquivo falhar
     }
 }
 

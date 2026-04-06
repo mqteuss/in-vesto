@@ -80,14 +80,14 @@
     </svg>
 
     <div id="biometric-lock-screen"
-        class="fixed inset-0 z-[100] bg-black flex flex-col items-center justify-end pb-[18vh] px-6 hidden">
+        class="fixed inset-0 z-[100] bg-black flex flex-col items-center justify-center md:justify-end pb-[max(12vh,env(safe-area-inset-bottom))] pt-20 px-6 hidden">
 
         <div class="absolute top-24 left-0 w-full flex justify-center z-20 pointer-events-none">
             <img src="icons/icon-192x192.png" onerror="this.style.display='none'" alt="Vesto Icon"
                 class="w-20 h-20 drop-shadow-2xl transition-all duration-300 rounded-2xl">
         </div>
 
-        <div class="cursor-pointer group flex flex-col items-center opacity-0 pointer-events-none transition-opacity duration-500"
+        <button type="button" class="bg-transparent border-0 cursor-pointer group flex flex-col items-center opacity-0 pointer-events-none transition-opacity duration-500 mb-16 md:mb-0"
             id="btn-desbloquear">
             <svg xmlns="http://www.w3.org/2000/svg"
                 class="h-16 w-16 text-purple-500 mb-6 group-active:scale-95 transition-transform duration-300 opacity-90 group-hover:opacity-100"
@@ -97,7 +97,7 @@
             </svg>
             <h2 class="text-[17px] font-medium text-[#e5e5e5] mb-1 tracking-wide">Desbloquear Vesto</h2>
             <p class="text-[#71717a] text-sm text-center">Toque para tentar novamente</p>
-        </div>
+        </button>
 
         <button id="btn-sair-lock"
             class="absolute bottom-8 text-sm font-medium text-[#71717a] active:text-[#e5e5e5] px-6 py-3 transition-colors">
@@ -496,7 +496,7 @@
                             <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 px-5">
                             
                             <!-- Proventos -->
-                            <div id="btn-open-proventos" class="bg-[#151515] rounded-2xl p-3 cursor-pointer active:scale-[0.98] transition-all flex justify-between items-center shadow-sm">
+                            <div id="btn-open-proventos" role="button" tabindex="0" aria-label="Abrir proventos" class="bg-[#151515] rounded-2xl p-3 cursor-pointer active:scale-[0.98] transition-all flex justify-between items-center shadow-sm">
                                 <div class="flex items-center gap-3">
                                     <div class="w-8 h-8 flex items-center justify-center text-white">
                                         <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -509,7 +509,7 @@
                             </div>
 
                             <!-- Alocação -->
-                            <div id="btn-open-alocacao" class="bg-[#151515] rounded-2xl p-3 cursor-pointer active:scale-[0.98] transition-all flex justify-between items-center shadow-sm">
+                            <div id="btn-open-alocacao" role="button" tabindex="0" aria-label="Abrir alocação" class="bg-[#151515] rounded-2xl p-3 cursor-pointer active:scale-[0.98] transition-all flex justify-between items-center shadow-sm">
                                 <div class="flex items-center gap-3">
                                     <div class="w-8 h-8 flex items-center justify-center text-white">
                                         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -523,7 +523,7 @@
                             </div>
 
                             <!-- IPCA+ -->
-                            <div id="btn-open-ipca" class="bg-[#151515] rounded-2xl p-3 cursor-pointer active:scale-[0.98] transition-all flex justify-between items-center shadow-sm">
+                            <div id="btn-open-ipca" role="button" tabindex="0" aria-label="Abrir IPCA" class="bg-[#151515] rounded-2xl p-3 cursor-pointer active:scale-[0.98] transition-all flex justify-between items-center shadow-sm">
                                 <div class="flex items-center gap-3">
                                     <div class="w-8 h-8 flex items-center justify-center text-white">
                                         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -536,7 +536,7 @@
                             </div>
 
                             <!-- Objetivos -->
-                            <div id="btn-open-objetivos" onclick="openObjetivosModal()" class="bg-[#151515] rounded-2xl p-3 cursor-pointer active:scale-[0.98] transition-all flex justify-between items-center shadow-sm">
+                            <div id="btn-open-objetivos" role="button" tabindex="0" aria-label="Abrir objetivos" class="bg-[#151515] rounded-2xl p-3 cursor-pointer active:scale-[0.98] transition-all flex justify-between items-center shadow-sm">
                                 <div class="flex items-center gap-3">
                                     <div class="w-8 h-8 flex items-center justify-center text-white">
                                         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -719,17 +719,17 @@
                             <div class="flex items-center flex-shrink-0 gap-2">
                                 <div id="carteira-options-container" class="overflow-hidden transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)]" style="max-width: 0px; opacity: 0;">
                                     <div class="flex items-center gap-2 pr-2">
-                                        <button id="refresh-button" class="filter-funnel-btn flex-shrink-0" title="Atualizar dados">
+                                        <button id="refresh-button" aria-label="Atualizar dados" class="filter-funnel-btn flex-shrink-0" title="Atualizar dados">
                                             <svg class="w-4 h-4"><use href="#ico-refresh" /></svg>
                                         </button>
 
-                                        <button id="btn-carteira-sort" class="filter-funnel-btn flex-shrink-0" title="Ordenar">
+                                        <button id="btn-carteira-sort" aria-label="Ordenar carteira" class="filter-funnel-btn flex-shrink-0" title="Ordenar">
                                             <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                                                 <path stroke-linecap="round" stroke-linejoin="round" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
                                             </svg>
                                         </button>
 
-                                        <button id="btn-carteira-raiox" class="filter-funnel-btn flex-shrink-0" title="Raio-X (Comparador)">
+                                        <button id="btn-carteira-raiox" aria-label="Abrir comparador Raio-X" class="filter-funnel-btn flex-shrink-0" title="Raio-X (Comparador)">
                                             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                                                 <path stroke-linecap="round" stroke-linejoin="round" d="M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3" />
                                             </svg>
@@ -737,7 +737,7 @@
                                     </div>
                                 </div>
 
-                                <button id="btn-carteira-options" class="filter-funnel-btn transition-transform duration-300 relative z-10 flex-shrink-0" title="Mais Opções">
+                                <button id="btn-carteira-options" aria-label="Mostrar mais opções da carteira" class="filter-funnel-btn transition-transform duration-300 relative z-10 flex-shrink-0" title="Mais Opções">
                                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                                         <path stroke-linecap="round" stroke-linejoin="round" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
                                     </svg>
@@ -1009,7 +1009,7 @@
 
                         <div class="flex items-center gap-4 p-4 card-bg mb-8 rounded-3xl">
                             <!-- Foto de Perfil Container -->
-                            <div id="profile-picture-container" onclick="openProfileModal()"
+                            <div id="profile-picture-container" role="button" tabindex="0" aria-label="Abrir configurações de perfil"
                                 class="w-14 h-14 rounded-full bg-[#1C1C1E] flex items-center justify-center text-white font-bold text-lg border-[3px] border-[#2C2C2E] shadow-xl shadow-black/50 cursor-pointer relative overflow-hidden group transition-transform active:scale-95">
 
                                 <img id="user-profile-img" src="" alt="Profile"
@@ -2283,15 +2283,15 @@
                         <svg id="alocacao-svg-lines" class="absolute inset-0 w-full h-full pointer-events-none z-10 opacity-70"></svg>
                         
                         <!-- Coluna do Gráfico de Barra (Fixa, não rola) -->
-                        <div class="w-16 sm:w-20 pl-4 py-4 pr-8 flex flex-col items-center justify-end border-r border-[#151515] min-h-0">
+                        <div class="w-16 sm:w-20 pl-4 pr-8 flex flex-col items-center justify-stretch border-r border-[#151515] min-h-0 sticky top-0 self-start">
                             <!-- O Barra 2D Stacked -->
-                            <div id="alocacao-stacked-bar" class="w-10 sm:w-12 h-full max-h-full bg-[#151515] rounded-[30px] overflow-hidden flex flex-col-reverse shadow-inner border border-[#2C2C2E]">
+                            <div id="alocacao-stacked-bar" class="w-10 sm:w-12 h-full min-h-[260px] bg-[#151515] rounded-[30px] overflow-hidden flex flex-col-reverse shadow-inner border border-[#2C2C2E]">
                                 <!-- Segmentos injetados via JS -->
                             </div>
                         </div>
 
                         <!-- Coluna da Lista de Ativos/Segmentos (Permite Scroll) -->
-                        <div class="flex-1 min-h-0 overflow-y-auto pb-10 pt-4 custom-scroll" id="alocacao-legend-scroll" onscroll="if(window.desenharLinhaAlocacao) window.desenharLinhaAlocacao()">
+                        <div class="flex-1 min-h-0 overflow-y-auto pb-[max(2.5rem,env(safe-area-inset-bottom))] pt-4 custom-scroll" id="alocacao-legend-scroll" onscroll="if(window.desenharLinhaAlocacao) window.desenharLinhaAlocacao()">
                             <div id="alocacao-legend-container" class="space-y-4 px-2 pr-4 relative z-20">
                                 <!-- Itens de legenda injetados via JS -->
                             </div>

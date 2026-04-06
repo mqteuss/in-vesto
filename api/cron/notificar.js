@@ -421,13 +421,16 @@ module.exports = async function handler(req, res) {
     // Autenticação do cron — qualquer requisição não autorizada
     // poderia disparar o job inteiro e consumir cota da Brapi.
     const cronSecret = process.env.CRON_SECRET;
-    if (cronSecret) {
-        const authHeader = req.headers['authorization'] ?? '';
-        const token = authHeader.replace('Bearer ', '').trim();
-        if (token !== cronSecret) {
-            log.warn('Unauthorized cron attempt', { rid });
-            return res.status(401).json({ error: 'Não autorizado.' });
-        }
+    if (!cronSecret) {
+        log.error('CRON_SECRET ausente. Execucao bloqueada.', { rid });
+        return res.status(500).json({ error: 'CRON_SECRET nao configurado.' });
+    }
+
+    const authHeader = req.headers['authorization'] ?? '';
+    const token = authHeader.replace('Bearer ', '').trim();
+    if (token !== cronSecret) {
+        log.warn('Unauthorized cron attempt', { rid });
+        return res.status(401).json({ error: 'Nao autorizado.' });
     }
 
     log.info('Cron started', { rid });

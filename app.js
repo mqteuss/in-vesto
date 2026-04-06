@@ -209,6 +209,14 @@ const KNOWN_UNITS_BDRS = new Set([
 ]);
 const TICKER_REGEX = /^[A-Z]{4}\d{1,2}[A-Z]?$/;
 
+function normalizeTickerSymbol(rawTicker) {
+    if (typeof rawTicker !== 'string') return '';
+    let ticker = rawTicker.trim().toUpperCase();
+    if (ticker.endsWith('.SA')) ticker = ticker.slice(0, -3);
+    if (ticker.endsWith('F')) ticker = ticker.slice(0, -1);
+    return TICKER_REGEX.test(ticker) ? ticker : '';
+}
+
 const isFII = (symbol) => {
     if (!symbol) return false;
     const symUpper = symbol.toUpperCase();
@@ -327,12 +335,27 @@ function getB3SessionWindow(dateKey) {
 
 function getSaoPauloDateTime(referenceTimestamp = Date.now()) {
     try {
-        const spTimeStr = new Date(referenceTimestamp).toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' });
-        const spDate = new Date(spTimeStr);
-        const dayOfWeek = spDate.getDay();
-        const hour = spDate.getHours();
-        const minute = spDate.getMinutes();
-        const { year, month, day } = getDatePartsInSaoPaulo(referenceTimestamp);
+        const parts = new Intl.DateTimeFormat('en-US', {
+            timeZone: 'America/Sao_Paulo',
+            weekday: 'short',
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit',
+            hourCycle: 'h23'
+        }).formatToParts(new Date(referenceTimestamp));
+
+        const weekdayToken = (parts.find(p => p.type === 'weekday')?.value || '').toLowerCase();
+        const weekdayMap = { sun: 0, mon: 1, tue: 2, wed: 3, thu: 4, fri: 5, sat: 6 };
+
+        const year = parts.find(p => p.type === 'year')?.value || null;
+        const month = parts.find(p => p.type === 'month')?.value || null;
+        const day = parts.find(p => p.type === 'day')?.value || null;
+        const hour = Number(parts.find(p => p.type === 'hour')?.value || 0);
+        const minute = Number(parts.find(p => p.type === 'minute')?.value || 0);
+        const dayOfWeek = Number.isInteger(weekdayMap[weekdayToken]) ? weekdayMap[weekdayToken] : new Date(referenceTimestamp).getDay();
+
         const dateKey = (year && month && day) ? `${year}-${month}-${day}` : null;
         return { dayOfWeek, hour, minute, dateKey };
     } catch (e) {
@@ -406,7 +429,12 @@ function isB3Open(referenceTimestamp = Date.now()) {
 }
 
 const REFRESH_INTERVAL = 300000;
+const REFRESH_INTERVAL_CLOSED = 1000 * 60 * 60 * 2;
+const MARKET_STATUS_INTERVAL = 60000;
 let refreshIntervalId = null;
+let refreshWakeupTimeoutId = null;
+let marketStatusIntervalId = null;
+let lastMarketSchedulerMode = '';
 const CACHE_PRECO_MERCADO_ABERTO = 1000 * 60 * 5;
 const CACHE_PRECO_MERCADO_FECHADO = 1000 * 60 * 60 * 12;
 const CACHE_NOTICIAS = 1000 * 60 * 15;
@@ -418,6 +446,86 @@ const CACHE_FUNDAMENTOS_FECHADO = 1000 * 60 * 60 * 24;
 // Próximo provento — 30min no mercado aberto, 4h no fechado
 const CACHE_PROXIMO_PROVENTO_ABERTO = 1000 * 60 * 30;
 const CACHE_PROXIMO_PROVENTO_FECHADO = 1000 * 60 * 60 * 4;
+
+function getNextB3SessionStartTimestamp(referenceTimestamp = Date.now()) {
+    const oneDayMs = 24 * 60 * 60 * 1000;
+
+    for (let offset = 0; offset < 14; offset++) {
+        const probeTs = referenceTimestamp + (offset * oneDayMs);
+        const { year, month, day } = getDatePartsInSaoPaulo(probeTs);
+        if (!year || !month || !day) continue;
+
+        const dateKey = `${year}-${month}-${day}`;
+        const weekdayProbe = new Date(`${dateKey}T12:00:00-03:00`);
+        const dayOfWeek = weekdayProbe.getDay();
+        if (dayOfWeek === 0 || dayOfWeek === 6) continue;
+        if (isB3Holiday(dateKey)) continue;
+
+        const session = getB3SessionWindow(dateKey);
+        const sessionStartTs = new Date(
+            `${dateKey}T${pad2(session.openHour)}:${pad2(session.openMinute)}:00-03:00`
+        ).getTime();
+
+        if (Number.isFinite(sessionStartTs) && sessionStartTs > referenceTimestamp) {
+            return sessionStartTs;
+        }
+    }
+
+    return null;
+}
+
+function clearRefreshScheduler() {
+    if (refreshIntervalId) {
+        clearInterval(refreshIntervalId);
+        refreshIntervalId = null;
+    }
+    if (refreshWakeupTimeoutId) {
+        clearTimeout(refreshWakeupTimeoutId);
+        refreshWakeupTimeoutId = null;
+    }
+}
+
+function setupAutoRefreshScheduler() {
+    clearRefreshScheduler();
+    if (typeof atualizarTodosDados !== 'function') return;
+
+    const status = getB3MarketStatus();
+    const isOpen = status.open;
+    lastMarketSchedulerMode = isOpen ? 'open' : 'closed';
+
+    const runOpenTick = async () => {
+        if (!isB3Open()) {
+            setupAutoRefreshScheduler();
+            return;
+        }
+        await atualizarTodosDados(false);
+    };
+
+    const runClosedTick = async () => {
+        if (isB3Open()) {
+            setupAutoRefreshScheduler();
+            await atualizarTodosDados(false);
+            return;
+        }
+        await atualizarTodosDados(false);
+    };
+
+    refreshIntervalId = setInterval(
+        isOpen ? runOpenTick : runClosedTick,
+        isOpen ? REFRESH_INTERVAL : REFRESH_INTERVAL_CLOSED
+    );
+
+    if (!isOpen) {
+        const nextOpenTs = getNextB3SessionStartTimestamp();
+        if (Number.isFinite(nextOpenTs)) {
+            const wakeUpInMs = Math.max(10000, (nextOpenTs - Date.now()) + 30000);
+            refreshWakeupTimeoutId = setTimeout(async () => {
+                setupAutoRefreshScheduler();
+                await atualizarTodosDados(false);
+            }, wakeUpInMs);
+        }
+    }
+}
 
 const DB_NAME = 'vestoCacheDB';
 const DB_VERSION = 2;
@@ -839,10 +947,21 @@ document.addEventListener('DOMContentLoaded', async () => {
     const alocacaoPageModal = document.getElementById('alocacao-page-modal');
     const alocacaoPageContent = document.getElementById('tab-alocacao-content');
     const alocacaoVoltarBtn = document.getElementById('alocacao-voltar-btn');
+    const btnOpenObjetivos = document.getElementById('btn-open-objetivos');
 
     let isDraggingAlocacao = false;
     let touchStartAlocacaoY = 0;
     let touchMoveAlocacaoY = 0;
+
+    function wireKeyboardActivation(el, handler) {
+        if (!el || typeof handler !== 'function') return;
+        el.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                handler();
+            }
+        });
+    }
 
     const btnOpenIpca = document.getElementById('btn-open-ipca');
     const ipcaPageModal = document.getElementById('ipca-page-modal');
@@ -1579,6 +1698,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (btnDesbloquear) {
             if (showRetry) {
                 btnDesbloquear.classList.remove('opacity-0', 'pointer-events-none');
+                requestAnimationFrame(() => {
+                    btnDesbloquear.scrollIntoView({ block: 'center', behavior: 'smooth' });
+                });
             } else {
                 btnDesbloquear.classList.add('opacity-0', 'pointer-events-none');
             }
@@ -1651,7 +1773,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             const challenge = new Uint8Array(32);
             window.crypto.getRandomValues(challenge);
 
-            const currentDomain = window.location.hostname;
+            const currentDomain = window.location.hostname.replace(/^www\./i, '');
             const userIdBuffer = Uint8Array.from(currentUserId || "user_id", c => c.charCodeAt(0));
 
             const publicKey = {
@@ -1680,6 +1802,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const credentialId = bufferToBase64(credential.rawId);
                 localStorage.setItem('vesto_bio_id', credentialId);
                 localStorage.setItem('vesto_bio_enabled', 'true');
+                localStorage.setItem('vesto_bio_rp', currentDomain);
                 window.__vestoUnlockedEarly = true;
                 verificarStatusBiometria();
                 showToast('Biometria ativada com sucesso!', 'success');
@@ -1699,6 +1822,14 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (biometricAuthInFlight) return false;
         }
         const savedCredId = localStorage.getItem('vesto_bio_id');
+        const savedRpId = localStorage.getItem('vesto_bio_rp');
+        const currentRpId = window.location.hostname.replace(/^www\./i, '');
+
+        if (savedRpId && savedRpId !== currentRpId) {
+            desativarBiometria();
+            showToast('O domínio do app mudou. Ative a biometria novamente.');
+            return false;
+        }
 
         if (!savedCredId) {
             console.warn("Nenhuma credencial salva encontrada.");
@@ -1767,6 +1898,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         try { biometricAbortController?.abort(); } catch (_) { }
         localStorage.removeItem('vesto_bio_enabled');
         localStorage.removeItem('vesto_bio_id');
+        localStorage.removeItem('vesto_bio_rp');
         window.__vestoUnlockedEarly = false;
         esconderTelaBloqueioBiometrico();
         verificarStatusBiometria();
@@ -3110,6 +3242,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     function atualizarStatusMercado() {
         const status = getB3MarketStatus();
         const open = status.open;
+        const currentMode = open ? 'open' : 'closed';
         const pill = document.getElementById('market-status-pill');
         if (marketStatusDot) {
             marketStatusDot.className = `market-status-dot ${open ? 'open' : 'closed'}`;
@@ -3120,6 +3253,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
         if (marketStatusText) {
             marketStatusText.textContent = open ? 'B3 aberta' : `B3 fechada (${status.reason})`;
+        }
+
+        if (currentMode !== lastMarketSchedulerMode && typeof setupAutoRefreshScheduler === 'function') {
+            setupAutoRefreshScheduler();
         }
     }
 
@@ -4091,13 +4228,70 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
             container.insertAdjacentHTML('beforeend', cardHTML);
         });
 
-        const totalHTML = `
+    const totalHTML = `
         <div class="mt-2 pt-4 border-t border-[#2C2C2E] flex justify-between items-center px-2 pb-8">
             <span class="text-xs font-bold text-gray-500 uppercase tracking-widest">Total ${labelAmigavel}</span>
             <span class="text-lg font-bold text-white tracking-tight">${formatBRL(totalMes)}</span>
         </div>
     `;
         container.insertAdjacentHTML('beforeend', totalHTML);
+    }
+
+    let activeModalFocusCleanup = null;
+
+    function activateModalFocusTrap(modalEl) {
+        if (!modalEl) return;
+        if (typeof activeModalFocusCleanup === 'function') {
+            activeModalFocusCleanup();
+            activeModalFocusCleanup = null;
+        }
+
+        const previousFocus = document.activeElement;
+        const focusableSelector = 'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
+        const onKeyDown = (e) => {
+            if (e.key === 'Escape') {
+                const closeBtn = modalEl.querySelector('[id$="voltar-btn"], [aria-label="Voltar"], [aria-label="Fechar"]');
+                if (closeBtn) closeBtn.click();
+                return;
+            }
+            if (e.key !== 'Tab') return;
+
+            const focusables = [...modalEl.querySelectorAll(focusableSelector)]
+                .filter(el => !el.hasAttribute('disabled') && el.offsetParent !== null);
+            if (focusables.length === 0) return;
+
+            const first = focusables[0];
+            const last = focusables[focusables.length - 1];
+            if (e.shiftKey && document.activeElement === first) {
+                e.preventDefault();
+                last.focus();
+            } else if (!e.shiftKey && document.activeElement === last) {
+                e.preventDefault();
+                first.focus();
+            }
+        };
+
+        document.addEventListener('keydown', onKeyDown);
+
+        const firstFocusable = modalEl.querySelector(focusableSelector);
+        if (firstFocusable && typeof firstFocusable.focus === 'function') {
+            firstFocusable.focus({ preventScroll: true });
+        }
+
+        activeModalFocusCleanup = () => {
+            document.removeEventListener('keydown', onKeyDown);
+            if (previousFocus && typeof previousFocus.focus === 'function') {
+                previousFocus.focus({ preventScroll: true });
+            }
+        };
+    }
+
+    function deactivateModalFocusTrap() {
+        if (typeof activeModalFocusCleanup === 'function') {
+            activeModalFocusCleanup();
+            activeModalFocusCleanup = null;
+        }
     }
 
     function openPatrimonioModal() {
@@ -4107,6 +4301,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
         patrimonioPageContent.style.transform = '';
         patrimonioPageContent.classList.remove('closing');
         document.body.style.overflow = 'hidden';
+        activateModalFocusTrap(patrimonioPageModal);
 
         window.location.hash = 'modal-patrimonio';
 
@@ -4129,6 +4324,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
         patrimonioPageContent.classList.add('closing');
         patrimonioPageModal.classList.remove('visible');
         document.body.style.overflow = '';
+        deactivateModalFocusTrap();
     }
 
     function openProventosModal() {
@@ -4139,6 +4335,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
         proventosPageContent.style.transform = '';
         proventosPageContent.classList.remove('closing');
         document.body.style.overflow = 'hidden';
+        activateModalFocusTrap(proventosPageModal);
 
         window.location.hash = 'modal-proventos';
 
@@ -4171,6 +4368,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
 
         // 4. Libera o scroll da página principal
         document.body.style.overflow = '';
+        deactivateModalFocusTrap();
     }
 
     function openAlocacaoModal() {
@@ -4180,6 +4378,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
         alocacaoPageContent.style.transform = '';
         alocacaoPageContent.classList.remove('closing');
         document.body.style.overflow = 'hidden';
+        activateModalFocusTrap(alocacaoPageModal);
 
         window.location.hash = 'modal-alocacao';
 
@@ -4203,6 +4402,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
         alocacaoPageContent.classList.add('closing');
         alocacaoPageModal.classList.remove('visible');
         document.body.style.overflow = '';
+        deactivateModalFocusTrap();
     }
 
     // ═══════════════════════════════════════════════════════════════════
@@ -5511,17 +5711,25 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
 
             if (totalCarteiraPL) {
                 const sinalLucro = totalLucroPrejuizo >= 0 ? '+' : '';
+                const corPLClass = corPLTotal === 'text-green-500'
+                    ? 'text-green-400'
+                    : (corPLTotal === 'text-red-500' ? 'text-red-400' : 'text-gray-500');
                 totalCarteiraPL.innerHTML = `${sinalLucro}${formatBRL(totalLucroPrejuizo)} <span class="text-xs opacity-60 ml-1">(${sinalLucro}${totalLucroPrejuizoPercent.toFixed(2)}%)</span>`;
-                totalCarteiraPL.className = `text-sm font-semibold ${corPLTotal === 'text-green-500' ? 'text-green-400' : 'text-red-400'}`;
+                totalCarteiraPL.className = `text-sm font-semibold ${corPLClass}`;
             }
 
             // Variação do dia
             if (totalCarteiraDia) {
                 const prevTotal = totalValorCarteira - totalVariacaoDia;
                 const varDiaPercent = prevTotal > 0 ? (totalVariacaoDia / prevTotal) * 100 : 0;
-                const sinal = totalVariacaoDia >= 0 ? '+' : '';
-                const cor = totalVariacaoDia > 0.01 ? 'text-green-400' : (totalVariacaoDia < -0.01 ? 'text-red-400' : 'text-gray-500');
-                totalCarteiraDia.innerHTML = `Hoje: <span class="${cor}">${sinal}${formatBRL(totalVariacaoDia)} (${sinal}${varDiaPercent.toFixed(2)}%)</span>`;
+                const hasGain = totalVariacaoDia > 0.01;
+                const hasLoss = totalVariacaoDia < -0.01;
+                const sinalValor = hasGain ? '+' : (hasLoss ? '-' : '');
+                const sinalPercent = hasGain ? '+' : (hasLoss ? '-' : '');
+                const cor = hasGain ? 'text-green-400' : (hasLoss ? 'text-red-400' : 'text-gray-500');
+                const valorAbs = hasLoss ? Math.abs(totalVariacaoDia) : totalVariacaoDia;
+                const pctAbs = Math.abs(varDiaPercent).toFixed(2);
+                totalCarteiraDia.innerHTML = `Hoje: <span class="${cor}">${sinalValor}${formatBRL(valorAbs)} (${sinalPercent}${pctAbs}%)</span>`;
                 totalCarteiraDia.classList.remove('hidden');
 
                 // Exporta estado exato do dashboard para o gráfico intradiário sincronizar o cabeçalho
@@ -5598,6 +5806,13 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
         const mid = dataPoints[Math.floor(dataPoints.length / 2)];
         const last = dataPoints[dataPoints.length - 1];
         const dash = window.dashboardIntradayState || {};
+        const sampleStep = Math.max(1, Math.floor(dataPoints.length / 10));
+        let checksum = 0;
+
+        for (let i = 0; i < dataPoints.length; i += sampleStep) {
+            const p = dataPoints[i];
+            checksum += (Number(p?.date || 0) % 1000003) + Math.round((Number(p?.value || 0) * 100));
+        }
 
         const parts = [
             dataPoints.length,
@@ -5605,10 +5820,29 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
             Number(mid?.date || 0), Number(mid?.value || 0).toFixed(2),
             Number(last?.date || 0), Number(last?.value || 0).toFixed(2),
             Number(dash.currentValue || 0).toFixed(2),
-            Number(dash.variation || 0).toFixed(2)
+            Number(dash.variation || 0).toFixed(2),
+            Math.round(checksum)
         ];
 
         return parts.join('|');
+    }
+
+    async function mapWithConcurrency(items, limit, mapper) {
+        if (!Array.isArray(items) || items.length === 0) return [];
+        const safeLimit = Math.max(1, Number(limit) || 1);
+        const results = new Array(items.length);
+        let nextIndex = 0;
+
+        const workers = Array.from({ length: Math.min(safeLimit, items.length) }, async () => {
+            while (true) {
+                const current = nextIndex++;
+                if (current >= items.length) break;
+                results[current] = await mapper(items[current], current);
+            }
+        });
+
+        await Promise.all(workers);
+        return results;
     }
 
     async function buscarDadosIntradiariosCarteira() {
@@ -5634,58 +5868,67 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
         const allTimestamps = new Set();
         const intradayPrecosMap = new Map(precosAtuais.map(p => [p.symbol, p]));
 
-        // Busca sequencial (for...of) via Yahoo Finance scraper — sem Promise.all
-        for (const ativo of carteiraCalculada) {
+        const seriesResults = await mapWithConcurrency(carteiraCalculada, 4, async (ativo) => {
             try {
                 const response = await callScraperCotacaoHistoricaAPI(ativo.symbol, '1D');
                 const points = response?.points;
+                if (!points || points.length === 0) return null;
 
-                if (points && points.length > 0) {
-                    const qtdCotas = ativo.quantity || 0;
-                    const series = new Map();
-                    let firstTimestamp = null;
-                    let firstPointPrice = 0;
+                const qtdCotas = ativo.quantity || 0;
+                const series = new Map();
+                let firstTimestamp = null;
+                let firstPointPrice = 0;
 
-                    for (const ponto of points) {
-                        const ts = Number(ponto.timestamp || new Date(ponto.date).getTime());
-                        const preco = Number(ponto.price ?? ponto.close ?? ponto.open ?? 0);
-                        if (!Number.isFinite(ts)) continue;
+                for (const ponto of points) {
+                    const ts = Number(ponto.timestamp || new Date(ponto.date).getTime());
+                    const preco = Number(ponto.price ?? ponto.close ?? ponto.open ?? 0);
+                    if (!Number.isFinite(ts) || !(preco > 0)) continue;
 
-                        if (preco > 0) {
-                            series.set(ts, preco);
-                            allTimestamps.add(ts);
-
-                            if (firstTimestamp === null || ts < firstTimestamp) {
-                                firstTimestamp = ts;
-                                const openValue = Number(ponto.open ?? preco);
-                                firstPointPrice = openValue > 0 ? openValue : preco;
-                            }
-                        }
-                    }
-
-                    if (series.size > 0) {
-                        const dadoPreco = intradayPrecosMap.get(ativo.symbol);
-                        const fallbackCandidates = [
-                            Number(dadoPreco?.regularMarketPreviousClose),
-                            Number(firstPointPrice),
-                            Number(dadoPreco?.regularMarketPrice),
-                            Number(ativo.precoMedio)
-                        ];
-                        const fallbackStartPrice = fallbackCandidates.find(v => Number.isFinite(v) && v > 0) || 0;
-
-                        assetSeries.push({
-                            symbol: ativo.symbol,
-                            qtd: qtdCotas,
-                            series,
-                            firstTimestamp: firstTimestamp ?? Number.MAX_SAFE_INTEGER,
-                            fallbackStartPrice
-                        });
+                    series.set(ts, preco);
+                    if (firstTimestamp === null || ts < firstTimestamp) {
+                        firstTimestamp = ts;
+                        const openValue = Number(ponto.open ?? preco);
+                        firstPointPrice = openValue > 0 ? openValue : preco;
                     }
                 }
+
+                if (series.size === 0) return null;
+
+                const dadoPreco = intradayPrecosMap.get(ativo.symbol);
+                const fallbackCandidates = [
+                    Number(firstPointPrice),
+                    Number(dadoPreco?.regularMarketOpen),
+                    Number(dadoPreco?.regularMarketPreviousClose),
+                    Number(dadoPreco?.regularMarketPrice),
+                    Number(ativo.precoMedio)
+                ];
+                const fallbackStartPrice = fallbackCandidates.find(v => Number.isFinite(v) && v > 0) || 0;
+
+                return {
+                    symbol: ativo.symbol,
+                    qtd: qtdCotas,
+                    series,
+                    timestamps: [...series.keys()],
+                    firstTimestamp: firstTimestamp ?? Number.MAX_SAFE_INTEGER,
+                    fallbackStartPrice
+                };
             } catch (err) {
                 console.warn(`[Intraday] Erro ao buscar ${ativo.symbol}:`, err.message);
+                return null;
             }
-        }
+        });
+
+        seriesResults.filter(Boolean).forEach((entry) => {
+            assetSeries.push({
+                symbol: entry.symbol,
+                qtd: entry.qtd,
+                series: entry.series,
+                firstTimestamp: entry.firstTimestamp,
+                fallbackStartPrice: entry.fallbackStartPrice
+            });
+
+            entry.timestamps.forEach(ts => allTimestamps.add(ts));
+        });
 
         // Esconde skeleton
         if (skeleton) skeleton.classList.add('hidden');
@@ -5982,12 +6225,10 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
     }
 
     async function fetchBFF(url, options = {}) {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 60000);
         try {
-            const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 60000);
-
             const response = await fetch(url, { ...options, signal: controller.signal });
-            clearTimeout(timeoutId);
 
             if (!response.ok) {
                 const errorBody = await response.json().catch(() => ({}));
@@ -6000,6 +6241,8 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
             }
             console.error(`Erro ao chamar o BFF ${url}:`, error);
             throw error;
+        } finally {
+            clearTimeout(timeoutId);
         }
     }
 
@@ -6203,6 +6446,8 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
                     }));
 
                     const idsNesteLote = new Set();
+                    const idsConhecidos = new Set(proventosConhecidos.map(p => p.id));
+                    const novosParaPersistir = [];
 
                     for (const provento of proventosValidos) {
                         const safeType = provento.type || 'REND';
@@ -6220,9 +6465,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
                         idsNesteLote.add(idUnico);
 
                         // Verifica se já temos esse ID salvo na memória global
-                        const existe = proventosConhecidos.some(p => p.id === idUnico);
-
-                        if (!existe) {
+                        if (!idsConhecidos.has(idUnico)) {
                             const novoProvento = {
                                 ...provento,
                                 processado: false,
@@ -6230,9 +6473,14 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
                                 type: safeType
                             };
 
-                            await supabaseDB.addProventoConhecido(novoProvento);
+                            novosParaPersistir.push(novoProvento);
                             proventosConhecidos.push(novoProvento);
+                            idsConhecidos.add(idUnico);
                         }
+                    }
+
+                    if (novosParaPersistir.length > 0) {
+                        await supabaseDB.addProventosConhecidosBatch(novosParaPersistir);
                     }
                 }
             } catch (error) {
@@ -6594,14 +6842,16 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
             const div = document.createElement('div');
             div.className = `notif-item notif-type-${type} notif-animate-enter group cursor-default`;
             div.setAttribute('data-notif-id', id);
+            const safeTitle = escapeHtml(title);
+            const safeLink = sanitizeHttpUrl(linkUrl, '');
 
             let iconColorClass = 'text-gray-400';
             if (type === 'payment') iconColorClass = 'text-green-500';
             if (type === 'datacom') iconColorClass = 'text-yellow-500';
             if (type === 'news') iconColorClass = 'text-blue-400';
 
-            const linkHtml = linkUrl
-                ? `<a href="${linkUrl}" target="_blank" class="text-blue-400 hover:text-blue-300 underline decoration-blue-500/30 ml-1">Ler</a>`
+            const linkHtml = safeLink
+                ? `<a href="${safeLink}" target="_blank" rel="noopener noreferrer" class="text-blue-400 hover:text-blue-300 underline decoration-blue-500/30 ml-1">Ler</a>`
                 : '';
 
             div.innerHTML = `
@@ -6610,8 +6860,8 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
             </div>
             <div class="flex-1 min-w-0 pt-0.5">
                 <div class="notif-title flex justify-between">
-                    <span>${title}</span>
-                    ${linkUrl ? `<span class="opacity-0 group-hover:opacity-100 transition-opacity text-[9px] text-gray-500">Externo ↗</span>` : ''}
+                    <span>${safeTitle}</span>
+                    ${safeLink ? `<span class="opacity-0 group-hover:opacity-100 transition-opacity text-[9px] text-gray-500">Externo ↗</span>` : ''}
                 </div>
                 <div class="notif-msg text-[11px] leading-relaxed text-gray-300">
                     ${htmlMsg} ${linkHtml}
@@ -6622,9 +6872,11 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
             </button>
         `;
 
-            if (linkUrl) {
+            if (safeLink) {
                 div.addEventListener('click', (e) => {
-                    if (!e.target.closest('button') && !e.target.closest('a')) { window.open(linkUrl, '_blank'); }
+                    if (!e.target.closest('button') && !e.target.closest('a')) {
+                        window.open(safeLink, '_blank', 'noopener,noreferrer');
+                    }
                 });
                 div.classList.add('cursor-pointer', 'hover:bg-[#18181b]');
             }
@@ -6648,7 +6900,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
 
             if (qtd > 0) {
                 count++;
-                const msg = `Recebeu <strong class="text-white">${formatBRL(p.value * qtd)}</strong> de <strong class="text-white">${p.symbol}</strong> (${qtd} cotas).`;
+                const msg = `Recebeu <strong class="text-white">${formatBRL(p.value * qtd)}</strong> de <strong class="text-white">${escapeHtml(p.symbol)}</strong> (${qtd} cotas).`;
                 const icon = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6m0 0v6m0-6h6m-6 0H6" /></svg>`;
                 list.appendChild(createCard(notifId, 'payment', 'Pagamento Recebido', msg, icon));
             }
@@ -6662,7 +6914,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
 
             const props = getProps(p);
             count++;
-            const msg = `Data Com de <strong class="text-white">${p.symbol}</strong> hoje (${fmtDia(hojeLocal)}).<br>Valor: <strong class="text-white">${formatBRL(p.value)}</strong> • Paga em: ${fmtDia(props.paymentDate)}`;
+            const msg = `Data Com de <strong class="text-white">${escapeHtml(p.symbol)}</strong> hoje (${fmtDia(hojeLocal)}).<br>Valor: <strong class="text-white">${formatBRL(p.value)}</strong> • Paga em: ${fmtDia(props.paymentDate)}`;
             const icon = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>`;
             list.appendChild(createCard(notifId, 'datacom', 'Data de Corte', msg, icon));
         });
@@ -6682,7 +6934,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
             if (dismissed.has(notifId)) return;
             const props = getProps(p);
             count++;
-            const msg = `<strong class="text-white">${p.symbol}</strong> anunciou <strong class="text-white">${formatBRL(p.value)}</strong>.<br>Com: ${fmtDia(props.dataCom)} • Pag: ${fmtDia(props.paymentDate)}`;
+            const msg = `<strong class="text-white">${escapeHtml(p.symbol)}</strong> anunciou <strong class="text-white">${formatBRL(p.value)}</strong>.<br>Com: ${fmtDia(props.dataCom)} • Pag: ${fmtDia(props.paymentDate)}`;
             const icon = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>`;
             list.appendChild(createCard(notifId, 'news', 'Novo Anúncio', msg, icon));
         });
@@ -6693,12 +6945,13 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
             const meusTickers = [...new Set(carteiraCalculada.map(item => item.symbol.toUpperCase()))];
 
             window.noticiasCache.slice(0, 30).forEach(noticia => {
+                const rawTitle = typeof noticia?.title === 'string' ? noticia.title : '';
                 const tickerEncontrado = meusTickers.find(ticker => {
-                    return noticia.title.toUpperCase().includes(ticker);
+                    return rawTitle.toUpperCase().includes(ticker);
                 });
 
                 if (tickerEncontrado) {
-                    const safeId = 'news_mkt_' + noticia.title.replace(/[^a-zA-Z0-9]/g, '').slice(0, 20);
+                    const safeId = 'news_mkt_' + (rawTitle || tickerEncontrado).replace(/[^a-zA-Z0-9]/g, '').slice(0, 20);
                     if (dismissed.has(safeId)) return;
 
                     count++;
@@ -6708,7 +6961,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
                         dataPub = !isNaN(d) ? ` • ${d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : '';
                     }
 
-                    const msg = `Notícia sobre <strong class="text-white">${tickerEncontrado}</strong> saiu no mercado.${dataPub}<br><span class="text-gray-400 italic">"${noticia.title.slice(0, 50)}..."</span>`;
+                    const msg = `Notícia sobre <strong class="text-white">${escapeHtml(tickerEncontrado)}</strong> saiu no mercado.${dataPub}<br><span class="text-gray-400 italic">"${escapeHtml(rawTitle.slice(0, 50))}..."</span>`;
                     const icon = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z" /></svg>`;
 
                     list.appendChild(createCard(safeId, 'news', 'Radar de Notícias', msg, icon, noticia.link));
@@ -6953,6 +7206,8 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
 
     async function handleCompartilharAtivo() {
         if (!currentDetalhesSymbol) return;
+        const symbolSafe = normalizeTickerSymbol(currentDetalhesSymbol);
+        if (!symbolSafe) return;
 
         let precoTexto = document.querySelector('#detalhes-preco h2')?.textContent || '';
 
@@ -6966,11 +7221,11 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
         const variacao12mTexto = f.variacao_12m || 'N/A';
 
         const baseUrl = window.location.origin + window.location.pathname;
-        const deepLink = `${baseUrl}?ativo=${currentDetalhesSymbol}`;
+        const deepLink = `${baseUrl}?ativo=${symbolSafe}`;
 
-        const ehFiiShare = isFII(currentDetalhesSymbol);
+        const ehFiiShare = isFII(symbolSafe);
 
-        let linhas = [`Confira ${currentDetalhesSymbol} no Vesto!`, `Preço: ${precoTexto}`];
+        let linhas = [`Confira ${symbolSafe} no Vesto!`, `Preço: ${precoTexto}`];
         linhas.push(`DY (12m): ${dyTexto}`);
         linhas.push(`P/VP: ${pvpTexto}`);
         linhas.push(`Liquidez: ${liquidezTexto}`);
@@ -6984,7 +7239,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
         if (navigator.share) {
             try {
                 await navigator.share({
-                    title: `Vesto - ${currentDetalhesSymbol}`,
+                    title: `Vesto - ${symbolSafe}`,
                     text: textoBase,
                     url: deepLink
                 });
@@ -7008,7 +7263,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
     }
 
     async function handleSalvarTransacao() {
-        let ticker = tickerInput.value.trim().toUpperCase();
+        let ticker = normalizeTickerSymbol(tickerInput.value);
         let novaQuantidade = parseInt(quantityInput.value, 10);
         let novoPreco = parseFloat(precoMedioInput.value.replace(',', '.'));
         let dataTransacao = dateInput.value;
@@ -7017,9 +7272,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
         // Captura o valor do botão de rádio selecionado (buy ou sell)
         const tipoOperacao = document.getElementById('tipo-operacao-input').value;
 
-        if (ticker.endsWith('.SA')) ticker = ticker.replace('.SA', '');
-
-        if (ticker && !TICKER_REGEX.test(ticker)) {
+        if (!ticker) {
             showToast("Ticker inválido. Use o formato da B3 (ex.: PETR4, HGLG11).");
             tickerInput.classList.add('border-red-500');
             setTimeout(() => tickerInput.classList.remove('border-red-500'), 2000);
@@ -10086,7 +10339,8 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
 
     // ── Status do Mercado (Atualização periódica) ──
     atualizarStatusMercado();
-    setInterval(atualizarStatusMercado, 60000);
+    if (marketStatusIntervalId) clearInterval(marketStatusIntervalId);
+    marketStatusIntervalId = setInterval(atualizarStatusMercado, MARKET_STATUS_INTERVAL);
 
     showAddModalBtn.addEventListener('click', showAddModal);
     emptyStateAddBtn.addEventListener('click', showAddModal);
@@ -10833,6 +11087,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
 
                 let importadosCount = 0;
                 let errosCount = 0;
+                const transacoesImportadas = [];
 
                 // Lógica original de processamento das linhas
                 for (const row of jsonData) {
@@ -10844,8 +11099,11 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
 
                     if (tickerRaw && qtdRaw && priceRaw) {
                         try {
-                            let ticker = tickerRaw.toString().trim().toUpperCase();
-                            if (ticker.endsWith('F')) ticker = ticker.slice(0, -1);
+                            const ticker = normalizeTickerSymbol(tickerRaw.toString());
+                            if (!ticker) {
+                                errosCount++;
+                                continue;
+                            }
 
                             let type = 'buy';
                             const typeStr = typeRaw ? typeRaw.toString().toLowerCase() : 'compra';
@@ -10879,7 +11137,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
 
                             if (qtd > 0 && preco >= 0 && !isNaN(preco)) {
                                 const novaTransacao = {
-                                    id: 'tx_' + Date.now() + Math.random().toString(36).substr(2, 5),
+                                    id: `tx_${Date.now()}_${Math.random().toString(36).slice(2, 8)}_${transacoesImportadas.length}`,
                                     date: dataISO,
                                     symbol: ticker,
                                     type: type,
@@ -10887,10 +11145,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
                                     price: preco
                                 };
 
-                                await supabaseDB.addTransacao(novaTransacao);
-                                transacoes.push(novaTransacao);
-                                invalidarCacheQtdNaData();
-                                importadosCount++;
+                                transacoesImportadas.push(novaTransacao);
                             }
                         } catch (err) {
                             console.error("Erro na linha:", row, err);
@@ -10899,8 +11154,16 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
                     }
                 }
 
+                if (transacoesImportadas.length > 0) {
+                    await supabaseDB.addTransacoesBatch(transacoesImportadas);
+                    transacoes.push(...transacoesImportadas);
+                    invalidarCacheQtdNaData();
+                    importadosCount = transacoesImportadas.length;
+                }
+
                 if (importadosCount > 0) {
-                    showToast(`${importadosCount} negociações importadas!`, 'success');
+                    const sufixoErro = errosCount > 0 ? ` (${errosCount} linha(s) ignorada(s))` : '';
+                    showToast(`${importadosCount} negociações importadas!${sufixoErro}`, 'success');
                     // Atualiza tudo
                     saldoCaixa = 0;
                     await salvarCaixa();
@@ -11262,11 +11525,9 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
             atualizarTodosDados(true);
             runDeferred(() => handleAtualizarNoticias(false), 1500);
 
-            // Refresh periódico com force=false (sem skeletons, silencioso)
-            if (refreshIntervalId) clearInterval(refreshIntervalId);
-            refreshIntervalId = setInterval(() => {
-                atualizarTodosDados(false);
-            }, REFRESH_INTERVAL);
+            // Refresh periódico inteligente:
+            // mercado aberto = 5 min, mercado fechado = 2h + wake-up próximo da abertura.
+            setupAutoRefreshScheduler();
 
         } catch (e) {
             // Garante que os skeletons sejam removidos mesmo em caso de erro,
@@ -11675,7 +11936,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
                     window.history.replaceState({ path: newUrl }, '', newUrl);
 
                     setTimeout(() => {
-                        let symbolClean = ativoShared.toUpperCase().replace('.SA', '').trim();
+                        const symbolClean = normalizeTickerSymbol(ativoShared);
                         if (symbolClean) {
                             showDetalhesModal(symbolClean);
                         }
@@ -12274,15 +12535,17 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
     }
     // Compartilhar ativo direto da gaveta do card
     window.compartilharAtivoDireto = async function(symbol) {
-        const ativo = carteiraCalculada.find(a => a.symbol === symbol);
-        const dadoPreco = precosAtuais.find(p => p.symbol === symbol);
+        const symbolSafe = normalizeTickerSymbol(symbol);
+        if (!symbolSafe) return;
+        const ativo = carteiraCalculada.find(a => a.symbol === symbolSafe);
+        const dadoPreco = precosAtuais.find(p => p.symbol === symbolSafe);
         const preco = dadoPreco ? formatBRL(dadoPreco.regularMarketPrice) : 'N/A';
         const posicao = (ativo && dadoPreco) ? formatBRL(ativo.quantity * dadoPreco.regularMarketPrice) : 'N/A';
         const baseUrl = window.location.origin + window.location.pathname;
-        const deepLink = `${baseUrl}?ativo=${symbol}`;
+        const deepLink = `${baseUrl}?ativo=${symbolSafe}`;
 
         const linhas = [
-            `📊 ${symbol} — Vesto`,
+            `📊 ${symbolSafe} — Vesto`,
             `Preço: ${preco}`,
         ];
         if (ativo) {
@@ -12295,7 +12558,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
 
         if (navigator.share) {
             try {
-                await navigator.share({ title: `Vesto - ${symbol}`, text: textoBase, url: deepLink });
+                await navigator.share({ title: `Vesto - ${symbolSafe}`, text: textoBase, url: deepLink });
             } catch (err) {
                 if (err.name !== 'AbortError') copiarParaClipboard(textoCompleto);
             }
@@ -13148,6 +13411,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
 
     if (btnOpenProventos) {
         btnOpenProventos.addEventListener('click', openProventosModal);
+        wireKeyboardActivation(btnOpenProventos, openProventosModal);
     }
 
     if (proventosVoltarBtn) {
@@ -13207,6 +13471,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
 
     if (btnOpenAlocacao) {
         btnOpenAlocacao.addEventListener('click', openAlocacaoModal);
+        wireKeyboardActivation(btnOpenAlocacao, openAlocacaoModal);
     }
 
     if (alocacaoVoltarBtn) {
@@ -13266,6 +13531,12 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
 
     if (btnOpenIpca) {
         btnOpenIpca.addEventListener('click', openIpcaModal);
+        wireKeyboardActivation(btnOpenIpca, openIpcaModal);
+    }
+
+    if (btnOpenObjetivos) {
+        btnOpenObjetivos.addEventListener('click', openObjetivosModal);
+        wireKeyboardActivation(btnOpenObjetivos, openObjetivosModal);
     }
 
     if (ipcaVoltarBtn) {
@@ -13626,6 +13897,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
         objetivosModal.style.pointerEvents = 'auto';
         objetivosModal.style.opacity = '1';
         objetivosModal.classList.add('visible');
+        activateModalFocusTrap(objetivosModal);
 
         // 2. Faz o modal deslizar para cima
         setTimeout(() => {
@@ -13654,6 +13926,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
         setTimeout(() => {
             objetivosModal.classList.remove('visible');
             document.body.style.overflow = '';
+            deactivateModalFocusTrap();
         }, 50);
     }
 
@@ -14355,7 +14628,15 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     const profileContainer = document.getElementById('profile-picture-container');
-    if (profileContainer) profileContainer.addEventListener('click', window.openProfileModal);
+    if (profileContainer) {
+        profileContainer.addEventListener('click', window.openProfileModal);
+        profileContainer.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                window.openProfileModal();
+            }
+        });
+    }
     if (btnClose) btnClose.addEventListener('click', closeProfileModal);
     if (btnCancel) btnCancel.addEventListener('click', closeProfileModal);
     // Fecha no backdrop
@@ -14459,4 +14740,3 @@ document.addEventListener('DOMContentLoaded', async () => {
         console.log('[Profile] Sem foto salva ou DB indisponível.');
     }
 });
-

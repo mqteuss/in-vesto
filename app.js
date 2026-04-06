@@ -1763,20 +1763,51 @@ document.addEventListener('DOMContentLoaded', async () => {
         return await autenticarBiometria({ source: 'auto' });
     }
 
+    function getUserIdBufferForBiometria() {
+        const rawUserId = String(currentUserId || 'user_id');
+        const bytes = new TextEncoder().encode(rawUserId);
+        // user.id no WebAuthn deve ter no maximo 64 bytes.
+        return bytes.length > 64 ? bytes.slice(0, 64) : bytes;
+    }
+
+    async function isPlatformAuthenticatorAvailable() {
+        const checker = window.PublicKeyCredential?.isUserVerifyingPlatformAuthenticatorAvailable;
+        if (typeof checker !== 'function') return true;
+        try {
+            return await checker.call(window.PublicKeyCredential);
+        } catch (_) {
+            return true;
+        }
+    }
+
     async function ativarBiometria() {
-        if (!window.PublicKeyCredential) {
+        if (!window.PublicKeyCredential || !navigator.credentials?.create) {
             showToast('Seu dispositivo não suporta biometria.');
+            return;
+        }
+        if (!window.isSecureContext) {
+            showToast('Biometria requer conexão segura (HTTPS).');
+            return;
+        }
+        if (!currentUserId) {
+            showToast('Sessão inválida. Entre novamente para ativar biometria.');
             return;
         }
 
         try {
+            const platformAvailable = await isPlatformAuthenticatorAvailable();
+            if (!platformAvailable) {
+                showToast('Biometria indisponível neste dispositivo.');
+                return;
+            }
+
             const challenge = new Uint8Array(32);
             window.crypto.getRandomValues(challenge);
 
             const currentDomain = window.location.hostname.replace(/^www\./i, '');
-            const userIdBuffer = Uint8Array.from(currentUserId || "user_id", c => c.charCodeAt(0));
+            const userIdBuffer = getUserIdBufferForBiometria();
 
-            const publicKey = {
+            const publicKeyBase = {
                 challenge: challenge,
                 rp: { name: "Vesto App", id: currentDomain },
                 user: {
@@ -1790,13 +1821,30 @@ document.addEventListener('DOMContentLoaded', async () => {
                 ],
                 authenticatorSelection: {
                     authenticatorAttachment: "platform",
+                    residentKey: "preferred",
                     userVerification: "required"
                 },
                 timeout: 60000,
                 attestation: "none"
             };
 
-            const credential = await navigator.credentials.create({ publicKey });
+            let credential;
+            try {
+                credential = await navigator.credentials.create({ publicKey: publicKeyBase });
+            } catch (firstError) {
+                const canRetryWithoutPlatform = ['NotAllowedError', 'NotSupportedError', 'InvalidStateError'].includes(firstError?.name);
+                if (!canRetryWithoutPlatform) throw firstError;
+
+                // Fallback: alguns Android/PWA falham com attachment estrito "platform".
+                const publicKeyFallback = {
+                    ...publicKeyBase,
+                    authenticatorSelection: {
+                        residentKey: "preferred",
+                        userVerification: "required"
+                    }
+                };
+                credential = await navigator.credentials.create({ publicKey: publicKeyFallback });
+            }
 
             if (credential) {
                 const credentialId = bufferToBase64(credential.rawId);
@@ -1804,11 +1852,16 @@ document.addEventListener('DOMContentLoaded', async () => {
                 localStorage.setItem('vesto_bio_enabled', 'true');
                 localStorage.setItem('vesto_bio_rp', currentDomain);
                 window.__vestoUnlockedEarly = true;
-                verificarStatusBiometria();
+                esconderTelaBloqueioBiometrico();
+                await verificarStatusBiometria();
                 showToast('Biometria ativada com sucesso!', 'success');
             }
         } catch (e) {
             console.error("Erro biometria:", e);
+            if (e?.name === 'NotAllowedError') {
+                showToast('Ativação cancelada. Tente novamente e confirme no Android.');
+                return;
+            }
             showToast(`Erro ao ativar: ${e.message || e.name}`);
         }
     }
@@ -1844,21 +1897,42 @@ document.addEventListener('DOMContentLoaded', async () => {
             window.crypto.getRandomValues(challenge);
             biometricAbortController = new AbortController();
 
-            const publicKey = {
+            const basePublicKey = {
                 challenge: challenge,
                 timeout: 60000,
                 userVerification: "required",
+                rpId: currentRpId
+            };
+
+            const credIdBytes = base64ToBuffer(savedCredId);
+            const publicKeyWithSavedId = {
+                ...basePublicKey,
                 allowCredentials: [{
-                    id: base64ToBuffer(savedCredId),
-                    type: 'public-key',
-                    transports: ['internal']
+                    id: credIdBytes,
+                    type: 'public-key'
                 }]
             };
 
-            const assertion = await navigator.credentials.get({
-                publicKey,
-                signal: biometricAbortController.signal
-            });
+            let assertion = null;
+            try {
+                assertion = await navigator.credentials.get({
+                    publicKey: publicKeyWithSavedId,
+                    signal: biometricAbortController.signal
+                });
+            } catch (firstError) {
+                const canRetryWithoutAllowCredentials =
+                    source === 'manual' &&
+                    isLikelyMobile &&
+                    ['NotAllowedError', 'InvalidStateError', 'SecurityError', 'UnknownError'].includes(firstError?.name);
+
+                if (!canRetryWithoutAllowCredentials) throw firstError;
+
+                // Fallback mobile: tenta credencial discoverable para maximizar compatibilidade.
+                assertion = await navigator.credentials.get({
+                    publicKey: basePublicKey,
+                    signal: biometricAbortController.signal
+                });
+            }
 
             if (assertion) {
                 window.__vestoUnlockedEarly = true;
@@ -10729,6 +10803,11 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
                     desativarBiometria();
                 });
             } else {
+                // No Android/PWA, iniciar direto no clique melhora o "user gesture" para WebAuthn.
+                if (isLikelyMobile) {
+                    ativarBiometria();
+                    return;
+                }
                 showModal("Ativar Biometria?", "Isso usará o sensor do seu dispositivo para proteger o app.", () => {
                     ativarBiometria();
                 });

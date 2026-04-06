@@ -2225,6 +2225,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             window.imoveisChartInstance.destroy();
             window.imoveisChartInstance = null;
         }
+        if (window.distribuicaoAtivosChartInstance) {
+            window.distribuicaoAtivosChartInstance.destroy();
+            window.distribuicaoAtivosChartInstance = null;
+        }
 
         // ✅ Zerar dimensões do canvas impede que observers residuais encontrem
         //    um contexto 2D válido após a remoção do elemento.
@@ -7643,6 +7647,14 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
         if (elSobre) elSobre.innerHTML = '';
         const elImoveis = document.getElementById('detalhes-imoveis-container');
         if (elImoveis) elImoveis.innerHTML = '';
+        if (window.imoveisChartInstance) {
+            window.imoveisChartInstance.destroy();
+            window.imoveisChartInstance = null;
+        }
+        if (window.distribuicaoAtivosChartInstance) {
+            window.distribuicaoAtivosChartInstance.destroy();
+            window.distribuicaoAtivosChartInstance = null;
+        }
 
         // Reseta tab nav para Resumo
         switchDetalhesTab('resumo');
@@ -9091,7 +9103,10 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
                 comparacao: fundamentos.comparacao || [],
                 logo_url: fundamentos.logo_url || '',
                 historico_indicadores: fundamentos.historico_indicadores || null,
-                checklist_buy_hold: Array.isArray(fundamentos.checklist_buy_hold) ? fundamentos.checklist_buy_hold : []
+                checklist_buy_hold: Array.isArray(fundamentos.checklist_buy_hold) ? fundamentos.checklist_buy_hold : [],
+                valor_patrimonial_info: fundamentos.valor_patrimonial_info || null,
+                distribuicao_ativos_fundo: fundamentos.distribuicao_ativos_fundo || null,
+                medias_tipo_segmento: fundamentos.medias_tipo_segmento || null
             };
 
             // Armazena fundamentos para uso no compartilhamento
@@ -9348,6 +9363,33 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
                 </div>`;
             })();
 
+            const normalizeMetricValue = (value, fallback = 'N/A') => {
+                if (value === null || value === undefined) return fallback;
+                const text = String(value).trim();
+                if (!text || text === '-' || text.toUpperCase() === 'N/A') return fallback;
+                return text;
+            };
+
+            const valorPatrimonialInfoData = dados.valor_patrimonial_info && typeof dados.valor_patrimonial_info === 'object'
+                ? dados.valor_patrimonial_info
+                : null;
+
+            const valorPatrimonialInfoRows = [
+                ['Valor Patrimonial por Cota', normalizeMetricValue(valorPatrimonialInfoData?.valor_patrimonial_por_cota, dados.vp_cota)],
+                ['Valor da Cota', normalizeMetricValue(valorPatrimonialInfoData?.valor_da_cota, 'N/A')],
+                ['Número de Cotas', normalizeMetricValue(valorPatrimonialInfoData?.numero_de_cotas, dados.cotas_emitidas)],
+                ['P/VP', normalizeMetricValue(valorPatrimonialInfoData?.pvp, dados.pvp)],
+                ['Valor Patrimonial', normalizeMetricValue(valorPatrimonialInfoData?.valor_patrimonial, dados.patrimonio_liquido)]
+            ];
+
+            const hasValorPatrimonialInfo = valorPatrimonialInfoRows.some(([, value]) => value !== 'N/A');
+            const valorPatrimonialInfoHtml = hasValorPatrimonialInfo ? `
+                <h4 class="text-[10px] font-bold text-gray-300 uppercase tracking-widest mt-4 mb-2 pl-1">Informações sobre Valor Patrimonial</h4>
+                <div class="bg-[#151515] rounded-xl px-3 shadow-sm mb-4">
+                    ${valorPatrimonialInfoRows.map(([label, value]) => renderRow(escapeHtml(label), escapeHtml(value))).join('')}
+                </div>
+            ` : '';
+
             if (ehAcao) {
                 gridTopo = [
                     renderKpi('P/L', dados.pl),
@@ -9425,6 +9467,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
                     ${renderRow('Taxa Adm.', dados.taxa_adm)}
                     ${renderRow('CNPJ', `<span class="font-mono text-xs opacity-80">${dados.cnpj}</span>`)}
                 </div>
+                ${valorPatrimonialInfoHtml}
                 ${historicoIndicadoresHtml}
                 ${checklistBuyHoldHtml}`;
             }
@@ -9442,6 +9485,67 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
                     </p>
                 </div>
             `;
+            }
+
+            let mediaTipoSegmentoHtml = '';
+            if (ehFii && dados.medias_tipo_segmento && typeof dados.medias_tipo_segmento === 'object') {
+                const mediaData = dados.medias_tipo_segmento;
+                const indicadoresMedia = mediaData.indicadores && typeof mediaData.indicadores === 'object'
+                    ? mediaData.indicadores
+                    : {};
+
+                const mediaCards = [
+                    { key: 'pvp', label: 'P/VP' },
+                    { key: 'dy_12m', label: 'DY (12M)' },
+                    { key: 'valor_patrimonial', label: 'Valor Patrimonial' },
+                    { key: 'valor_patrimonial_por_cota', label: 'Val. Patrimonial p/ Cota' }
+                ]
+                    .map((cfg) => {
+                        const indicador = indicadoresMedia[cfg.key] && typeof indicadoresMedia[cfg.key] === 'object'
+                            ? indicadoresMedia[cfg.key]
+                            : {};
+                        const ativo = normalizeMetricValue(indicador.ativo, 'N/A');
+                        const comparacao = normalizeMetricValue(indicador.comparacao, 'N/A');
+                        if (ativo === 'N/A' && comparacao === 'N/A') return '';
+                        return `
+                        <div class="bg-[#151515] rounded-xl p-3.5 shadow-sm border border-white/5">
+                            <span class="text-[9px] uppercase tracking-widest text-gray-500 font-bold">${escapeHtml(cfg.label)}</span>
+                            <div class="mt-2 space-y-1.5">
+                                <div class="flex items-center justify-between gap-2">
+                                    <span class="text-[10px] text-gray-500 uppercase tracking-widest">Ativo</span>
+                                    <span class="text-xs text-white font-bold text-right">${escapeHtml(ativo)}</span>
+                                </div>
+                                <div class="flex items-center justify-between gap-2">
+                                    <span class="text-[10px] text-gray-500 uppercase tracking-widest">Comparação</span>
+                                    <span class="text-xs text-[#D4B886] font-bold text-right">${escapeHtml(comparacao)}</span>
+                                </div>
+                            </div>
+                        </div>`;
+                    })
+                    .filter(Boolean)
+                    .join('');
+
+                if (mediaCards) {
+                    const contextoTicker = normalizeMetricValue(mediaData?.contexto?.ticker_comparado, symbol);
+                    const contextoTipo = normalizeMetricValue(mediaData?.contexto?.tipo_referencia, dados.tipo_fundo || 'N/A');
+                    const contextoSegmento = normalizeMetricValue(mediaData?.contexto?.segmento_referencia, dados.segmento || 'N/A');
+                    const modoComparacao = normalizeMetricValue(mediaData?.modo, 'MESMO TIPO E SEGMENTO');
+
+                    mediaTipoSegmentoHtml = `
+                    <h4 class="text-[11px] font-bold text-gray-300 uppercase tracking-[0.2em] mt-8 mb-3 flex items-center justify-between gap-3">
+                        <span>Média do Tipo e Segmento</span>
+                        <span class="text-[9px] px-2.5 py-1 rounded-full border border-white/10 bg-white/[0.03] text-gray-300 tracking-widest">${escapeHtml(modoComparacao)}</span>
+                    </h4>
+                    <div class="bg-[#151515] rounded-2xl p-4 border border-white/[0.04] shadow-sm mb-4">
+                        <p class="text-xs text-gray-400 leading-relaxed mb-3">
+                            Comparando <span class="text-white font-semibold">${escapeHtml(contextoTicker)}</span> com a média do tipo (<span class="text-gray-200">${escapeHtml(contextoTipo)}</span>) e do segmento (<span class="text-gray-200">${escapeHtml(contextoSegmento)}</span>).
+                        </p>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-2.5">
+                            ${mediaCards}
+                        </div>
+                    </div>
+                `;
+                }
             }
 
             // =========================================================
@@ -9625,7 +9729,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
             // ── Tab ANÁLISE: Sobre o Ativo + Tabela de Comparação ──
             const elSobre = document.getElementById('detalhes-sobre-comparacao');
             if (elSobre) {
-                const analiseConteudo = sobreHtml + comparacaoHtml;
+                const analiseConteudo = sobreHtml + mediaTipoSegmentoHtml + comparacaoHtml;
                 elSobre.style.opacity = '0';
                 elSobre.innerHTML = analiseConteudo || `
                 <div class="flex flex-col items-center justify-center py-16 text-center">
@@ -9964,13 +10068,36 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
                 }
             }
 
-            // ── Tab PORTFÓLIO: Imóveis (apenas FIIs) ──
-            if (ehFii && fundamentos.imoveis && fundamentos.imoveis.length > 0) {
-                window.renderizarListaImoveis(fundamentos.imoveis);
+            // ── Tab PORTFÓLIO: Imóveis + Distribuição de Ativos (apenas FIIs) ──
+            const temImoveis = ehFii && Array.isArray(fundamentos.imoveis) && fundamentos.imoveis.length > 0;
+            const temDistribuicaoAtivosFundo =
+                ehFii &&
+                Array.isArray(fundamentos?.distribuicao_ativos_fundo?.itens) &&
+                fundamentos.distribuicao_ativos_fundo.itens.length > 0;
+
+            if (ehFii && (temImoveis || temDistribuicaoAtivosFundo)) {
+                const containerImoveis = document.getElementById('detalhes-imoveis-container');
+                if (temImoveis) {
+                    window.renderizarListaImoveis(fundamentos.imoveis);
+                } else if (containerImoveis) {
+                    containerImoveis.innerHTML = '';
+                }
+
+                if (temDistribuicaoAtivosFundo) {
+                    window.renderizarDistribuicaoAtivosFundo(fundamentos.distribuicao_ativos_fundo);
+                } else if (window.distribuicaoAtivosChartInstance) {
+                    window.distribuicaoAtivosChartInstance.destroy();
+                    window.distribuicaoAtivosChartInstance = null;
+                }
+
                 if (detalhesTabPortfolioBtn) detalhesTabPortfolioBtn.classList.remove('hidden');
             } else {
                 const containerImoveis = document.getElementById('detalhes-imoveis-container');
                 if (containerImoveis) containerImoveis.innerHTML = '';
+                if (window.distribuicaoAtivosChartInstance) {
+                    window.distribuicaoAtivosChartInstance.destroy();
+                    window.distribuicaoAtivosChartInstance = null;
+                }
                 if (detalhesTabPortfolioBtn) detalhesTabPortfolioBtn.classList.add('hidden');
             }
 
@@ -14349,6 +14476,123 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
     }
 
     window.openObjetivosModal = openObjetivosModal;
+
+    window.renderizarDistribuicaoAtivosFundo = function (distribuicaoData) {
+        const container = document.getElementById('detalhes-imoveis-container');
+        if (!container) {
+            console.warn('renderizarDistribuicaoAtivosFundo: container não encontrado');
+            return false;
+        }
+
+        const prevSection = document.getElementById('distribuicao-ativos-fundo-wrapper');
+        if (prevSection) prevSection.remove();
+
+        if (window.distribuicaoAtivosChartInstance) {
+            window.distribuicaoAtivosChartInstance.destroy();
+            window.distribuicaoAtivosChartInstance = null;
+        }
+
+        const itens = Array.isArray(distribuicaoData?.itens)
+            ? distribuicaoData.itens
+                .map((item) => ({
+                    categoria: String(item?.categoria || '').trim(),
+                    percentual: Number(item?.percentual)
+                }))
+                .filter((item) => item.categoria && Number.isFinite(item.percentual) && item.percentual > 0)
+                .sort((a, b) => b.percentual - a.percentual)
+            : [];
+
+        if (itens.length === 0) return false;
+
+        const labels = itens.map((item) => item.categoria);
+        const data = itens.map((item) => Number(item.percentual.toFixed(2)));
+        const bgColors = ['#556FC6', '#89C66F', '#F0C04E', '#EB6464', '#46B3C2', '#B383F0', '#EF8D5E', '#7BA8FF'];
+        const isLight = document.body.classList.contains('light-mode');
+        const bgCard = isLight ? 'bg-gray-100' : 'bg-[#151515]';
+        const txtTitle = isLight ? 'text-gray-800' : 'text-white';
+        const txtLabel = isLight ? 'text-gray-500' : 'text-gray-400';
+        const borderColor = isLight ? 'border-gray-200' : 'border-[#2C2C2E]';
+        const fonteLabel = distribuicaoData?.fonte === 'investidor10_section'
+            ? 'Fonte: Investidor10'
+            : 'Fonte: composição estimada do portfólio';
+
+        const legendHtml = itens.map((item, index) => {
+            const color = bgColors[index % bgColors.length];
+            return `
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-2 min-w-0">
+                        <span class="w-2.5 h-2.5 rounded-sm shrink-0" style="background-color:${color}"></span>
+                        <span class="text-[11px] ${txtLabel} font-semibold truncate">${escapeHtml(item.categoria)}</span>
+                    </div>
+                    <span class="text-[11px] ${txtTitle} font-bold">${item.percentual.toFixed(2).replace('.', ',')}%</span>
+                </div>
+            `;
+        }).join('');
+
+        const sectionHtml = `
+            <div id="distribuicao-ativos-fundo-wrapper" class="border-t ${borderColor} pt-8 mb-8 mt-8">
+                <div class="flex items-center justify-between mb-3 pl-1">
+                    <h4 class="text-[10px] font-bold ${txtLabel} uppercase tracking-widest">Distribuição de Ativos do Fundo</h4>
+                    <span class="text-[9px] ${txtLabel} tracking-wider uppercase">${escapeHtml(fonteLabel)}</span>
+                </div>
+                <div class="${bgCard} rounded-xl p-4 shadow-sm">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 items-center">
+                        <div class="space-y-2.5">
+                            ${legendHtml}
+                        </div>
+                        <div class="relative h-48">
+                            <canvas id="distribuicao-ativos-chart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        if (container.innerHTML.trim()) {
+            container.insertAdjacentHTML('afterbegin', sectionHtml);
+        } else {
+            container.innerHTML = sectionHtml;
+        }
+
+        const canvas = document.getElementById('distribuicao-ativos-chart');
+        if (!canvas) return true;
+
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return true;
+
+        window.distribuicaoAtivosChartInstance = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels,
+                datasets: [{
+                    data,
+                    backgroundColor: bgColors.slice(0, labels.length),
+                    borderWidth: 0,
+                    hoverOffset: 6
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                cutout: '70%',
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        backgroundColor: isLight ? 'rgba(255, 255, 255, 0.95)' : 'rgba(21, 21, 21, 0.95)',
+                        titleColor: isLight ? '#1f2937' : '#fff',
+                        bodyColor: isLight ? '#4b5563' : '#ccc',
+                        borderColor: isLight ? '#e5e7eb' : '#2C2C2E',
+                        borderWidth: 1,
+                        callbacks: {
+                            label: (context) => ` ${context.label}: ${Number(context.raw).toFixed(2).replace('.', ',')}%`
+                        }
+                    }
+                }
+            }
+        });
+
+        return true;
+    };
 
     window.renderizarListaImoveis = function (imoveis) {
         // O container agora é estático no HTML, dentro da tab Portfólio

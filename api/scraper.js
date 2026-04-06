@@ -170,6 +170,307 @@ function formatCurrency(value) {
     return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 }
 
+function formatNumberBR(value, decimals = 2) {
+    const n = Number(value);
+    if (!Number.isFinite(n)) return 'N/A';
+    return n.toLocaleString('pt-BR', {
+        minimumFractionDigits: decimals,
+        maximumFractionDigits: decimals
+    });
+}
+
+function formatCompactCurrencyBR(value) {
+    const n = Number(value);
+    if (!Number.isFinite(n)) return 'N/A';
+    const abs = Math.abs(n);
+    if (abs >= 1e9) return `R$ ${formatNumberBR(n / 1e9, 2)} Bilhões`;
+    if (abs >= 1e6) return `R$ ${formatNumberBR(n / 1e6, 2)} Milhões`;
+    if (abs >= 1e3) return `R$ ${formatNumberBR(n / 1e3, 2)} Mil`;
+    return `R$ ${formatNumberBR(n, 2)}`;
+}
+
+function parsePercentValue(valueStr) {
+    if (!valueStr) return null;
+    const n = parseValue(String(valueStr).replace('%', ''));
+    return Number.isFinite(n) ? n : null;
+}
+
+function parseCompactCurrencyValue(valueStr) {
+    if (!valueStr) return null;
+    const raw = String(valueStr).replace(/\u00A0/g, ' ').trim();
+    if (!raw) return null;
+
+    const base = parseValue(raw);
+    if (!Number.isFinite(base)) return null;
+
+    const lower = raw.toLowerCase();
+    if (/\bbilh(?:ao|oes|ões)?\b/.test(lower) || /\bb\b/.test(lower)) return base * 1e9;
+    if (/\bmilh(?:ao|oes|ões)?\b/.test(lower) || /\bm\b/.test(lower)) return base * 1e6;
+    if (/\bmil\b/.test(lower) || /\bk\b/.test(lower)) return base * 1e3;
+    return base;
+}
+
+function averageNumbers(values = []) {
+    const valid = values.filter(v => Number.isFinite(v));
+    if (valid.length === 0) return null;
+    return valid.reduce((acc, v) => acc + v, 0) / valid.length;
+}
+
+function cleanSpace(str) {
+    return String(str || '').replace(/\s+/g, ' ').trim();
+}
+
+function prettifyPtUnits(str) {
+    return String(str || '')
+        .replace(/\bbilhoes\b/ig, 'Bilhões')
+        .replace(/\bmilhoes\b/ig, 'Milhões');
+}
+
+function toCurrencyText(value, forcePrefix = false) {
+    const text = prettifyPtUnits(cleanSpace(value));
+    if (!text || text === '-' || text.toUpperCase() === 'N/A') return 'N/A';
+    if (forcePrefix && !/^r\$/i.test(text)) return `R$ ${text}`;
+    if (/^r\$/i.test(text)) return text.replace(/^r\$/i, 'R$');
+    return text;
+}
+
+function extractSectionChunkByHeading(html, headingRegex, maxLen = 18000) {
+    const source = String(html || '');
+    const regex = headingRegex instanceof RegExp ? headingRegex : new RegExp(String(headingRegex), 'i');
+    const match = source.match(regex);
+    if (!match || match.index === undefined) return '';
+    return source.slice(match.index, match.index + maxLen);
+}
+
+function extractLabeledMetricFromText(normalizedText, labelRegex) {
+    const regex = new RegExp(
+        `${labelRegex}\\s*:?\\s*(r\\$\\s*)?([0-9]+(?:[\\.,][0-9]+)*(?:\\s*(?:%|milhoes|bilhoes|m|b))?)`,
+        'i'
+    );
+    const match = normalizedText.match(regex);
+    if (!match) return null;
+    return cleanSpace(`${match[1] || ''}${match[2] || ''}`);
+}
+
+function extractPatrimonialInfoSection(html) {
+    const section = extractSectionChunkByHeading(
+        html,
+        /INFORMA[ÇC][ÕO]ES?\s+SOBRE\s+VALOR\s+PATRIMONIAL/i
+    );
+    if (!section) return null;
+
+    const normalizedText = normalize(stripHtmlToText(section)).replace(/\s+/g, ' ');
+    const byLabel = (pattern) => extractLabeledMetricFromText(normalizedText, pattern);
+
+    const valorPatrimonialPorCota = byLabel('valor\\s+patrimonial\\s+por\\s+cota');
+    const valorDaCota = byLabel('valor\\s+da\\s+cota');
+    const numeroDeCotas = byLabel('numero\\s+de\\s+cotas');
+    const pvp = byLabel('p\\/?vp');
+    const valorPatrimonial = byLabel('valor\\s+patrimonial\\s*(?!por\\s+cota)');
+
+    return {
+        valor_patrimonial_por_cota: valorPatrimonialPorCota,
+        valor_da_cota: valorDaCota,
+        numero_de_cotas: numeroDeCotas,
+        pvp,
+        valor_patrimonial: valorPatrimonial
+    };
+}
+
+function extractAssetDistributionSection(html) {
+    const section = extractSectionChunkByHeading(
+        html,
+        /DISTRIBUI[ÇC][AÃ]O\s+DE\s+ATIVOS\s+DO\s+FUNDO/i
+    );
+    if (!section) return [];
+
+    const text = cleanSpace(stripHtmlToText(section));
+    const regex = /([A-Za-zÀ-ÿ][A-Za-zÀ-ÿ0-9\s\/-]{1,50}?)\s+([0-9]{1,3},[0-9]{1,2})%/g;
+    const blocked = new Set([
+        'distribuicao de ativos do fundo',
+        'distribuicao de ativos',
+        'ativos do fundo'
+    ]);
+
+    const map = new Map();
+    let match;
+    while ((match = regex.exec(text)) !== null) {
+        const categoria = cleanSpace(match[1]);
+        const categoriaNorm = normalize(categoria);
+        if (!categoria || blocked.has(categoriaNorm)) continue;
+
+        const percentual = Number(match[2].replace(',', '.'));
+        if (!Number.isFinite(percentual)) continue;
+
+        if (!map.has(categoriaNorm)) {
+            map.set(categoriaNorm, { categoria, percentual });
+        } else {
+            const prev = map.get(categoriaNorm);
+            if (percentual > prev.percentual) {
+                map.set(categoriaNorm, { categoria, percentual });
+            }
+        }
+    }
+
+    return Array.from(map.values()).sort((a, b) => b.percentual - a.percentual);
+}
+
+function buildAssetDistributionFallbackFromProperties(imoveis = []) {
+    if (!Array.isArray(imoveis) || imoveis.length === 0) return [];
+
+    const byEstado = new Map();
+    imoveis.forEach((item) => {
+        const estado = cleanSpace(item?.estado || 'Não informado');
+        const key = normalize(estado) || 'nao informado';
+        if (!byEstado.has(key)) byEstado.set(key, { categoria: estado, count: 0 });
+        byEstado.get(key).count += 1;
+    });
+
+    const total = imoveis.length;
+    return Array.from(byEstado.values())
+        .map((entry) => ({
+            categoria: entry.categoria,
+            percentual: Number(((entry.count / total) * 100).toFixed(2))
+        }))
+        .sort((a, b) => b.percentual - a.percentual);
+}
+
+function extractMediaTipoSegmentoSection(html) {
+    const section = extractSectionChunkByHeading(
+        html,
+        /M[ÉE]DIA\s+DO\s+TIPO\s+E\s+SEGMENTO/i
+    );
+    if (!section) return null;
+
+    const textOriginal = cleanSpace(stripHtmlToText(section));
+    const textNormalized = normalize(textOriginal).replace(/\s+/g, ' ');
+
+    const capturePair = (labelRegex) => {
+        const regex = new RegExp(
+            `${labelRegex}\\s*:?\\s*(r\\$\\s*)?([0-9]+(?:[\\.,][0-9]+)*(?:\\s*(?:%|milhoes|bilhoes|m|b))?)[\\s\\S]{0,160}?comparacao\\s*:?\\s*(r\\$\\s*)?([0-9]+(?:[\\.,][0-9]+)*(?:\\s*(?:%|milhoes|bilhoes|m|b))?)`,
+            'i'
+        );
+        const match = textNormalized.match(regex);
+        if (!match) return { ativo: 'N/A', comparacao: 'N/A' };
+        const ativo = cleanSpace(`${match[1] || ''}${match[2] || ''}`);
+        const comparacao = cleanSpace(`${match[3] || ''}${match[4] || ''}`);
+        return {
+            ativo: /^r\$/i.test(ativo) ? ativo.replace(/^r\$/i, 'R$') : ativo,
+            comparacao: /^r\$/i.test(comparacao) ? comparacao.replace(/^r\$/i, 'R$') : comparacao
+        };
+    };
+
+    const contextMatch = textOriginal.match(
+        /Comparando o\s+([A-Z0-9]+)\s+com a m[ée]dia[^.]*tipo\s*\(([^)]+)\)[^.]*segmento\s*\(([^)]+)\)/i
+    );
+
+    const modeMatch = textOriginal.match(/MESMO\s+TIPO\s+E\s+SEGMENTO/i);
+
+    const pvp = capturePair('(?:[a-z]{4}\\d{1,2}\\s+)?p\\/vp');
+    const dy12m = capturePair('(?:[a-z]{4}\\d{1,2}\\s+)?dy\\s*\\(12m\\)');
+    const valorPatrimonial = capturePair('valor\\s+patrimonial\\s*(?!p\\/?\\s*cota|por\\s+cota)');
+    const valorPatrimonialCota = capturePair('(?:val\\.?\\s*patrimonial\\s*p\\/?\\s*cota|valor\\s+patrimonial\\s+por\\s+cota)');
+
+    return {
+        modo: modeMatch ? 'MESMO TIPO E SEGMENTO' : 'N/A',
+        contexto: {
+            ticker_comparado: contextMatch?.[1] || '',
+            tipo_referencia: cleanSpace(contextMatch?.[2] || ''),
+            segmento_referencia: cleanSpace(contextMatch?.[3] || '')
+        },
+        indicadores: {
+            pvp,
+            dy_12m: dy12m,
+            valor_patrimonial: valorPatrimonial,
+            valor_patrimonial_por_cota: valorPatrimonialCota
+        }
+    };
+}
+
+function buildPatrimonialInfo(dados, sectionData, cotacaoAtual) {
+    const valorPatrimonialPorCota = toCurrencyText(
+        sectionData?.valor_patrimonial_por_cota || dados.vp_cota,
+        true
+    );
+    const valorDaCota = toCurrencyText(
+        sectionData?.valor_da_cota || (cotacaoAtual > 0 ? formatNumberBR(cotacaoAtual, 2) : ''),
+        true
+    );
+    const numeroDeCotas = prettifyPtUnits(cleanSpace(sectionData?.numero_de_cotas || dados.cotas_emitidas || 'N/A')) || 'N/A';
+    const pvp = cleanSpace(sectionData?.pvp || dados.pvp || 'N/A') || 'N/A';
+    const valorPatrimonial = toCurrencyText(
+        sectionData?.valor_patrimonial || dados.patrimonio_liquido,
+        true
+    );
+
+    return {
+        valor_patrimonial_por_cota: valorPatrimonialPorCota,
+        valor_da_cota: valorDaCota,
+        numero_de_cotas: numeroDeCotas,
+        pvp,
+        valor_patrimonial: valorPatrimonial,
+        valor_patrimonial_por_cota_num: parseValue(valorPatrimonialPorCota),
+        valor_da_cota_num: parseValue(valorDaCota),
+        numero_de_cotas_num: parseExtendedValue(numeroDeCotas),
+        pvp_num: parseValue(pvp),
+        valor_patrimonial_num: parseCompactCurrencyValue(valorPatrimonial),
+        fonte: sectionData ? 'investidor10_section' : 'fundamentos_cards'
+    };
+}
+
+function buildMediaTipoSegmentoFromComparacao(dados, ticker) {
+    const rows = Array.isArray(dados?.comparacao) ? dados.comparacao : [];
+    const tipoRef = normalize(dados?.tipo_fundo || '');
+    const segmentoRef = normalize(dados?.segmento || '');
+
+    const sameTipo = rows.filter((row) => normalize(row?.tipo || '') === tipoRef);
+    const sameSegmento = rows.filter((row) => normalize(row?.segmento || '') === segmentoRef);
+    const sameTipoSegmento = rows.filter(
+        (row) => normalize(row?.tipo || '') === tipoRef && normalize(row?.segmento || '') === segmentoRef
+    );
+
+    const group = sameTipoSegmento.length > 0
+        ? sameTipoSegmento
+        : (sameTipo.length > 0 ? sameTipo : sameSegmento);
+
+    const avgDy = averageNumbers(group.map((row) => parsePercentValue(row?.dy)));
+    const avgPvp = averageNumbers(group.map((row) => parseValue(row?.pvp)));
+    const avgPatrimonio = averageNumbers(group.map((row) => parseCompactCurrencyValue(row?.patrimonio)));
+
+    return {
+        modo: 'MESMO TIPO E SEGMENTO',
+        contexto: {
+            ticker_comparado: String(ticker || '').toUpperCase(),
+            tipo_referencia: dados?.tipo_fundo || 'N/A',
+            segmento_referencia: dados?.segmento || 'N/A'
+        },
+        indicadores: {
+            pvp: {
+                ativo: cleanSpace(dados?.pvp || 'N/A') || 'N/A',
+                comparacao: avgPvp == null ? 'N/A' : formatNumberBR(avgPvp, 2)
+            },
+            dy_12m: {
+                ativo: cleanSpace(dados?.dy || 'N/A') || 'N/A',
+                comparacao: avgDy == null ? 'N/A' : `${formatNumberBR(avgDy, 2)}%`
+            },
+            valor_patrimonial: {
+                ativo: toCurrencyText(dados?.patrimonio_liquido, true),
+                comparacao: avgPatrimonio == null ? 'N/A' : formatCompactCurrencyBR(avgPatrimonio)
+            },
+            valor_patrimonial_por_cota: {
+                ativo: toCurrencyText(dados?.vp_cota, true),
+                comparacao: 'N/A'
+            }
+        },
+        amostra: {
+            tipo: sameTipo.length,
+            segmento: sameSegmento.length,
+            tipo_segmento: sameTipoSegmento.length
+        },
+        fonte: 'comparacao_calculada'
+    };
+}
+
 function cleanDoubledString(str) {
     if (!str) return "";
     const parts = str.split('R$');
@@ -499,6 +800,10 @@ async function scrapeFundamentos(ticker) {
 
         if (!html.includes('cotacao') && !html.includes('Cotação')) throw new Error('Página inválida');
 
+        const patrimonialInfoSection = extractPatrimonialInfoSection(html);
+        const assetDistributionSection = extractAssetDistributionSection(html);
+        const mediaTipoSegmentoSection = extractMediaTipoSegmentoSection(html);
+
         let dados = {
             dy: 'N/A', pvp: 'N/A', pl: 'N/A', roe: 'N/A', roa: 'N/A', roic: 'N/A', lpa: 'N/A', vp_cota: 'N/A',
             val_mercado: 'N/A', liquidez: 'N/A', liq_corrente: 'N/A', variacao_12m: 'N/A', ultimo_rendimento: 'N/A',
@@ -514,7 +819,10 @@ async function scrapeFundamentos(ticker) {
             comparacao: [],
             logo_url: '',
             historico_indicadores: null,
-            checklist_buy_hold: []
+            checklist_buy_hold: [],
+            valor_patrimonial_info: null,
+            distribuicao_ativos_fundo: null,
+            medias_tipo_segmento: null
         };
 
         let cotacao_atual = 0;
@@ -952,6 +1260,31 @@ async function scrapeFundamentos(ticker) {
         } catch (e) {
             console.error('Erro ao buscar gráficos financeiros:', e.message);
         }
+
+        const finalAssetDistribution =
+            Array.isArray(assetDistributionSection) && assetDistributionSection.length > 0
+                ? assetDistributionSection
+                : buildAssetDistributionFallbackFromProperties(dados.imoveis);
+
+        const mediaTipoSegmentoFallback = buildMediaTipoSegmentoFromComparacao(dados, ticker);
+        const mediaFromSectionHasData =
+            !!mediaTipoSegmentoSection &&
+            (
+                mediaTipoSegmentoSection?.indicadores?.pvp?.ativo !== 'N/A' ||
+                mediaTipoSegmentoSection?.indicadores?.dy_12m?.ativo !== 'N/A' ||
+                mediaTipoSegmentoSection?.indicadores?.valor_patrimonial?.ativo !== 'N/A'
+            );
+
+        dados.valor_patrimonial_info = buildPatrimonialInfo(dados, patrimonialInfoSection, cotacao_atual);
+        dados.distribuicao_ativos_fundo = {
+            itens: finalAssetDistribution,
+            fonte: (Array.isArray(assetDistributionSection) && assetDistributionSection.length > 0)
+                ? 'investidor10_section'
+                : 'imoveis_fallback'
+        };
+        dados.medias_tipo_segmento = mediaFromSectionHasData
+            ? { ...mediaTipoSegmentoSection, fonte: 'investidor10_section' }
+            : mediaTipoSegmentoFallback;
 
         dados.tipo_ativo = tipoAtivo;
         return dados;

@@ -9018,7 +9018,9 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
                 // NOVOS CAMPOS:
                 sobre: fundamentos.sobre || '',
                 comparacao: fundamentos.comparacao || [],
-                logo_url: fundamentos.logo_url || ''
+                logo_url: fundamentos.logo_url || '',
+                historico_indicadores: fundamentos.historico_indicadores || null,
+                checklist_buy_hold: Array.isArray(fundamentos.checklist_buy_hold) ? fundamentos.checklist_buy_hold : []
             };
 
             // Armazena fundamentos para uso no compartilhamento
@@ -9162,6 +9164,118 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
             </div>`;
 
             let listasHtml = '';
+            const historicoIndicadoresData =
+                dados.historico_indicadores &&
+                Array.isArray(dados.historico_indicadores.linhas) &&
+                Array.isArray(dados.historico_indicadores.colunas)
+                    ? dados.historico_indicadores
+                    : null;
+
+            const checklistBuyHoldData = Array.isArray(dados.checklist_buy_hold)
+                ? dados.checklist_buy_hold
+                : [];
+
+            const historicoIndicadoresHtml = (() => {
+                if (!historicoIndicadoresData) return '';
+                const colunas = historicoIndicadoresData.colunas
+                    .map(c => String(c || '').trim())
+                    .filter(Boolean);
+                const linhas = historicoIndicadoresData.linhas
+                    .filter(l => l && l.indicador && l.valores)
+                    .slice(0, 20);
+
+                if (colunas.length === 0 || linhas.length === 0) return '';
+
+                const head = colunas.map(col => `
+                    <th class="text-right px-3 py-2.5 text-[10px] font-bold uppercase tracking-wider text-gray-400 whitespace-nowrap">
+                        ${escapeHtml(col)}
+                    </th>
+                `).join('');
+
+                const body = linhas.map((linha) => {
+                    const nomeIndicador = escapeHtml(linha.indicador || '-');
+                    const values = colunas.map(col => {
+                        const val = linha.valores?.[col] ?? '-';
+                        return `
+                            <td class="text-right px-3 py-2 text-[11px] text-gray-200 whitespace-nowrap">
+                                ${escapeHtml(String(val))}
+                            </td>
+                        `;
+                    }).join('');
+
+                    return `
+                        <tr class="hover:bg-white/[0.02] transition-colors">
+                            <td class="px-3 py-2 text-[11px] font-semibold text-gray-300 whitespace-nowrap">
+                                ${nomeIndicador}
+                            </td>
+                            ${values}
+                        </tr>
+                    `;
+                }).join('');
+
+                return `
+                <h4 class="text-[10px] font-bold text-gray-300 uppercase tracking-widest mt-4 mb-2 pl-1">Histórico Fundamentalista</h4>
+                <div class="bg-[#151515] rounded-xl shadow-sm mb-4 border border-white/5 overflow-hidden">
+                    <div class="overflow-x-auto custom-scroll">
+                        <table class="w-full min-w-[680px] border-collapse">
+                            <thead class="bg-white/[0.03]">
+                                <tr>
+                                    <th class="text-left px-3 py-2.5 text-[10px] font-bold uppercase tracking-wider text-gray-400 whitespace-nowrap">
+                                        Indicador
+                                    </th>
+                                    ${head}
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-white/[0.03]">
+                                ${body}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>`;
+            })();
+
+            const checklistBuyHoldHtml = (() => {
+                const itens = checklistBuyHoldData
+                    .filter(item => item && item.criterio)
+                    .slice(0, 16);
+                if (itens.length === 0) return '';
+
+                const itemsHtml = itens.map((item) => {
+                    const aprovado = item.aprovado === true;
+                    const reprovado = item.aprovado === false;
+                    const cardClass = aprovado
+                        ? 'bg-green-500/10 border-green-500/20'
+                        : (reprovado ? 'bg-[#1A1A1C] border-white/10' : 'bg-[#1A1A1C] border-white/5');
+                    const iconClass = aprovado
+                        ? 'text-green-400'
+                        : (reprovado ? 'text-gray-500' : 'text-gray-500');
+                    const labelClass = aprovado
+                        ? 'text-green-200'
+                        : 'text-gray-300';
+
+                    const iconSvg = aprovado
+                        ? '<path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />'
+                        : (reprovado
+                            ? '<path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />'
+                            : '<circle cx="12" cy="12" r="4" />');
+
+                    return `
+                    <div class="rounded-xl border p-3 ${cardClass} flex items-start gap-2.5">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 ${iconClass} mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            ${iconSvg}
+                        </svg>
+                        <span class="text-[12px] leading-relaxed ${labelClass}">
+                            ${escapeHtml(String(item.criterio))}
+                        </span>
+                    </div>`;
+                }).join('');
+
+                return `
+                <h4 class="text-[10px] font-bold text-gray-300 uppercase tracking-widest mt-4 mb-2 pl-1">Checklist Buy and Hold</h4>
+                <div class="grid grid-cols-1 gap-2 mb-4">
+                    ${itemsHtml}
+                </div>`;
+            })();
 
             if (ehAcao) {
                 gridTopo = [
@@ -9239,7 +9353,9 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
                 <div class="bg-[#151515] rounded-xl px-3 shadow-sm mb-4">
                     ${renderRow('Taxa Adm.', dados.taxa_adm)}
                     ${renderRow('CNPJ', `<span class="font-mono text-xs opacity-80">${dados.cnpj}</span>`)}
-                </div>`;
+                </div>
+                ${historicoIndicadoresHtml}
+                ${checklistBuyHoldHtml}`;
             }
 
             // =========================================================

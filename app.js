@@ -9214,7 +9214,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
                 }).join('');
 
                 return `
-                <h4 class="text-[10px] font-bold text-gray-300 uppercase tracking-widest mt-4 mb-2 pl-1">Histórico Fundamentalista</h4>
+                <h4 class="text-[10px] font-bold text-gray-300 uppercase tracking-widest mt-4 mb-2 pl-1">Histórico de Indicadores Fundamentalistas</h4>
                 <div class="bg-[#151515] rounded-xl shadow-sm mb-4 border border-white/5 overflow-hidden">
                     <div class="overflow-x-auto custom-scroll">
                         <table class="w-full min-w-[680px] border-collapse">

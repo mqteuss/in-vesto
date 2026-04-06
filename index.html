@@ -113,31 +113,28 @@
             if (bioEnabled && !justLoggedOut) {
                 document.getElementById('biometric-lock-screen').classList.remove('hidden');
                 document.body.style.overflow = 'hidden';
-                const isLikelyMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent || '');
                 const btnRetry = document.getElementById('btn-desbloquear');
 
                 // ── BIOMETRIA INSTANTÂNEA ──
                 // Dispara o prompt ANTES de app.js carregar (~50ms vs ~1-2s).
                 // Tudo que precisamos está no localStorage; sem dependência de rede.
                 const credId = localStorage.getItem('vesto_bio_id');
-                if (isLikelyMobile && btnRetry) {
-                    // Em mobile, priorizamos tap explícito para abrir o prompt de biometria.
-                    btnRetry.classList.remove('opacity-0', 'pointer-events-none');
-                } else if (credId && window.PublicKeyCredential && navigator.credentials?.get) {
+                if (credId && window.PublicKeyCredential && navigator.credentials?.get) {
                     const _b64 = (b) => Uint8Array.from(atob(b), c => c.charCodeAt(0));
                     const challenge = new Uint8Array(32);
                     crypto.getRandomValues(challenge);
                     window.__vestoBioPromptInFlight = true;
+                    const currentRpId = window.location.hostname.replace(/^www\./i, '');
 
                     navigator.credentials.get({
                         publicKey: {
                             challenge,
                             timeout: 60000,
                             userVerification: 'required',
+                            rpId: currentRpId,
                             allowCredentials: [{
                                 id: _b64(credId),
-                                type: 'public-key',
-                                transports: ['internal']
+                                type: 'public-key'
                             }]
                         }
                     }).then(assertion => {

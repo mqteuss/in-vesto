@@ -1754,9 +1754,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         mostrarTelaBloqueioBiometrico(true);
 
-        // Em mobile, prioriza gesto explícito do usuário para maximizar compatibilidade.
-        if (isLikelyMobile) return false;
-
         // Se o script inline ainda está em execução, evita dupla chamada de WebAuthn.
         if (window.__vestoBioPromptInFlight) return false;
 

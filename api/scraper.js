@@ -177,6 +177,165 @@ function cleanDoubledString(str) {
     return str;
 }
 
+function decodeHtmlEntities(str) {
+    if (!str) return '';
+    return String(str)
+        .replace(/&nbsp;/gi, ' ')
+        .replace(/&amp;/gi, '&')
+        .replace(/&quot;/gi, '"')
+        .replace(/&#39;/gi, "'")
+        .replace(/&lt;/gi, '<')
+        .replace(/&gt;/gi, '>');
+}
+
+function stripHtmlToText(htmlChunk) {
+    if (!htmlChunk) return '';
+    return decodeHtmlEntities(
+        String(htmlChunk)
+            .replace(/<script[\s\S]*?<\/script>/gi, ' ')
+            .replace(/<style[\s\S]*?<\/style>/gi, ' ')
+            .replace(/<[^>]+>/g, ' ')
+            .replace(/\s+/g, ' ')
+    ).trim();
+}
+
+function inferChecklistStatus(rawHtml) {
+    const chunk = String(rawHtml || '').toLowerCase();
+    if (!chunk) return null;
+
+    if (/type=["']checkbox["'][^>]*checked|checked[^>]*type=["']checkbox["']/.test(chunk)) return true;
+    if (/type=["']checkbox["']/.test(chunk)) return false;
+
+    if (/\b(is-checked|checked-item|fa-check|fa-square-check|bi-check|bi-check-square|mdi-check|mdi-checkbox-marked|ri-check|icon-check|icon-ok)\b/.test(chunk)) return true;
+    if (/\b(is-unchecked|unchecked-item|fa-times|fa-xmark|fa-square|bi-x|bi-square|mdi-close|mdi-checkbox-blank-outline|ri-close|icon-close)\b/.test(chunk)) return false;
+
+    if (/&#10003;|✓/.test(chunk)) return true;
+    if (/&#10007;|✗|✕/.test(chunk)) return false;
+
+    return null;
+}
+
+function extractFiiHistoricalIndicators(html) {
+    const tables = String(html || '').match(/<table[^>]*>[\s\S]*?<\/table>/gi) || [];
+    const metricHints = [
+        'valor de mercado',
+        'p/vp',
+        'dividend yield',
+        'liquidez diaria',
+        'valor patrimonial',
+        'vacancia',
+        'numero de cotistas',
+        'cotas emitidas'
+    ];
+
+    for (const tableHtml of tables) {
+        const tableNorm = normalize(stripHtmlToText(tableHtml));
+        if (!tableNorm.includes('atual')) continue;
+        if (!metricHints.some(h => tableNorm.includes(normalize(h)))) continue;
+
+        const thBlocks = tableHtml.match(/<th[^>]*>[\s\S]*?<\/th>/gi) || [];
+        const headerCandidates = thBlocks
+            .map(th => stripHtmlToText(th))
+            .filter(Boolean);
+
+        const yearOrCurrent = headerCandidates.filter(h => {
+            const hn = normalize(h);
+            return hn === 'atual' || /^(19|20)\d{2}$/.test(hn);
+        });
+        if (yearOrCurrent.length < 2) continue;
+
+        const rowBlocks = tableHtml.match(/<tr[^>]*>[\s\S]*?<\/tr>/gi) || [];
+        const rows = [];
+        const seen = new Set();
+
+        for (const rowHtml of rowBlocks) {
+            const cellBlocks = rowHtml.match(/<t[dh][^>]*>[\s\S]*?<\/t[dh]>/gi) || [];
+            if (cellBlocks.length < 2) continue;
+
+            const cleanedCells = cellBlocks
+                .map(cell => stripHtmlToText(cell))
+                .filter(text => text.length > 0);
+            if (cleanedCells.length < 2) continue;
+
+            const indicador = cleanedCells[0];
+            const indicadorNorm = normalize(indicador);
+            if (!indicadorNorm || indicadorNorm === 'atual' || /^(19|20)\d{2}$/.test(indicadorNorm)) continue;
+            if (seen.has(indicadorNorm)) continue;
+
+            const values = cleanedCells.slice(1);
+            if (values.length === 0) continue;
+
+            const valueMap = {};
+            const maxCols = Math.min(yearOrCurrent.length, values.length);
+            for (let i = 0; i < maxCols; i++) {
+                valueMap[yearOrCurrent[i]] = values[i];
+            }
+            if (Object.keys(valueMap).length === 0) continue;
+
+            rows.push({ indicador, valores: valueMap });
+            seen.add(indicadorNorm);
+        }
+
+        if (rows.length >= 3) {
+            return { colunas: yearOrCurrent, linhas: rows };
+        }
+    }
+
+    return null;
+}
+
+function extractFiiBuyAndHoldChecklist(html) {
+    const fullHtml = String(html || '');
+    const heading = /CHECKLIST\s+DO\s+INVESTIDOR\s+BUY\s+AND\s+HOLD/i;
+    const startMatch = fullHtml.match(heading);
+    if (!startMatch || startMatch.index === undefined) return [];
+
+    const from = startMatch.index;
+    const block = fullHtml.slice(from, from + 18000);
+
+    const fragments = [];
+    const liBlocks = block.match(/<li[^>]*>[\s\S]*?<\/li>/gi) || [];
+    const rowBlocks = block.match(/<tr[^>]*>[\s\S]*?<\/tr>/gi) || [];
+    const divBlocks = block.match(/<div[^>]*class=["'][^"']*(item|check|checklist|criter|criteria)[^"']*["'][^>]*>[\s\S]*?<\/div>/gi) || [];
+    const pBlocks = block.match(/<p[^>]*>[\s\S]*?<\/p>/gi) || [];
+
+    fragments.push(...liBlocks, ...rowBlocks, ...divBlocks, ...pBlocks);
+    if (fragments.length === 0) return [];
+
+    const hints = [
+        'anos listado',
+        'liquidez',
+        'patrimonio',
+        'vacancia',
+        'dividend yield',
+        'cotistas',
+        'imoveis',
+        'portfolio',
+        'portifolio',
+        'portfólio'
+    ];
+
+    const results = [];
+    const seen = new Set();
+
+    for (const fragment of fragments) {
+        const text = stripHtmlToText(fragment);
+        if (!text || text.length < 12 || text.length > 220) continue;
+
+        const n = normalize(text);
+        if (!hints.some(h => n.includes(normalize(h)))) continue;
+        if (seen.has(n)) continue;
+
+        results.push({
+            criterio: text,
+            aprovado: inferChecklistStatus(fragment)
+        });
+        seen.add(n);
+    }
+
+    return results;
+}
+
 // ─── Multi-selectors para Investidor10 (pré-definidos) ───────────────────────
 
 const FUNDAMENTOS_SELECTORS = {
@@ -249,7 +408,9 @@ async function scrapeFundamentos(ticker) {
             imoveis: [],
             sobre: '',
             comparacao: [],
-            logo_url: ''
+            logo_url: '',
+            historico_indicadores: null,
+            checklist_buy_hold: []
         };
 
         let cotacao_atual = 0;
@@ -468,6 +629,11 @@ async function scrapeFundamentos(ticker) {
         }
 
         dados.sobre = sobreTexto.replace(/[ \t]+/g, ' ').replace(/\n{3,}/g, '\n\n').trim();
+
+        if (tipoAtivo === 'fii') {
+            dados.historico_indicadores = extractFiiHistoricalIndicators(html);
+            dados.checklist_buy_hold = extractFiiBuyAndHoldChecklist(html);
+        }
 
         // Rentabilidade Chart (regex no HTML bruto)
         let rentabilidadeChart = null;

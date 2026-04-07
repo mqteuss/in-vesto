@@ -11747,12 +11747,8 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
             renderizarDashboardSkeletons(true);
             renderizarCarteiraSkeletons(true);
 
-            // Tempo mínimo para o skeleton ser visível (UX profissional)
-            const skeletonMinTime = new Promise(resolve => setTimeout(resolve, 600));
-
             // Dispara todas as requisições ao mesmo tempo
             await Promise.all([
-                skeletonMinTime,
                 carregarTransacoes(),
                 carregarCaixa(),
                 carregarProventosConhecidos(),
@@ -12044,6 +12040,81 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
             return;
         }
 
+        const iniciarSessaoAutenticada = async (sessionAtual) => {
+            verificarStatusPush(); // Fire-and-forget — não bloqueia biometria
+            currentUserId = sessionAtual.user.id;
+            // A flag é usada só no ciclo de logout; ao iniciar nova sessão, remove.
+            sessionStorage.removeItem('vesto_just_logged_out');
+            authContainer.classList.add('hidden');
+            appWrapper.classList.remove('hidden');
+
+            // CRÍTICO: Ativa os skeletons IMEDIATAMENTE após o app ficar visível,
+            // ANTES de qualquer await, para que o primeiro frame pintado pelo browser
+            // já mostre skeletons em vez de valores zerados.
+            renderizarDashboardSkeletons(true);
+            renderizarCarteiraSkeletons(true);
+
+            // Timeline: mostra container com skeleton visível
+            const _tlContainer = document.getElementById('timeline-pagamentos-container');
+            if (_tlContainer) _tlContainer.classList.remove('hidden');
+
+            const userEmailDisplay = document.getElementById('user-email-display');
+            if (userEmailDisplay && sessionAtual.user.email) {
+                userEmailDisplay.textContent = sessionAtual.user.email;
+            }
+
+            const continuarBootSessao = async () => {
+                // 1. Captura parâmetros da URL (Atalhos e Compartilhamento)
+                const urlParams = new URLSearchParams(window.location.search);
+                const tabParam = urlParams.get('tab');
+                const ativoShared = urlParams.get('ativo');
+
+                // 2. Lógica de Atalhos (App Shortcuts)
+                if (tabParam && document.getElementById(tabParam)) {
+                    mudarAba(tabParam);
+                    window.history.replaceState({}, document.title, window.location.pathname);
+                } else {
+                    mudarAba('tab-dashboard');
+                }
+
+                const carouselWrapper = document.getElementById('carousel-wrapper');
+                if (carouselWrapper) {
+                    // Impede que o evento de toque suba para o documento (onde está o listener do swipe de abas)
+                    carouselWrapper.addEventListener('touchstart', (e) => e.stopPropagation(), { passive: true });
+                    carouselWrapper.addEventListener('touchmove', (e) => e.stopPropagation(), { passive: true });
+                    carouselWrapper.addEventListener('touchend', (e) => e.stopPropagation(), { passive: true });
+                }
+
+                await carregarDadosIniciais();
+
+                // 3. Lógica de Ativo Compartilhado (Deep Link)
+                if (ativoShared) {
+                    const newUrl = window.location.protocol + "//" + window.location.host + window.location.pathname;
+                    window.history.replaceState({ path: newUrl }, '', newUrl);
+
+                    setTimeout(() => {
+                        const symbolClean = normalizeTickerSymbol(ativoShared);
+                        if (symbolClean) {
+                            showDetalhesModal(symbolClean);
+                        }
+                    }, 800);
+                }
+            };
+
+            const biometriaLiberada = await verificarStatusBiometria();
+            if (!biometriaLiberada) {
+                window.addEventListener('vesto-bio-unlocked', () => {
+                    continuarBootSessao().catch((err) => {
+                        console.error("Erro após desbloqueio biométrico:", err);
+                        showToast("Erro ao carregar dados após desbloqueio.");
+                    });
+                }, { once: true });
+                return;
+            }
+
+            await continuarBootSessao();
+        };
+
         // Listeners de Login/Cadastro
         loginForm.addEventListener('submit', async (e) => {
             e.preventDefault();
@@ -12058,7 +12129,17 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
             if (error) {
                 showLoginError(error);
             } else {
-                window.location.reload();
+                try {
+                    const sessionAposLogin = await supabaseDB.initialize();
+                    if (!sessionAposLogin) {
+                        showLoginError("Sessão iniciada, mas não foi possível carregar o app. Tente novamente.");
+                        return;
+                    }
+                    await iniciarSessaoAutenticada(sessionAposLogin);
+                } catch (bootError) {
+                    console.error("Erro ao iniciar sessão após login:", bootError);
+                    showLoginError("Login efetuado, mas falhou ao carregar o app. Tente novamente.");
+                }
             }
         });
 
@@ -12141,79 +12222,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
 
         // LÓGICA DE SESSÃO E ROTEAMENTO
         if (session) {
-            verificarStatusPush(); // Fire-and-forget — não bloqueia biometria
-            currentUserId = session.user.id;
-            // A flag é usada só no ciclo de logout; ao iniciar nova sessão, remove.
-            sessionStorage.removeItem('vesto_just_logged_out');
-            authContainer.classList.add('hidden');
-            appWrapper.classList.remove('hidden');
-
-            // CRÍTICO: Ativa os skeletons IMEDIATAMENTE após o app ficar visível,
-            // ANTES de qualquer await, para que o primeiro frame pintado pelo browser
-            // já mostre skeletons em vez de valores zerados.
-            renderizarDashboardSkeletons(true);
-            renderizarCarteiraSkeletons(true);
-
-            // Timeline: mostra container com skeleton visível
-            const _tlContainer = document.getElementById('timeline-pagamentos-container');
-            if (_tlContainer) _tlContainer.classList.remove('hidden');
-
-            const userEmailDisplay = document.getElementById('user-email-display');
-            if (userEmailDisplay && session.user.email) {
-                userEmailDisplay.textContent = session.user.email;
-            }
-
-            const continuarBootSessao = async () => {
-                // 1. Captura parâmetros da URL (Atalhos e Compartilhamento)
-                const urlParams = new URLSearchParams(window.location.search);
-                const tabParam = urlParams.get('tab');
-                const ativoShared = urlParams.get('ativo');
-
-                // 2. Lógica de Atalhos (App Shortcuts)
-                if (tabParam && document.getElementById(tabParam)) {
-                    mudarAba(tabParam);
-                    window.history.replaceState({}, document.title, window.location.pathname);
-                } else {
-                    mudarAba('tab-dashboard');
-                }
-
-                const carouselWrapper = document.getElementById('carousel-wrapper');
-                if (carouselWrapper) {
-                    // Impede que o evento de toque suba para o documento (onde está o listener do swipe de abas)
-                    carouselWrapper.addEventListener('touchstart', (e) => e.stopPropagation(), { passive: true });
-                    carouselWrapper.addEventListener('touchmove', (e) => e.stopPropagation(), { passive: true });
-                    carouselWrapper.addEventListener('touchend', (e) => e.stopPropagation(), { passive: true });
-                }
-
-                await carregarDadosIniciais();
-
-                // 3. Lógica de Ativo Compartilhado (Deep Link)
-                if (ativoShared) {
-                    const newUrl = window.location.protocol + "//" + window.location.host + window.location.pathname;
-                    window.history.replaceState({ path: newUrl }, '', newUrl);
-
-                    setTimeout(() => {
-                        const symbolClean = normalizeTickerSymbol(ativoShared);
-                        if (symbolClean) {
-                            showDetalhesModal(symbolClean);
-                        }
-                    }, 800);
-                }
-            };
-
-            const biometriaLiberada = await verificarStatusBiometria();
-            if (!biometriaLiberada) {
-                window.addEventListener('vesto-bio-unlocked', () => {
-                    continuarBootSessao().catch((err) => {
-                        console.error("Erro após desbloqueio biométrico:", err);
-                        showToast("Erro ao carregar dados após desbloqueio.");
-                    });
-                }, { once: true });
-                return;
-            }
-
-            await continuarBootSessao();
-
+            await iniciarSessaoAutenticada(session);
         } else {
             esconderTelaBloqueioBiometrico();
             window.__vestoUnlockedEarly = false;

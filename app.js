@@ -6317,6 +6317,102 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
         }
     }
 
+    function construirQuoteViaYahoo(symbol, historico) {
+        const pontos = Array.isArray(historico?.points)
+            ? historico.points.filter(p => Number.isFinite(Number(p?.price)))
+            : [];
+        if (pontos.length === 0) return null;
+
+        const ultimo = pontos[pontos.length - 1];
+        const penultimo = pontos.length > 1 ? pontos[pontos.length - 2] : null;
+
+        const precoAtual = Number(ultimo?.price);
+        const precoAnteriorRaw = Number(penultimo?.price);
+        const aberturaRaw = Number(ultimo?.open);
+        const maxRaw = Number(ultimo?.high);
+        const minRaw = Number(ultimo?.low);
+
+        if (!Number.isFinite(precoAtual) || precoAtual <= 0) return null;
+
+        const precoAnterior = Number.isFinite(precoAnteriorRaw) && precoAnteriorRaw > 0
+            ? precoAnteriorRaw
+            : (Number.isFinite(aberturaRaw) && aberturaRaw > 0 ? aberturaRaw : precoAtual);
+
+        const variacao = precoAtual - precoAnterior;
+        const variacaoPct = precoAnterior > 0 ? (variacao / precoAnterior) * 100 : 0;
+
+        return {
+            symbol: String(symbol || historico?.ticker || '').toUpperCase().replace('.SA', ''),
+            longName: String(historico?.ticker || symbol || '').toUpperCase().replace('.SA', ''),
+            regularMarketPrice: precoAtual,
+            regularMarketChange: variacao,
+            regularMarketChangePercent: variacaoPct,
+            regularMarketPreviousClose: precoAnterior,
+            regularMarketOpen: Number.isFinite(aberturaRaw) ? aberturaRaw : precoAtual,
+            regularMarketDayHigh: Number.isFinite(maxRaw) ? maxRaw : precoAtual,
+            regularMarketDayLow: Number.isFinite(minRaw) ? minRaw : precoAtual,
+            source: 'yahoo'
+        };
+    }
+
+    async function buscarQuoteYahoo(symbol) {
+        try {
+            const historico = await callScraperCotacaoHistoricaAPI(symbol, '5D');
+            if (!historico || historico.error) return null;
+            return construirQuoteViaYahoo(symbol, historico);
+        } catch (err) {
+            console.warn(`Yahoo falhou para ${symbol}:`, err?.message || err);
+            return null;
+        }
+    }
+
+    async function buscarQuoteBrapi(symbol) {
+        const tickerParaApi = isFII(symbol) ? `${symbol}.SA` : symbol;
+        try {
+            const data = await fetchBFF(`/api/brapi?path=/quote/${tickerParaApi}?range=1d&interval=1d`);
+            const result = data?.results?.[0];
+            if (!result || result.error) return null;
+
+            const quote = { ...result, source: 'brapi' };
+            if (quote.symbol?.endsWith('.SA')) quote.symbol = quote.symbol.replace('.SA', '');
+            if (!quote.symbol) quote.symbol = String(symbol || '').toUpperCase();
+            return quote;
+        } catch (err) {
+            console.warn(`BRAPI falhou para ${symbol}:`, err?.message || err);
+            return null;
+        }
+    }
+
+    async function fetchQuoteWithYahooFallback(symbol) {
+        const yahooQuote = await buscarQuoteYahoo(symbol);
+        if (yahooQuote && Number.isFinite(Number(yahooQuote.regularMarketPrice))) {
+            return yahooQuote;
+        }
+        return await buscarQuoteBrapi(symbol);
+    }
+
+    async function buscarCotacoesEmLotes(ativos = [], duracaoCachePreco = CACHE_PRECO_MERCADO_FECHADO) {
+        const resultados = [];
+        const tamanhoLote = 5;
+
+        for (let i = 0; i < ativos.length; i += tamanhoLote) {
+            const lote = ativos.slice(i, i + tamanhoLote);
+            for (const ativo of lote) {
+                try {
+                    const quote = await fetchQuoteWithYahooFallback(ativo.symbol);
+                    if (quote && Number.isFinite(Number(quote.regularMarketPrice))) {
+                        await setCache(`preco_${ativo.symbol}`, quote, duracaoCachePreco);
+                        resultados.push(quote);
+                    }
+                } catch (err) {
+                    console.error(`Erro ao buscar preço para ${ativo.symbol}:`, err);
+                }
+            }
+        }
+
+        return resultados;
+    }
+
     async function buscarPrecosCarteira(force = false) {
         if (carteiraCalculada.length === 0) return [];
 
@@ -6350,25 +6446,9 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
                 precosAtuais = staleResults;
                 renderizarCarteiraDebounced();
 
-                // Refetch apenas os que precisam em background
-                const bgPromises = needsFetch.map(async (ativo) => {
-                    try {
-                        const tickerParaApi = isFII(ativo.symbol) ? `${ativo.symbol}.SA` : ativo.symbol;
-                        const data = await fetchBFF(`/api/brapi?path=/quote/${tickerParaApi}?range=1d&interval=1d`);
-                        const result = data.results?.[0];
-                        if (result && !result.error) {
-                            if (result.symbol.endsWith('.SA')) result.symbol = result.symbol.replace('.SA', '');
-                            await setCache(`preco_${ativo.symbol}`, result, duracaoCachePreco);
-                            return result;
-                        }
-                    } catch (err) {
-                        console.error(`SWR: Erro ao atualizar ${ativo.symbol}:`, err);
-                    }
-                    return null;
-                });
-
-                // Quando background terminar, atualiza preços
-                Promise.all(bgPromises).then(async freshResults => {
+                // Refetch em background por lotes de 5, sem Promise.all para cotações
+                (async () => {
+                    const freshResults = await buscarCotacoesEmLotes(needsFetch, duracaoCachePreco);
                     const freshMap = new Map();
                     freshResults.filter(Boolean).forEach(r => freshMap.set(r.symbol, r));
                     if (freshMap.size > 0) {
@@ -6377,7 +6457,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
                         await renderizarCarteira();
                         atualizarGraficoIntradiario();
                     }
-                });
+                })();
 
                 return staleResults;
             }
@@ -6389,24 +6469,8 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
             }
         }
 
-        // Fetch normal para ativos sem cache
-        const promessas = needsFetch.map(async (ativo) => {
-            try {
-                const tickerParaApi = isFII(ativo.symbol) ? `${ativo.symbol}.SA` : ativo.symbol;
-                const data = await fetchBFF(`/api/brapi?path=/quote/${tickerParaApi}?range=1d&interval=1d`);
-                const result = data.results?.[0];
-                if (result && !result.error) {
-                    if (result.symbol.endsWith('.SA')) result.symbol = result.symbol.replace('.SA', '');
-                    await setCache(`preco_${ativo.symbol}`, result, duracaoCachePreco);
-                    return result;
-                }
-            } catch (err) {
-                console.error(`Erro ao buscar preço para ${ativo.symbol}:`, err);
-            }
-            return null;
-        });
-
-        const freshResults = await Promise.all(promessas);
+        // Fetch normal para ativos sem cache em lotes de 5
+        const freshResults = await buscarCotacoesEmLotes(needsFetch, duracaoCachePreco);
         return [...staleResults, ...freshResults.filter(Boolean)];
     }
 
@@ -7379,11 +7443,11 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
             }
 
             if (!ativoExistente) {
-                const tickerParaApi = isFII(ticker) ? `${ticker}.SA` : ticker;
                 try {
-                    const quoteData = await fetchBFF(`/api/brapi?path=/quote/${tickerParaApi}?range=1d&interval=1d`);
-                    if (!quoteData.results || quoteData.results[0].error) {
-                        throw new Error(quoteData.results?.[0]?.error || 'Ativo não encontrado');
+                    const quoteData = await fetchQuoteWithYahooFallback(ticker);
+                    const precoValidacao = Number(quoteData?.regularMarketPrice);
+                    if (!quoteData || !Number.isFinite(precoValidacao) || precoValidacao <= 0) {
+                        throw new Error('Ativo não encontrado');
                     }
                 } catch (error) {
                     showToast("Ativo não encontrado.");
@@ -8958,21 +9022,18 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
         currentDetalhesMeses = 3;
         currentDetalhesHistoricoJSON = null;
 
-
-        const tickerParaApi = ehFii ? `${symbol}.SA` : symbol;
         const cacheKeyPreco = `detalhe_preco_${symbol}`;
 
         // ─── LANÇAR TODAS AS PROMISES EM PARALELO ────────────────────────────────────
         // Não usar await aqui — lançar tudo ao mesmo tempo para que rodem concorrentemente
         const promisePreco = getCache(cacheKeyPreco).then(async cached => {
             if (cached) return cached;
-            const data = await fetchBFF(`/api/brapi?path=/quote/${tickerParaApi}?range=1d&interval=1d`);
-            const result = data.results?.[0];
-            if (result && !result.error) {
+            const result = await fetchQuoteWithYahooFallback(symbol);
+            if (result) {
                 await setCache(cacheKeyPreco, result, isB3Open() ? CACHE_PRECO_MERCADO_ABERTO : CACHE_PRECO_MERCADO_FECHADO);
                 return result;
             }
-            throw new Error(result?.error || 'Ativo não encontrado');
+            throw new Error('Ativo não encontrado');
         });
 
         const promiseFundamentos = callScraperFundamentosAPI(symbol).catch(() => ({}));
@@ -13027,18 +13088,20 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
         try {
             const getQuote = async (ticker) => {
                 try {
-                    const res = await fetchBFF(`/api/brapi?path=/quote/${ticker}?range=1d&interval=1d`);
-                    if (res && res.results && res.results[0]) return res.results[0].regularMarketPrice;
+                    const quote = await fetchQuoteWithYahooFallback(ticker);
+                    if (quote && Number.isFinite(Number(quote.regularMarketPrice))) {
+                        return Number(quote.regularMarketPrice);
+                    }
                 } catch(e) {}
                 return null;
             };
 
-            const [fundA, fundB, quoteA, quoteB] = await Promise.all([
+            const [fundA, fundB] = await Promise.all([
                 callScraperFundamentosAPI(tA),
-                callScraperFundamentosAPI(tB),
-                getQuote(tA),
-                getQuote(tB)
+                callScraperFundamentosAPI(tB)
             ]);
+            const quoteA = await getQuote(tA);
+            const quoteB = await getQuote(tB);
 
             const parsePercentStrict = (str) => {
                 if (!str || str === 'N/A' || str === '-') return null;

@@ -1,4 +1,4 @@
-const { createClient } = supabase;
+﻿const { createClient } = supabase;
 let supabaseClient = null;
 
 function handleSupabaseError(error, context) {
@@ -9,19 +9,19 @@ function handleSupabaseError(error, context) {
          return "E-mail ou senha incorretos.";
     }
     if (message.includes("User already registered") || message.includes("duplicate key value violates unique constraint")) {
-         return "Este e-mail já está cadastrado. Tente fazer login.";
+         return "Este e-mail jÃ¡ estÃ¡ cadastrado. Tente fazer login.";
     }
     if (error.code === '42501') { 
-        return "Erro de permissão. Contate o suporte.";
+        return "Erro de permissÃ£o. Contate o suporte.";
     }
     if (message.includes("fetch")) {
-        return "Erro de rede. Verifique sua conexão.";
+        return "Erro de rede. Verifique sua conexÃ£o.";
     }
     if (message.includes("invalid JWT") || message.includes("Invalid token")) {
-        return "Sessão inválida. Por favor, faça login novamente.";
+        return "SessÃ£o invÃ¡lida. Por favor, faÃ§a login novamente.";
     }
     if (message.includes("Email not confirmed")) {
-         return "Email não confirmado. Verifique sua caixa de entrada.";
+         return "Email nÃ£o confirmado. Verifique sua caixa de entrada.";
     }
     if (message.includes("Rate limit") || error.status === 429) {
         return "Muitas tentativas. Aguarde um pouco antes de tentar novamente.";
@@ -29,20 +29,17 @@ function handleSupabaseError(error, context) {
     return error.hint || message || "Ocorreu um erro desconhecido.";
 }
 
-// OTIMIZAÇÃO: Cache do userId para evitar round-trip HTTP ao Auth em cada operação.
-// Limpo no signOut para evitar dados stale.
 let _cachedUserId = null;
 
 async function getUserId() {
     if (_cachedUserId) return _cachedUserId;
     const { data: { user } } = await supabaseClient.auth.getUser();
-    if (!user) throw new Error("Usuário não autenticado.");
+    if (!user) throw new Error("UsuÃ¡rio nÃ£o autenticado.");
     _cachedUserId = user.id;
     return _cachedUserId;
 }
 
 export async function initialize() {
-    // Evita recriar o cliente se ele já existir (CRUCIAL para a troca de senha)
     if (supabaseClient) {
         const { data } = await supabaseClient.auth.getSession();
         return data.session;
@@ -184,7 +181,6 @@ export async function saveAppState(key, value_json) {
 }
 
 export async function getProventosConhecidos() {
-    // O select('*') já traz a coluna 'type' se ela existir no banco
     const { data, error } = await supabaseClient
         .from('proventosconhecidos') 
         .select('*'); 
@@ -196,7 +192,7 @@ export async function getProventosConhecidos() {
             ...item,
             paymentDate: item.paymentdate,
             dataCom: item.datacom,
-            type: item.type || 'REND' // Garante que se vier nulo, assume REND
+            type: item.type || 'REND'
         }));
     }
     return [];
@@ -351,3 +347,6 @@ export async function removerPushSubscription(subscription) {
 
     if (error) console.error("Erro ao remover push:", error);
 }
+
+
+

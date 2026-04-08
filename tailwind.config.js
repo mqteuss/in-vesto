@@ -1,12 +1,14 @@
-/** @type {import('tailwindcss').Config} */
+﻿
 module.exports = {
   content: [
     "./index.html",     
-    "./**/*.js",         
-    "!./node_modules/**" // <--- ESSA LINHA CORRIGE A LENTIDÃO
+    ".*.js",         
+    "!./node_modules/**" 
   ],
   theme: {
     extend: {},
   },
   plugins: [],
 }
+
+

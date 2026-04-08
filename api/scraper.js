@@ -1,14 +1,4 @@
-/**
- * Scraper API — Consumidor otimizado do AeroScrape v2.
- * 
- * Otimizações aplicadas:
- * - Multi-selector: scrapeFundamentos faz 1 HTTP call (era 9)
- * - Timeout + AbortController no helper aeroScrape
- * - Removed dead code (require('https'))
- * - Cleaned up fetchWithRetry
- */
-
-// ─── AeroScrape Helper (com timeout) ─────────────────────────────────────────
+﻿
 
 const AEROSCRAPE_URL = 'https://aero-scrape.vercel.app/api/scrape';
 
@@ -30,7 +20,6 @@ async function aeroScrape(url, payloadOpts = {}) {
     }
 }
 
-// ─── Fetch JSON Helper (para APIs que retornam JSON puro) ────────────────────
 
 async function fetchWithRetry(url, options = {}, retries = 3, baseBackoff = 1000) {
     if (!options.headers) {
@@ -62,7 +51,6 @@ async function fetchWithRetry(url, options = {}, retries = 3, baseBackoff = 1000
     }
 }
 
-// ─── Constantes ──────────────────────────────────────────────────────────────
 
 const KNOWN_UNITS = new Set([
     'BPAC11', 'BIDI11', 'ENGI11', 'TAEE11', 'KLBN11', 'SANB11', 'ALUP11', 'BBAS11',
@@ -130,7 +118,6 @@ function sanitizePositiveLimit(rawLimit, fallback, max = MAX_HISTORY_LIMIT) {
     return Math.min(parsed, max);
 }
 
-// ─── Helpers ─────────────────────────────────────────────────────────────────
 
 const REGEX_CLEAN_NUMBER = /[^0-9,-]+/g;
 const REGEX_NORMALIZE = /[\u0300-\u036f]/g;
@@ -219,8 +206,8 @@ function inferChecklistStatus(rawHtml) {
     if (/\b(is-checked|checked-item|fa-check|fa-square-check|bi-check|bi-check-square|mdi-check|mdi-checkbox-marked|ri-check|icon-check|icon-ok)\b/.test(chunk)) return true;
     if (/\b(is-unchecked|unchecked-item|fa-times|fa-xmark|fa-square|bi-x|bi-square|mdi-close|mdi-checkbox-blank-outline|ri-close|icon-close)\b/.test(chunk)) return false;
 
-    if (/&#10003;|✓/.test(chunk)) return true;
-    if (/&#10007;|✗|✕/.test(chunk)) return false;
+    if (/&#10003;|âœ“/.test(chunk)) return true;
+    if (/&#10007;|âœ—|âœ•/.test(chunk)) return false;
 
     return null;
 }
@@ -426,7 +413,7 @@ function extractFiiBuyAndHoldChecklist(html) {
         'imoveis',
         'portfolio',
         'portifolio',
-        'portfólio'
+        'portfÃ³lio'
     ];
 
     const results = [];
@@ -450,7 +437,6 @@ function extractFiiBuyAndHoldChecklist(html) {
     return results;
 }
 
-// ─── Multi-selectors para Investidor10 (pré-definidos) ───────────────────────
 
 const FUNDAMENTOS_SELECTORS = {
     cards: { selector: '._card-header, ._card-body' },
@@ -464,8 +450,6 @@ const FUNDAMENTOS_SELECTORS = {
     propsSmall: { selector: 'div.card-propertie small' }
 };
 
-// ─── PARTE 1: FUNDAMENTOS → INVESTIDOR10 ─────────────────────────────────────
-// Otimizado: 1 HTTP call via multi-selector (era 9 calls)
 
 async function scrapeFundamentos(ticker) {
     try {
@@ -479,7 +463,6 @@ async function scrapeFundamentos(ticker) {
         const fallbackUrl = guess === 'fii' ? urlAcao : urlFii;
         let urlToUse = primaryUrl;
 
-        // ── 1 ÚNICO HTTP call: HTML + todos os seletores ──
         try {
             const res = await aeroScrape(primaryUrl, {
                 returnHtml: true,
@@ -503,11 +486,11 @@ async function scrapeFundamentos(ticker) {
                 tipoAtivo = guess === 'fii' ? 'acao' : 'fii';
                 urlToUse = fallbackUrl;
             } catch (e2) {
-                throw new Error('Ativo não encontrado no Investidor10');
+                throw new Error('Ativo nÃ£o encontrado no Investidor10');
             }
         }
 
-        if (!html.includes('cotacao') && !html.includes('Cotação')) throw new Error('Página inválida');
+        if (!html.includes('cotacao') && !html.includes('CotaÃ§Ã£o')) throw new Error('PÃ¡gina invÃ¡lida');
 
         let dados = {
             dy: 'N/A', pvp: 'N/A', pl: 'N/A', roe: 'N/A', roa: 'N/A', roic: 'N/A', lpa: 'N/A', vp_cota: 'N/A',
@@ -611,7 +594,6 @@ async function scrapeFundamentos(ticker) {
             }
         };
 
-        // ── Processar resultados do multi-selector (tudo local, zero HTTP) ──
 
         const cards = results.cards || [];
         for (let i = 0; i < cards.length; i += 2) {
@@ -629,7 +611,6 @@ async function scrapeFundamentos(ticker) {
         const cellsTitles = results.cells_titles || [];
         const cellsValues = results.cells_values || [];
         for (let i = 0; i < cellsTitles.length; i++) {
-            // No novo HTML, os titulos vem com tags ou sujidade, vamos limpar
             let title = typeof cellsTitles[i] === 'string' ? cellsTitles[i].replace(/<[^>]+>/g, '').trim() : '';
             processPair(title, cellsValues[i] || '', 'cell');
         }
@@ -639,9 +620,7 @@ async function scrapeFundamentos(ticker) {
             processPair(tableTds[i] || '', tableTds[i + 1] || '', 'table', null);
         }
 
-        // Fallback robusto direto no HTML se não houver 'results' (API antiga não suportava selectors)
         if (!results.cards && (dados.dy === 'N/A' || dados.pvp === 'N/A')) {
-            // Extrair cards antigos direto do HTML
             const cardHeaders = html.match(/class="[^"]*_card-header[^"]*"[^>]*>([^<]+)/gi);
             const cardBodies = html.match(/class="[^"]*_card-body[^"]*"[^>]*>([\s\S]*?)<\/div>/gi);
             if (cardHeaders && cardBodies) {
@@ -652,7 +631,6 @@ async function scrapeFundamentos(ticker) {
                 }
             }
             
-            // Extrair cells antigos direto do HTML
             const cellDivs = html.match(/<div[^>]*class="[^"]*cell[^"]*"[^>]*>([\s\S]+?)<\/div>(?=\s*<div|\s*<\/div>)/gi) || [];
             cellDivs.forEach(cellHtml => {
                 let title = '';
@@ -662,7 +640,6 @@ async function scrapeFundamentos(ticker) {
                 else if (titleMatch2) title = titleMatch2[1].trim();
                 
                 let value = '';
-                // Novo Investidor10 coloca span dentro de value, ou usa simple-value
                 const valMatch = cellHtml.match(/<div[^>]*value[^>]*>[\s\S]*?<span>([\s\S]+?)<\/span>/);
                 const valMatch2 = cellHtml.match(/<div[^>]*simple-value[^>]*>([\s\S]+?)<\/div>/);
                 if (valMatch) value = valMatch[1].replace(/<[^>]+>/g, '').trim();
@@ -681,13 +658,12 @@ async function scrapeFundamentos(ticker) {
                 if (pl > 0 && pvp > 0) mercadoCalc = pl * pvp;
             }
             if (mercadoCalc > 0) {
-                if (mercadoCalc > 1e9) dados.val_mercado = `R$ ${(mercadoCalc / 1e9).toFixed(2)} Bilhões`;
-                else if (mercadoCalc > 1e6) dados.val_mercado = `R$ ${(mercadoCalc / 1e6).toFixed(2)} Milhões`;
+                if (mercadoCalc > 1e9) dados.val_mercado = `R$ ${(mercadoCalc / 1e9).toFixed(2)} BilhÃµes`;
+                else if (mercadoCalc > 1e6) dados.val_mercado = `R$ ${(mercadoCalc / 1e6).toFixed(2)} MilhÃµes`;
                 else dados.val_mercado = formatCurrency(mercadoCalc);
             }
         }
 
-        // Imóveis do FII (via multi-selector results.props / results.propsSmall)
         const propNames = results.props || [];
         const propSmalls = results.propsSmall || [];
         if (propNames.length > 0) {
@@ -698,13 +674,12 @@ async function scrapeFundamentos(ticker) {
                 for (let s = 0; s < 2 && smallIdx < propSmalls.length; s++, smallIdx++) {
                     const t = propSmalls[smallIdx] || '';
                     if (t.includes('Estado:')) estado = t.replace('Estado:', '').trim();
-                    if (t.includes('Área bruta locável:')) abl = t.replace('Área bruta locável:', '').trim();
+                    if (t.includes('Ãrea bruta locÃ¡vel:')) abl = t.replace('Ãrea bruta locÃ¡vel:', '').trim();
                 }
                 dados.imoveis.push({ nome: nome.trim(), estado, abl });
             });
         }
 
-        // Logo (via multi-selector results.logo — já extraiu 'src')
         const logos = results.logo || [];
         if (logos.length > 0) {
             dados.logo_url = logos[0];
@@ -713,8 +688,6 @@ async function scrapeFundamentos(ticker) {
             }
         }
 
-        // Sobre (via multi-selector results.about)
-        // Filtra itens curtos, notícias ("Publicado em") e lixo de navegação
         const aboutRaw = (results.about || []).filter(item => {
             if (!item || item.length < 30) return false;
             if (item.includes('Publicado em')) return false;
@@ -750,7 +723,7 @@ async function scrapeFundamentos(ticker) {
                 try {
                     dados.historico_indicadores = await fetchFiiHistoricalIndicatorsApi(fiiId);
                 } catch (e) {
-                    console.warn('Falha ao buscar histórico de indicadores via API:', e.message);
+                    console.warn('Falha ao buscar histÃ³rico de indicadores via API:', e.message);
                 }
             }
             if (!dados.historico_indicadores) {
@@ -759,7 +732,6 @@ async function scrapeFundamentos(ticker) {
             dados.checklist_buy_hold = extractFiiBuyAndHoldChecklist(html);
         }
 
-        // Rentabilidade Chart (regex no HTML bruto)
         let rentabilidadeChart = null;
         try {
             const chartMatch = html.match(/'lastProfitability':\s*JSON\.parse\(`([^`]+)`\)/);
@@ -806,12 +778,10 @@ async function scrapeFundamentos(ticker) {
         }
         dados.rentabilidade_chart = rentabilidadeChart;
 
-        // Indicadores Avançados e Receitas (Ações)
         let advancedMetrics = null;
         let revenueGeography = null;
         let revenueSegment = null;
         try {
-            // Investidor10 alterou a variável de sectorIndicators para _sectorIndicators
             const sectorMatch = html.match(/_sectorIndicators\s*=\s*(\{.*?\});/);
             if (sectorMatch && sectorMatch[1]) advancedMetrics = JSON.parse(sectorMatch[1]);
 
@@ -821,14 +791,13 @@ async function scrapeFundamentos(ticker) {
             const revSegMatch = html.match(/let\s+companyBussinesRevenuesChartPie\s*=\s*(\{.*?\});/);
             if (revSegMatch && revSegMatch[1]) revenueSegment = JSON.parse(revSegMatch[1]);
         } catch (e) {
-            console.error('Erro ao extrair métricas avançadas:', e.message);
+            console.error('Erro ao extrair mÃ©tricas avanÃ§adas:', e.message);
         }
 
         if (advancedMetrics) dados.advanced_metrics = advancedMetrics;
         if (revenueGeography) dados.revenue_geography = revenueGeography;
         if (revenueSegment) dados.revenue_segment = revenueSegment;
 
-        // ── Chart APIs + Comparação (lançadas em PARALELO) ──
         let companyId = null;
         let tickerId = null;
         try {
@@ -858,7 +827,6 @@ async function scrapeFundamentos(ticker) {
             chartPromise = Promise.all(chartRequests);
         }
 
-        // Comparação via API (data-url já extraído pelo multi-selector)
         const compareUrls = results.compareUrl || [];
         const apiUrl = compareUrls.length > 0 ? compareUrls[0] : null;
         let comparacaoApiPromise = Promise.resolve(null);
@@ -867,7 +835,6 @@ async function scrapeFundamentos(ticker) {
             comparacaoApiPromise = fetchWithRetry(fullUrl);
         }
 
-        // ── Resolver comparação ──
         dados.comparacao = [];
         const tickersVistos = new Set();
 
@@ -908,7 +875,6 @@ async function scrapeFundamentos(ticker) {
             }
         } catch (err) { /* API falhou, fallback HTML abaixo */ }
 
-        // Fallback HTML para comparação
         if (dados.comparacao.length === 0) {
             const tableMatch = html.match(/<table[^>]*id=["']table-compare(?:-fiis|-segments|-tickers)["'][^>]*>([\s\S]*?)<\/table>/i);
             if (tableMatch) {
@@ -951,7 +917,6 @@ async function scrapeFundamentos(ticker) {
             }
         }
 
-        // ── Resolver chart promises ──
         try {
             const chartResults = await chartPromise;
             if (chartResults) {
@@ -960,7 +925,7 @@ async function scrapeFundamentos(ticker) {
                 if (Object.keys(charts).length > 0) dados.charts_financeiros = charts;
             }
         } catch (e) {
-            console.error('Erro ao buscar gráficos financeiros:', e.message);
+            console.error('Erro ao buscar grÃ¡ficos financeiros:', e.message);
         }
 
         dados.tipo_ativo = tipoAtivo;
@@ -971,14 +936,13 @@ async function scrapeFundamentos(ticker) {
     }
 }
 
-// ─── PARTE 1.4: ÍNDICES DE MERCADO (IBOV, IFIX, SP500, Dólar) → YAHOO v8 ───
 
 async function scrapeMarketIndices() {
     const indexDefs = [
         { symbol: '^BVSP', nome: 'IBOV', isCurrency: false },
         { symbol: 'IFIX.SA', nome: 'IFIX', isCurrency: false },
         { symbol: '^GSPC', nome: 'S&P 500', isCurrency: false },
-        { symbol: 'BRL=X', nome: 'Dólar', isCurrency: true },
+        { symbol: 'BRL=X', nome: 'DÃ³lar', isCurrency: true },
     ];
 
     async function fetchIndexData(symbol) {
@@ -1040,7 +1004,6 @@ async function scrapeMarketIndices() {
     }
 }
 
-// ─── PARTE 1.5: RANKINGS (Maiores Altas + Baixas) → INVESTIDOR10 ────────────
 
 async function scrapeRankings() {
     const resultados = { altas: [], baixas: [] };
@@ -1052,14 +1015,12 @@ async function scrapeRankings() {
 
         if (!html) return resultados;
 
-        // Delimitar blocos usando indexOf para evitar sobreposição
         const altasIdx = html.indexOf('Maiores Altas');
         const baixasIdx = html.indexOf('Maiores Baixas');
 
         if (altasIdx < 0 || baixasIdx < 0) return resultados;
 
         const blockAltas = html.substring(altasIdx, baixasIdx);
-        // Baixas vai até o próximo <h2 ou até 10000 chars depois
         const nextH2 = html.indexOf('<h2', baixasIdx + 20);
         const blockBaixas = html.substring(baixasIdx, nextH2 > baixasIdx ? nextH2 : baixasIdx + 10000);
 
@@ -1068,7 +1029,6 @@ async function scrapeRankings() {
             if (!blockHtml) return items;
             const seen = new Set();
 
-            // Parsear diretamente os <a> tags com href para /acoes/TICKER/
             const linkMatches = blockHtml.match(/<a[^>]*acoes\/[a-z]{4}\d{1,2}[^>]*>[\s\S]*?<\/a>/gi) || [];
 
             for (const linkHtml of linkMatches) {
@@ -1102,7 +1062,6 @@ async function scrapeRankings() {
     return resultados;
 }
 
-// ─── PARTE 2: PROVENTOS → STATUSINVEST ───────────────────────────────────────
 
 async function scrapeAsset(ticker) {
     try {
@@ -1170,7 +1129,6 @@ async function scrapeAsset(ticker) {
     }
 }
 
-// ─── PARTE 3: IPCA → INVESTIDOR10 ───────────────────────────────────────────
 
 async function scrapeIpca() {
     try {
@@ -1185,7 +1143,7 @@ async function scrapeIpca() {
         let rowsHtml = '';
         if (tableDataMatch) {
             for (let t of tableDataMatch) {
-                if (t.toLowerCase().includes('acumulado') || t.toLowerCase().includes('variaç')) {
+                if (t.toLowerCase().includes('acumulado') || t.toLowerCase().includes('variaÃ§')) {
                     rowsHtml = t;
                     break;
                 }
@@ -1233,7 +1191,6 @@ async function scrapeIpca() {
     }
 }
 
-// ─── PARTE 4: COTAÇÃO HISTÓRICA (YAHOO FINANCE) ─────────────────────────────
 
 function getYahooParams(range) {
     switch (range) {
@@ -1500,7 +1457,7 @@ async function scrapeCotacaoHistory(ticker, range = '1A') {
     const data = await fetchYahooFinance(cleanTicker, range);
 
     if (!data || data.length === 0) {
-        return { error: "Dados não encontrados", points: [] };
+        return { error: "Dados nÃ£o encontrados", points: [] };
     }
 
     return {
@@ -1510,7 +1467,6 @@ async function scrapeCotacaoHistory(ticker, range = '1A') {
     };
 }
 
-// ─── HANDLER ─────────────────────────────────────────────────────────────────
 
 function resolveCorsOrigin(req) {
     const configured = (process.env.ALLOWED_ORIGIN || '').trim();
@@ -1677,3 +1633,4 @@ module.exports = async function handler(req, res) {
         return res.status(500).json({ error: error.message });
     }
 };
+

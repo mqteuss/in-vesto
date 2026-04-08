@@ -1,6 +1,6 @@
-// ---------------------------------------------------------
-// CONFIGURAÇÃO
-// ---------------------------------------------------------
+﻿
+
+
 const DEFAULT_ALLOWED_ORIGIN = 'https://appvesto.vercel.app';
 
 const CONFIG = {
@@ -8,18 +8,18 @@ const CONFIG = {
     baseUrl:       'https://brapi.dev/api',
     timeoutMs:     8000,
 
-    // TTL de cache por prefixo de endpoint (em segundos)
-    // Cotações mudam rápido; dados cadastrais são mais estáveis.
+    
+    
     cacheTTL: {
-        'quote':      60,    // 1 min  — preços em tempo quase real
-        'v2/finance': 120,   // 2 min  — dados financeiros
-        'inflation':  3600,  // 1 hora — índices macroeconômicos
+        'quote':      60,    
+        'v2/finance': 120,   
+        'inflation':  3600,  
         'prime-rate': 3600,
-        'exchange':   300,   // 5 min  — câmbio
-        default:      300,   // 5 min  — tudo mais
+        'exchange':   300,   
+        default:      300,   
     },
 
-    // Prefixos de path permitidos — protege contra SSRF
+    
     allowedPrefixes: [
         'quote/',
         'quote/list',
@@ -30,9 +30,9 @@ const CONFIG = {
     ],
 };
 
-// ---------------------------------------------------------
-// LOGGER ESTRUTURADO
-// ---------------------------------------------------------
+
+
+
 const log = {
     _w: (level, msg, meta) =>
         console[level === 'error' ? 'error' : 'log'](
@@ -64,9 +64,9 @@ function applyCors(request, response) {
     response.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 }
 
-// ---------------------------------------------------------
-// ERROS TIPADOS
-// ---------------------------------------------------------
+
+
+
 class AppError extends Error {
     constructor(message, statusCode = 500) {
         super(message);
@@ -81,16 +81,16 @@ class UpstreamError extends AppError {
     constructor(msg, statusCode = 502) { super(msg, statusCode); this.name = 'UpstreamError'; }
 }
 
-// ---------------------------------------------------------
-// HELPERS
-// ---------------------------------------------------------
 
-// Gera um ID curto para rastrear cada request nos logs
+
+
+
+
 function requestId() {
     return Math.random().toString(36).slice(2, 9);
 }
 
-// Resolve o TTL de cache pelo prefixo do path solicitado
+
 function resolveTTL(path) {
     for (const [prefix, ttl] of Object.entries(CONFIG.cacheTTL)) {
         if (prefix !== 'default' && path.startsWith(prefix)) return ttl;
@@ -98,75 +98,69 @@ function resolveTTL(path) {
     return CONFIG.cacheTTL.default;
 }
 
-// Valida o path contra o allowlist e sanitiza
-function validatePath(raw) {
-    if (!raw || typeof raw !== 'string') throw new ValidationError("Parâmetro 'path' ausente.");
 
-    // Remove barra inicial e espaços
+function validatePath(raw) {
+    if (!raw || typeof raw !== 'string') throw new ValidationError("ParÃ¢metro 'path' ausente.");
+
+    
     const clean = raw.replace(/^\/+/, '').trim();
 
-    if (!clean) throw new ValidationError("Parâmetro 'path' vazio.");
+    if (!clean) throw new ValidationError("ParÃ¢metro 'path' vazio.");
 
-    // Bloqueia tentativas de path traversal
+    
     if (clean.includes('..') || clean.includes('//')) {
-        throw new ValidationError("Parâmetro 'path' inválido.");
+        throw new ValidationError("ParÃ¢metro 'path' invÃ¡lido.");
     }
 
-    // Verifica contra allowlist de prefixos
+    
     const allowed = CONFIG.allowedPrefixes.some(prefix => clean.startsWith(prefix));
     if (!allowed) {
         throw new ValidationError(
-            `Endpoint não permitido. Prefixos aceitos: ${CONFIG.allowedPrefixes.join(', ')}.`
+            `Endpoint nÃ£o permitido. Prefixos aceitos: ${CONFIG.allowedPrefixes.join(', ')}.`
         );
     }
 
     return clean;
 }
 
-// ---------------------------------------------------------
-// HANDLER PRINCIPAL
-// ---------------------------------------------------------
 module.exports = async function handler(request, response) {
     const rid = requestId();
 
-    // CORS
     applyCors(request, response);
     response.setHeader('X-Request-Id', rid);
 
     if (request.method === 'OPTIONS') return response.status(200).end();
 
-    // Só aceita GET
     if (request.method !== 'GET') {
-        return response.status(405).json({ error: 'Método não permitido. Use GET.' });
+        return response.status(405).json({ error: 'MÃ©todo nÃ£o permitido. Use GET.' });
     }
 
     const { BRAPI_API_TOKEN } = process.env;
     if (!BRAPI_API_TOKEN) {
-        log.error('BRAPI_API_TOKEN não configurado', { rid });
-        return response.status(500).json({ error: 'Configuração de servidor incompleta.' });
+        log.error('BRAPI_API_TOKEN nÃ£o configurado', { rid });
+        return response.status(500).json({ error: 'ConfiguraÃ§Ã£o de servidor incompleta.' });
     }
 
     let cleanPath;
     try {
         const pathArg = typeof request.query?.path === 'string'
             ? request.query.path
-            : new URL(request.url, `https://${request.headers.host}`).searchParams.get('path');
+            : new URL(request.url, `https://${request.headers.host || 'localhost'}`).searchParams.get('path');
         cleanPath = validatePath(pathArg);
     } catch (err) {
         if (err instanceof AppError) {
             return response.status(err.statusCode).json({ error: err.message });
         }
-        return response.status(400).json({ error: 'Requisição inválida.' });
+        return response.status(400).json({ error: 'RequisiÃ§Ã£o invÃ¡lida.' });
     }
 
     const ttl = resolveTTL(cleanPath);
 
     try {
-        // Monta URL de destino e injeta token
+        
         const targetUrl = new URL(`${CONFIG.baseUrl}/${cleanPath}`);
         targetUrl.searchParams.append('token', BRAPI_API_TOKEN);
 
-        // Timeout via AbortController — sem isso, requests podem travar indefinidamente
         const controller = new AbortController();
         const timeoutId  = setTimeout(() => controller.abort(), CONFIG.timeoutMs);
 
@@ -177,19 +171,16 @@ module.exports = async function handler(request, response) {
             apiResponse = await fetch(targetUrl.toString(), {
                 signal:  controller.signal,
                 headers: { 'Accept': 'application/json' },
-                next:    { revalidate: ttl }, // hint para cache do Next.js
+                next:    { revalidate: ttl },
             });
         } finally {
             clearTimeout(timeoutId);
         }
 
-        // Lê o body uma única vez
         const data = await apiResponse.json().catch(() => null);
 
         if (!apiResponse.ok) {
-            // Loga sem expor o token (a URL já tem o token, então logamos só o path)
             log.warn('Brapi upstream error', { rid, path: cleanPath, status: apiResponse.status });
-            // Repassa o status da Brapi mas normaliza a resposta para não vazar detalhes internos
             throw new UpstreamError(
                 data?.message || `Erro retornado pela Brapi (HTTP ${apiResponse.status}).`,
                 apiResponse.status >= 500 ? 502 : apiResponse.status
@@ -204,7 +195,7 @@ module.exports = async function handler(request, response) {
     } catch (err) {
         if (err.name === 'AbortError') {
             log.error('Brapi timeout', { rid, path: cleanPath, timeoutMs: CONFIG.timeoutMs });
-            return response.status(504).json({ error: 'A Brapi não respondeu a tempo. Tente novamente.' });
+            return response.status(504).json({ error: 'A Brapi nÃ£o respondeu a tempo. Tente novamente.' });
         }
 
         if (err instanceof AppError) {
@@ -216,3 +207,6 @@ module.exports = async function handler(request, response) {
         return response.status(500).json({ error: 'Erro interno ao conectar na Brapi.' });
     }
 }
+
+
+

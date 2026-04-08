@@ -1485,9 +1485,20 @@ async function fetchYahooFinance(ticker, rangeFilter = '1A') {
             };
         }).filter(p => p !== null);
 
-        points = normalizeIntradayOpenPoint(points, result.meta || {}, rangeFilter);
+        const meta = result.meta || {};
+        points = normalizeIntradayOpenPoint(points, meta, rangeFilter);
 
-        return points;
+        return {
+            points,
+            meta: {
+                regularMarketPrice: meta.regularMarketPrice,
+                chartPreviousClose: meta.chartPreviousClose,
+                previousClose: meta.previousClose,
+                regularMarketDayHigh: meta.regularMarketDayHigh,
+                regularMarketDayLow: meta.regularMarketDayLow,
+                regularMarketOpen: meta.regularMarketOpen ?? (meta.regularMarketPrice || null)
+            }
+        };
 
     } catch (e) {
         console.error(`[DEBUG] Erro Yahoo Finance para ${ticker}:`, e.message);
@@ -1497,16 +1508,17 @@ async function fetchYahooFinance(ticker, rangeFilter = '1A') {
 
 async function scrapeCotacaoHistory(ticker, range = '1A') {
     const cleanTicker = ticker.toLowerCase().trim();
-    const data = await fetchYahooFinance(cleanTicker, range);
+    const result = await fetchYahooFinance(cleanTicker, range);
 
-    if (!data || data.length === 0) {
+    if (!result || !result.points || result.points.length === 0) {
         return { error: "Dados não encontrados", points: [] };
     }
 
     return {
         ticker: cleanTicker.toUpperCase(),
         range: range,
-        points: data
+        points: result.points,
+        meta: result.meta || null
     };
 }
 

@@ -1,13 +1,13 @@
-﻿const { createClient } = require('@supabase/supabase-js');
+const { createClient } = require('@supabase/supabase-js');
 const webpush = require('web-push');
 const RSSParser = require('rss-parser');
 const scraperHandler = require('../scraper.js');
 
-
-
-
+// ---------------------------------------------------------
+// CONFIGURAÇÃO
+// ---------------------------------------------------------
 const CONFIG = {
-    timezone_offset: -3,    
+    timezone_offset: -3,    // BRT (UTC-3)
     notif: {
         icon: 'https://appvesto.vercel.app/icons/icon-192x192.png',
         badge: 'https://appvesto.vercel.app/sininhov2.png',
@@ -15,9 +15,9 @@ const CONFIG = {
     },
 };
 
-
-
-
+// ---------------------------------------------------------
+// LOGGER ESTRUTURADO
+// ---------------------------------------------------------
 const log = {
     _w: (level, msg, meta) =>
         console[level === 'error' ? 'error' : level === 'warn' ? 'warn' : 'log'](
@@ -29,9 +29,9 @@ const log = {
     timer: () => { const s = Date.now(); return () => Date.now() - s; },
 };
 
-
-
-
+// ---------------------------------------------------------
+// INICIALIZAÇÃO (módulo — executada uma única vez)
+// ---------------------------------------------------------
 webpush.setVapidDetails(
     'mailto:mh.umateus@gmail.com',
     process.env.VAPID_PUBLIC_KEY,
@@ -43,9 +43,9 @@ const supabase = createClient(
     process.env.SUPABASE_SERVICE_ROLE_KEY
 );
 
-
-
-
+// ---------------------------------------------------------
+// HELPERS
+// ---------------------------------------------------------
 function requestId() {
     return Math.random().toString(36).slice(2, 9);
 }
@@ -55,35 +55,35 @@ function normalizeSymbol(symbol) {
     return symbol.trim().toUpperCase().replace('.SA', '');
 }
 
-
-
+// Obtém a data de hoje em BRT (UTC-3) sem depender de setHours frágil.
+// setHours(h - 3) quebra silenciosamente quando hour < 3 (vira o dia anterior).
 function getTodayBRT() {
     const now = new Date();
     const brt = new Date(now.getTime() + CONFIG.timezone_offset * 60 * 60 * 1000);
-    return brt.toISOString().split('T')[0]; 
+    return brt.toISOString().split('T')[0]; // YYYY-MM-DD
 }
 
-
+// Guard para fmtBRL — evita TypeError se value for null/undefined/NaN
 function fmtBRL(val) {
     const n = Number(val);
     if (!isFinite(n)) return 'R$ --';
     return n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 }
 
-
-
-
+// ---------------------------------------------------------
+// SINGLETON: RSSParser instanciado uma vez no módulo.
+// ---------------------------------------------------------
 const rssParser = new RSSParser({
     headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' }
 });
 
-
-
-
-
-
-
-
+// ---------------------------------------------------------
+// PARTE 3: ATUALIZAÇÃO DE PROVENTOS
+//
+// Substitui o padrão de req/res falso por uma chamada direta
+// ao scraperHandler com objetos mínimos mas corretos.
+// Se a assinatura do handler mudar, o erro será explícito.
+// ---------------------------------------------------------
 async function atualizarProventosPeloScraper(fiiList) {
     return new Promise((resolve) => {
         let resultado = [];
@@ -105,13 +105,13 @@ async function atualizarProventosPeloScraper(fiiList) {
     });
 }
 
-
-
-
-
-
-
-
+// ---------------------------------------------------------
+// PARTE 4: NOTIFICAÇÕES PUSH
+//
+// ANTES: 1 query ao Supabase por usuário dentro do loop.
+//        N usuários = N queries.
+// AGORA: 1 query para todos os usuários, resultado indexado por Map.
+// ---------------------------------------------------------
 async function enviarNotificacoes(rid) {
     const elapsed = log.timer();
     const hojeString = getTodayBRT();
@@ -124,12 +124,13 @@ async function enviarNotificacoes(rid) {
         .or(`paymentdate.eq.${hojeString},datacom.eq.${hojeString},created_at.gte.${inicioDoDia}`);
 
     if (error) {
-        log.error('Erro ao buscar proventos para notificaÃ§Ãµes', { rid, error: String(error) });
+        log.error('Erro ao buscar proventos para notificações', { rid, error: String(error) });
         return 0;
     }
 
     if (!proventos?.length) return 0;
 
+    // Agrupa proventos por usuário
     const userEvents = {};
     for (const p of proventos) {
         if (!userEvents[p.user_id]) userEvents[p.user_id] = [];
@@ -138,6 +139,7 @@ async function enviarNotificacoes(rid) {
 
     const userIds = Object.keys(userEvents);
 
+    // Busca TODAS as subscriptions de uma vez, indexa por user_id
     const { data: allSubs, error: subErr } = await supabase
         .from('push_subscriptions')
         .select('*')
@@ -155,7 +157,7 @@ async function enviarNotificacoes(rid) {
     }
 
     let totalSent = 0;
-    const staleSubIds = [];
+    const staleSubIds = []; // Coleta subs inválidas para deletar em lote ao final
 
     const matchDate = (field, dateStr) => field?.startsWith(dateStr) ?? false;
 
@@ -179,7 +181,7 @@ async function enviarNotificacoes(rid) {
 
         if (pagamentos.length > 0) {
             const lista = pagamentos.map(p => `${p.symbol} (${fmtBRL(p.value)}/cota)`).join(', ');
-            title = 'CrÃ©dito de Proventos';
+            title = 'Crédito de Proventos';
             body = pagamentos.length === 1
                 ? `O ativo ${pagamentos[0].symbol} realizou pagamento de ${fmtBRL(pagamentos[0].value)}/cota hoje.`
                 : `Pagamentos realizados hoje: ${lista}.`;
@@ -197,7 +199,7 @@ async function enviarNotificacoes(rid) {
             title = 'Comunicado de Proventos';
             body = novosAnuncios.length === 1
                 ? `Comunicado: ${novosAnuncios[0].symbol} anunciou pagamento de ${fmtBRL(novosAnuncios[0].value)}/cota.`
-                : `Novos anÃºncios: ${lista}${novosAnuncios.length > 3 ? '...' : ''}`;
+                : `Novos anúncios: ${lista}${novosAnuncios.length > 3 ? '...' : ''}`;
 
         } else {
             continue;
@@ -222,6 +224,7 @@ async function enviarNotificacoes(rid) {
             } else {
                 const code = result.reason?.statusCode;
                 if (code === 410 || code === 404) {
+                    // Inscrição expirada — coleta para deletar em lote
                     staleSubIds.push(subs[i].id);
                 } else {
                     log.warn('Push send failed', { userId, error: result.reason?.message });
@@ -230,19 +233,23 @@ async function enviarNotificacoes(rid) {
         }
     }
 
+    // Remove todas as subs inválidas de uma vez (1 query em vez de N)
     if (staleSubIds.length > 0) {
         const { error: delErr } = await supabase
             .from('push_subscriptions')
             .delete()
             .in('id', staleSubIds);
-        if (delErr) log.warn('Erro ao deletar subs invÃ¡lidas', { rid, error: String(delErr) });
+        if (delErr) log.warn('Erro ao deletar subs inválidas', { rid, error: String(delErr) });
         else log.info('Stale subs removed', { rid, count: staleSubIds.length });
     }
 
-    log.info('NotificaÃ§Ãµes enviadas', { rid, totalSent, ms: elapsed() });
+    log.info('Notificações enviadas', { rid, totalSent, ms: elapsed() });
     return totalSent;
 }
 
+// ---------------------------------------------------------
+// PARTE 5: NOTIFICAÇÕES DE NOTÍCIAS (RSS)
+// ---------------------------------------------------------
 async function enviarNoticiasRSS(rid) {
     const elapsed = log.timer();
     log.info('RSS news job started', { rid });
@@ -270,6 +277,7 @@ async function enviarNoticiasRSS(rid) {
 
     if (allItems.length === 0) return 0;
 
+    // Busca guids já enviados (para não repetir)
     const { data: appStates } = await supabase
         .from('appstate')
         .select('*')
@@ -287,6 +295,7 @@ async function enviarNoticiasRSS(rid) {
     }
     const noticiasJaEnviadas = new Set(enviadas);
 
+    // Carrega transacoes e subs em paralelo
     const [{ data: transacoes }, { data: allSubs }] = await Promise.all([
         supabase.from('transacoes').select('user_id, symbol'),
         supabase.from('push_subscriptions').select('*')
@@ -294,6 +303,7 @@ async function enviarNoticiasRSS(rid) {
 
     if (!transacoes?.length || !allSubs?.length) return 0;
 
+    // Monta Dicionários
     const symbolUserMap = {};
     for (const t of transacoes) {
         const sym = normalizeSymbol(t.symbol);
@@ -307,8 +317,9 @@ async function enviarNoticiasRSS(rid) {
         subsByUser[sub.user_id].push(sub);
     }
 
+    // Processa Notícias (ordena mais recentes primeiro)
     allItems.sort((a, b) => new Date(b.pubDate || b.isoDate || 0) - new Date(a.pubDate || a.isoDate || 0));
-    allItems = allItems.slice(0, 80);
+    allItems = allItems.slice(0, 80); // Limita o tamanho da fila de processamento expandida
 
     const tickerRegex = /\b([A-Z]{4}11|[A-Z]{4}12)\b/g;
     let totalSent = 0;
@@ -345,10 +356,11 @@ async function enviarNoticiasRSS(rid) {
         }
 
         const titulo = item.title;
+        // Strip HTML and get 100 chars max
         const excerpt = (item.contentSnippet || item.content || '').replace(/<[^>]*>?/gm, '').substring(0, 100) + '...';
 
         const notifPayload = JSON.stringify({
-            title: `NotÃ­cia: ${targetTickers.join(', ')}`,
+            title: `Notícia: ${targetTickers.join(', ')}`,
             body: `${titulo}\n${excerpt}`,
             icon: CONFIG.notif.icon,
             badge: CONFIG.notif.badge,
@@ -380,7 +392,7 @@ async function enviarNoticiasRSS(rid) {
     }
 
     if (guidsProcessadasHoje.length > 0) {
-        const novasGuidsArray = [...new Set([...guidsProcessadasHoje, ...enviadas])].slice(0, 150);
+        const novasGuidsArray = [...new Set([...guidsProcessadasHoje, ...enviadas])].slice(0, 150); // Buffer rotativo
 
         if (appStates && appStates.length > 0) {
             await supabase.from('appstate').update({
@@ -399,10 +411,15 @@ async function enviarNoticiasRSS(rid) {
     return totalSent;
 }
 
+// ---------------------------------------------------------
+// HANDLER PRINCIPAL (CRON)
+// ---------------------------------------------------------
 module.exports = async function handler(req, res) {
     const rid = requestId();
     const elapsed = log.timer();
 
+    // Autenticação do cron — qualquer requisição não autorizada
+    // poderia disparar o job inteiro e consumir cota da Brapi.
     const cronSecret = process.env.CRON_SECRET;
     if (!cronSecret) {
         log.error('CRON_SECRET ausente. Execucao bloqueada.', { rid });
@@ -419,8 +436,10 @@ module.exports = async function handler(req, res) {
     log.info('Cron started', { rid });
 
     try {
+        // 1. Proventos — query única para symbols + mapeamento user
         const { data: allTransacoes } = await supabase.from('transacoes').select('user_id, symbol');
         if (allTransacoes?.length > 0) {
+            // Monta mapeamento symbol → Set<user_id> E lista de symbols únicos em 1 pass
             const symbolUserMap = {};
             const uniqueSymbols = new Set();
             for (const t of allTransacoes) {
@@ -469,8 +488,10 @@ module.exports = async function handler(req, res) {
             }
         }
 
+        // 2. Notificações de Proventos
         const totalSent = await enviarNotificacoes(rid);
 
+        // 3. Notificações de Notícias FIIs (RSS)
         const totalNewsSent = await enviarNoticiasRSS(rid);
 
         log.info('Cron finished', { rid, notifications: totalSent, news: totalNewsSent, ms: elapsed() });
@@ -488,6 +509,3 @@ module.exports = async function handler(req, res) {
         return res.status(500).json({ error: e.message });
     }
 };
-
-
-

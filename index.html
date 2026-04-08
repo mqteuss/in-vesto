@@ -1,0 +1,334 @@
+﻿<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PROXIA • Laboratório de IA & Automação</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,300..700,0..1,-25..200&display=swap" rel="stylesheet">
+
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚙️</text></svg>">
+    <link rel="stylesheet" href="proximalabs.css">
+</head>
+<body data-theme="industrial-light" data-density="comfortable">
+
+    <div class="bg-technical-grid" aria-hidden="true"></div>
+    <div class="bg-ambient-glow bg-ambient-1" aria-hidden="true"></div>
+    <div class="bg-ambient-glow bg-ambient-2" aria-hidden="true"></div>
+
+    <nav class="sidebar" id="sidebar" aria-label="Navegação principal">
+        <div class="brand">
+            <div class="brand-icon" aria-hidden="true">
+                <span class="brand-icon-glyph">PX</span>
+                <span class="brand-status-indicator"></span>
+            </div>
+            <div class="brand-info">
+                <span class="brand-text">PROXIA LAB</span>
+                <span class="brand-version">v3.0.0</span>
+            </div>
+        </div>
+
+        <div class="nav-section">
+            <span class="nav-section-title">MÓDULOS</span>
+            <div id="nav-groups" class="nav-groups" role="tablist" aria-label="Módulos de engenharia"></div>
+        </div>
+
+        <div class="nav-section nav-section-system">
+            <span class="nav-section-title">INTERFACE</span>
+            <label class="system-control" for="palette-select">
+                <span class="material-symbols-outlined" aria-hidden="true">palette</span>
+                <span class="system-control-label">Paleta</span>
+                <select id="palette-select" aria-label="Selecionar paleta">
+                    <option value="industrial-light">Cinza Industrial</option>
+                    <option value="tech-blue-light">Azul Tecnológico</option>
+                    <option value="teal-orange-light">Verde-Azulado + Laranja</option>
+                    <option value="industrial-dark">Tema Escuro</option>
+                </select>
+            </label>
+            <button class="nav-item nav-item-system" id="btn-theme-toggle" aria-label="Alternar modo de cor">
+                <span class="material-symbols-outlined" aria-hidden="true">contrast</span>
+                <span class="nav-text">Alternar Tema</span>
+            </button>
+            <button class="nav-item nav-item-system" id="btn-density-toggle" aria-label="Alternar densidade da interface">
+                <span class="material-symbols-outlined" aria-hidden="true">view_agenda</span>
+                <span class="nav-text">Densidade Confortável</span>
+            </button>
+            <button class="nav-item nav-item-system" id="btn-settings" aria-label="Configurações do sistema">
+                <span class="material-symbols-outlined" aria-hidden="true">settings</span>
+                <span class="nav-text">Configurações</span>
+                <span class="nav-shortcut">Ctrl+,</span>
+            </button>
+            <button class="nav-item nav-item-system" id="btn-logs" aria-label="Logs do sistema">
+                <span class="material-symbols-outlined" aria-hidden="true">article</span>
+                <span class="nav-text">Logs</span>
+                <span class="nav-shortcut">Ctrl+L</span>
+            </button>
+        </div>
+    </nav>
+
+    <main class="main-content">
+        <header class="main-header">
+            <div class="header-title-group">
+                <h1 id="page-title">
+                    PROXIA
+                    <span class="title-accent" id="module-title">DASHBOARD</span>
+                    <span class="title-badge" id="system-mode">ENGINEERING MODE</span>
+                </h1>
+                <p class="header-subtitle" id="page-subtitle">Central de comando de automação • monitoramento em tempo real • digital twin</p>
+            </div>
+
+            <div class="status-bar" role="status" aria-live="polite">
+                <div class="status-item status-online">
+                    <span class="status-dot" aria-hidden="true"></span>
+                    <span class="status-label">Sistema</span>
+                    <span class="status-value" id="status-text">OPERATIONAL</span>
+                </div>
+                <div class="status-item">
+                    <span class="material-symbols-outlined status-icon" aria-hidden="true">network_ping</span>
+                    <span class="status-label">Latência</span>
+                    <span class="status-value"><span id="latency-value">12</span><span class="unit">ms</span></span>
+                </div>
+                <div class="status-item">
+                    <span class="material-symbols-outlined status-icon" aria-hidden="true">smart_toy</span>
+                    <span class="status-label">Engine</span>
+                    <span class="status-value" id="engine-state">ACTIVE</span>
+                </div>
+                <div class="status-item status-separator">
+                    <span class="material-symbols-outlined status-icon" aria-hidden="true">schedule</span>
+                    <span class="status-value" id="system-time">--:--:--</span>
+                </div>
+            </div>
+        </header>
+
+        <div id="content-container">
+            <section id="tab-TabProxia" class="tab-content active" role="tabpanel" aria-labelledby="tab-button-TabProxia">
+                <div class="dashboard-grid">
+
+                    <article class="card card-chat" aria-labelledby="chat-title">
+                        <header class="card-header">
+                            <h2 id="chat-title">
+                                <span class="material-symbols-outlined card-icon" aria-hidden="true">terminal</span>
+                                <span>ProxIA Command Terminal</span>
+                                <span class="card-badge">LLM • v5.1</span>
+                            </h2>
+                            <div class="card-actions">
+                                <button class="btn-icon" title="Limpar histórico" aria-label="Limpar histórico do chat">
+                                    <span class="material-symbols-outlined" aria-hidden="true">delete_sweep</span>
+                                </button>
+                                <button class="btn-icon" title="Exportar sessão" aria-label="Exportar sessão">
+                                    <span class="material-symbols-outlined" aria-hidden="true">upload_file</span>
+                                </button>
+                            </div>
+                        </header>
+
+                        <div id="chat-box" class="chat-container" role="log" aria-live="polite" aria-label="Histórico de conversas">
+                            <div class="chat-message chat-message-system">
+                                <span class="chat-meta">[SYS]</span>
+                                <span class="chat-text">Inicializando motores • Carregando pesos • GPU: OK • MEM: 94% disponível</span>
+                            </div>
+
+                            <div class="chat-message chat-message-ai">
+                                <div class="chat-avatar" aria-hidden="true">
+                                    <span class="material-symbols-outlined">smart_toy</span>
+                                </div>
+                                <div class="chat-bubble">
+                                    <div class="chat-sender">
+                                        <strong>PROXIA</strong>
+                                        <time class="chat-time" datetime="2026-04-07T14:30:02">14:30:02</time>
+                                    </div>
+                                    <p class="chat-content">Olá, Engenheiro. O Gêmeo Digital do <code>MOTOR_UNIT_01</code> está sincronizado. Aguardando comandos.</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <form id="chat-form" class="chat-input-group" role="search">
+                            <div class="input-wrapper">
+                                <span class="input-prefix" aria-hidden="true">➤</span>
+                                <input
+                                    type="text"
+                                    id="chat-input"
+                                    class="chat-input"
+                                    placeholder="Digite um comando ou pergunta técnica..."
+                                    autocomplete="off"
+                                    aria-label="Campo de entrada de comando"
+                                    list="command-suggestions"
+                                >
+                                <datalist id="command-suggestions">
+                                    <option value="/status MOTOR_UNIT_01"></option>
+                                    <option value="/analyze vibration trend"></option>
+                                    <option value="/predict failure probability"></option>
+                                    <option value="/export telemetry last-24h"></option>
+                                    <option value="/simulate load +15%"></option>
+                                </datalist>
+                            </div>
+                            <button type="submit" class="btn-send" aria-label="Enviar comando">
+                                <span class="material-symbols-outlined" aria-hidden="true">send</span>
+                            </button>
+                        </form>
+
+                        <div class="chat-shortcuts" aria-hidden="true">
+                            <kbd>Tab</kbd> autocompletar •
+                            <kbd>↑</kbd>/<kbd>↓</kbd> histórico •
+                            <kbd>Ctrl+Enter</kbd> nova linha
+                        </div>
+                    </article>
+
+                    <article class="card card-viewport" aria-labelledby="viewport-title">
+                        <header class="card-header card-header-overlay">
+                            <h2 id="viewport-title">
+                                <span class="material-symbols-outlined card-icon" aria-hidden="true">view_in_ar</span>
+                                <span>Viewport • Digital Twin</span>
+                                <span class="card-badge status-ok">SYNCED</span>
+                            </h2>
+                            <div class="viewport-controls">
+                                <button class="btn-viewport" title="Reset view" aria-label="Resetar visualização">
+                                    <span class="material-symbols-outlined" aria-hidden="true">restart_alt</span>
+                                </button>
+                                <button class="btn-viewport" title="Wireframe mode" aria-label="Modo wireframe">
+                                    <span class="material-symbols-outlined" aria-hidden="true">deployed_code</span>
+                                </button>
+                                <button class="btn-viewport" title="Toggle measurements" aria-label="Alternar medições">
+                                    <span class="material-symbols-outlined" aria-hidden="true">straighten</span>
+                                </button>
+                            </div>
+                        </header>
+
+                        <div class="viewport-container">
+                            <div class="hud-overlay" aria-hidden="true">
+                                <div class="hud-section">
+                                    <span class="hud-label">TARGET</span>
+                                    <span class="hud-value">MOTOR_UNIT_01</span>
+                                </div>
+                                <div class="hud-section">
+                                    <span class="hud-label">LOAD</span>
+                                    <span class="hud-value"><span id="hud-load">78.4</span>%</span>
+                                </div>
+                                <div class="hud-section">
+                                    <span class="hud-label">VIB_X</span>
+                                    <span class="hud-value"><span id="hud-vib">1.42</span> mm/s</span>
+                                </div>
+                                <div class="hud-divider"></div>
+                                <div class="hud-section">
+                                    <span class="hud-label">FPS</span>
+                                    <span class="hud-value" id="hud-fps">60</span>
+                                </div>
+                            </div>
+
+                            <canvas id="twinCanvas" aria-label="Visualização 3D do gêmeo digital"></canvas>
+
+                            <div class="viewport-controls-overlay">
+                                <button class="btn-zoom" aria-label="Zoom in">+</button>
+                                <button class="btn-zoom" aria-label="Zoom out">−</button>
+                            </div>
+                        </div>
+
+                        <div class="viewport-legend">
+                            <span class="legend-item"><span class="legend-color legend-critical"></span>Crítico</span>
+                            <span class="legend-item"><span class="legend-color legend-warning"></span>Atenção</span>
+                            <span class="legend-item"><span class="legend-color legend-normal"></span>Normal</span>
+                        </div>
+                    </article>
+
+                    <article class="card card-telemetry" aria-labelledby="telemetry-title">
+                        <header class="card-header">
+                            <h2 id="telemetry-title">
+                                <span class="material-symbols-outlined card-icon" aria-hidden="true">monitoring</span>
+                                <span>Telemetria em Tempo Real</span>
+                                <span class="card-badge">100ms</span>
+                            </h2>
+                            <button class="btn-refresh" id="btn-refresh-telemetry" aria-label="Atualizar telemetria">
+                                <span class="material-symbols-outlined" aria-hidden="true">refresh</span>
+                            </button>
+                        </header>
+
+                        <div class="telemetry-grid">
+                            <div class="sensor-card">
+                                <div class="sensor-header">
+                                    <span class="sensor-label">Temp. Estator</span>
+                                    <span class="sensor-unit">°C</span>
+                                </div>
+                                <div class="sensor-value-wrapper">
+                                    <span class="sensor-value" id="val-temp">48.2</span>
+                                    <span class="sensor-trend trend-stable" aria-label="Estável">▬</span>
+                                </div>
+                                <div class="sensor-sparkline" id="spark-temp" aria-hidden="true"></div>
+                                <div class="sensor-range">
+                                    <span class="range-min">0</span>
+                                    <div class="range-bar"><div class="range-fill" id="fill-temp"></div></div>
+                                    <span class="range-max">120</span>
+                                </div>
+                            </div>
+
+                            <div class="sensor-card sensor-alert">
+                                <div class="sensor-header">
+                                    <span class="sensor-label">Vibração Axial</span>
+                                    <span class="sensor-unit">mm/s</span>
+                                    <span class="sensor-alert-icon" aria-label="Atenção" title="Valor acima do limite">
+                                        <span class="material-symbols-outlined">warning</span>
+                                    </span>
+                                </div>
+                                <div class="sensor-value-wrapper">
+                                    <span class="sensor-value sensor-value-warning" id="val-vib">6.85</span>
+                                    <span class="sensor-trend trend-rising" aria-label="Subindo">▲</span>
+                                </div>
+                                <div class="sensor-sparkline" id="spark-vib" aria-hidden="true"></div>
+                                <div class="sensor-range">
+                                    <span class="range-min">0</span>
+                                    <div class="range-bar"><div class="range-fill range-warning" id="fill-vib"></div></div>
+                                    <span class="range-max">10</span>
+                                </div>
+                            </div>
+
+                            <div class="sensor-card">
+                                <div class="sensor-header">
+                                    <span class="sensor-label">Corrente</span>
+                                    <span class="sensor-unit">A</span>
+                                </div>
+                                <div class="sensor-value-wrapper">
+                                    <span class="sensor-value" id="val-current">24.1</span>
+                                    <span class="sensor-trend trend-stable" aria-label="Estável">▬</span>
+                                </div>
+                                <div class="sensor-sparkline" id="spark-current" aria-hidden="true"></div>
+                            </div>
+
+                            <div class="sensor-card">
+                                <div class="sensor-header">
+                                    <span class="sensor-label">Eficiência</span>
+                                    <span class="sensor-unit">%</span>
+                                </div>
+                                <div class="sensor-value-wrapper">
+                                    <span class="sensor-value" id="val-efficiency">94.7</span>
+                                    <span class="sensor-trend trend-positive" aria-label="Melhorando">▲</span>
+                                </div>
+                                <div class="sensor-sparkline" id="spark-efficiency" aria-hidden="true"></div>
+                            </div>
+                        </div>
+
+                        <section class="alerts-section" aria-labelledby="alerts-title">
+                            <h3 id="alerts-title" class="alerts-title">
+                                <span class="material-symbols-outlined alert-icon" aria-hidden="true">warning</span>
+                                Alertas Ativos
+                                <span class="alert-count" id="alert-count">1</span>
+                            </h3>
+                            <ul class="alarm-list" id="alarm-box" role="alert" aria-live="assertive">
+                                <li class="alarm-item alarm-critical">
+                                    <span class="alarm-time">14:02:10</span>
+                                    <span class="alarm-message">ALTA VIBRAÇÃO NO MANCAL EIXO-X</span>
+                                    <button class="alarm-action" aria-label="Reconhecer alerta">✓</button>
+                                </li>
+                            </ul>
+                        </section>
+                    </article>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <div id="toast-container" class="toast-container" aria-live="polite" aria-atomic="true"></div>
+
+    <script src="qrc:///qtwebchannel/qwebchannel.js"></script>
+    <script src="proximalabs.js"></script>
+</body>
+</html>

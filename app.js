@@ -14670,6 +14670,37 @@ document.addEventListener('DOMContentLoaded', () => {
         return () => open;
     }
 
+    function setCalculatorCardCopy(buttonEl, title, subtitle) {
+        if (!buttonEl) return;
+
+        const titleEl = buttonEl.querySelector('[data-card-title], .card-title, .drawer-title, h1, h2, h3, h4, strong');
+        const subtitleEl = buttonEl.querySelector('[data-card-subtitle], .card-subtitle, .drawer-subtitle, p, small');
+
+        if (titleEl) titleEl.textContent = title;
+        if (subtitleEl) subtitleEl.textContent = subtitle;
+
+        if (titleEl && subtitleEl) return;
+
+        const walker = document.createTreeWalker(buttonEl, NodeFilter.SHOW_TEXT, {
+            acceptNode(node) {
+                const text = (node.nodeValue || '').replace(/\s+/g, ' ').trim();
+                if (!text) return NodeFilter.FILTER_REJECT;
+                if (/^[\d\s.,%R$+\-\/]+$/.test(text)) return NodeFilter.FILTER_REJECT;
+                return NodeFilter.FILTER_ACCEPT;
+            }
+        });
+
+        const textNodes = [];
+        let currentNode = walker.nextNode();
+        while (currentNode) {
+            textNodes.push(currentNode);
+            currentNode = walker.nextNode();
+        }
+
+        if (!titleEl && textNodes[0]) textNodes[0].nodeValue = title;
+        if (!subtitleEl && textNodes[1]) textNodes[1].nodeValue = subtitle;
+    }
+
     // 1) Juros compostos
     const btnCalc = document.getElementById('btn-calc-juros');
     const drawerCalc = document.getElementById('calc-drawer');
@@ -14681,6 +14712,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const outInvestido = document.getElementById('calc-result-investido');
     const outJuros = document.getElementById('calc-result-juros');
     const outFinal = document.getElementById('calc-result-final');
+    setCalculatorCardCopy(btnCalc, 'Juros Compostos', 'Simule seus investimentos');
     const isCalcOpen = setupDrawer(btnCalc, drawerCalc, calcArrow);
 
     function calcularJurosCompostos() {
@@ -14720,6 +14752,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const inMetaRendaDy = document.getElementById('meta-renda-dy');
     const outMetaRendaAnual = document.getElementById('meta-renda-anual');
     const outMetaRendaPatrimonio = document.getElementById('meta-renda-patrimonio');
+    setCalculatorCardCopy(btnMetaRenda, 'Meta de Renda Mensal', 'Descubra o patrimonio necessario');
     const isMetaRendaOpen = setupDrawer(btnMetaRenda, drawerMetaRenda, arrowMetaRenda);
 
     function calcularMetaRenda() {
@@ -14748,6 +14781,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const outMetaPrazoAporte = document.getElementById('meta-prazo-aporte');
     const outMetaPrazoTotalAportes = document.getElementById('meta-prazo-total-aportes');
     const outMetaPrazoObjetivoFinal = document.getElementById('meta-prazo-objetivo-final');
+    setCalculatorCardCopy(btnMetaPrazo, 'Meta por Prazo', 'Calcule aporte mensal necessario.');
     const isMetaPrazoOpen = setupDrawer(btnMetaPrazo, drawerMetaPrazo, arrowMetaPrazo);
 
     function calcularMetaPrazo() {

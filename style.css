@@ -6,9 +6,14 @@
     box-sizing: border-box;
 }
 
-:where(button, [role="button"], a, input, select, textarea):focus-visible {
+:where(button, [role="button"], a):focus-visible {
     outline: 2px solid #a78bfa !important;
     outline-offset: 2px;
+}
+
+:where(input, select, textarea):focus-visible {
+    outline: none !important;
+    box-shadow: none !important;
 }
 
 /* =========================================
@@ -901,6 +906,20 @@ select {
     box-shadow: none;
 }
 
+input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):focus,
+input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):focus-visible {
+    outline: none !important;
+    box-shadow: none !important;
+}
+
+body:not(.light-mode) input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):focus {
+    background-color: #1a1a1c !important;
+}
+
+body.light-mode input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):focus {
+    background-color: #ffffff !important;
+}
+
 .password-toggle {
     position: absolute;
     top: 0;
@@ -1342,7 +1361,7 @@ body.light-mode .custom-modal.visible .modal-content {
     height: 44px;
     padding-left: 44px;
     padding-right: 80px;
-    border-radius: 12px;
+    border-radius: 9999px;
     color: #f3f4f6;
     font-size: 14px;
     font-weight: 500;
@@ -1356,6 +1375,15 @@ body.light-mode .custom-modal.visible .modal-content {
 .compact-search-input::placeholder {
     color: #525252;
     font-weight: 400;
+}
+
+input[type="search"],
+#carteira-search-input,
+#historico-search-input,
+#proventos-search-input,
+#news-search-input,
+.compact-search-input {
+    border-radius: 9999px !important;
 }
 
 .compact-search-input:focus {
@@ -1486,7 +1514,7 @@ body.light-mode #recover-form input:focus,
 body.light-mode .compact-search-input:focus {
     background-color: #ffffff !important;
     color: #111827 !important;
-    box-shadow: 0 0 0 2px #e5e7eb inset !important;
+    box-shadow: none !important;
 }
 
 body.light-mode .compact-search-wrapper:focus-within .compact-search-icon {
@@ -2650,7 +2678,9 @@ body.light-mode .floating-input:focus~.floating-label {
 }
 
 body.light-mode .floating-input:focus {
-    border-color: #111827 !important;
+    background-color: #ffffff !important;
+    border-color: transparent !important;
+    box-shadow: none !important;
 }
 
 /* Autofill Light Mode */

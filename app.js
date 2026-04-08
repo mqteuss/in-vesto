@@ -1,4 +1,4 @@
-﻿import * as supabaseDB from './supabase.js';
+import * as supabaseDB from './supabase.js';
 
 window.dismissNotificationGlobal = function (id, btnElement) {
     // Usa o Set em RAM — localStorage só é escrito aqui, nunca relido
@@ -6318,28 +6318,50 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
     }
 
     function construirQuoteViaYahoo(symbol, historico) {
+        const meta = historico?.meta || {};
         const pontos = Array.isArray(historico?.points)
             ? historico.points.filter(p => Number.isFinite(Number(p?.price)))
             : [];
         if (pontos.length === 0) return null;
 
         const ultimo = pontos[pontos.length - 1];
-        const penultimo = pontos.length > 1 ? pontos[pontos.length - 2] : null;
 
-        const precoAtual = Number(ultimo?.price);
-        const precoAnteriorRaw = Number(penultimo?.price);
-        const aberturaRaw = Number(ultimo?.open);
-        const maxRaw = Number(ultimo?.high);
-        const minRaw = Number(ultimo?.low);
+        // Prioriza meta.regularMarketPrice (real-time do Yahoo), senão último ponto do gráfico
+        const metaPrice = Number(meta.regularMarketPrice);
+        const precoAtual = Number.isFinite(metaPrice) && metaPrice > 0
+            ? metaPrice
+            : Number(ultimo?.price);
 
         if (!Number.isFinite(precoAtual) || precoAtual <= 0) return null;
 
-        const precoAnterior = Number.isFinite(precoAnteriorRaw) && precoAnteriorRaw > 0
-            ? precoAnteriorRaw
-            : (Number.isFinite(aberturaRaw) && aberturaRaw > 0 ? aberturaRaw : precoAtual);
+        // Previous close: prioriza meta.chartPreviousClose (valor do dia anterior, usado pelo Yahoo)
+        const chartPrevClose = Number(meta.chartPreviousClose);
+        const metaPrevClose = Number(meta.previousClose);
+        // Fallback: penúltimo ponto do histórico 5D (se existir)
+        const penultimo = pontos.length > 1 ? pontos[pontos.length - 2] : null;
+        const penultimoPrice = Number(penultimo?.price);
+
+        let precoAnterior = 0;
+        if (Number.isFinite(chartPrevClose) && chartPrevClose > 0) {
+            precoAnterior = chartPrevClose;
+        } else if (Number.isFinite(metaPrevClose) && metaPrevClose > 0) {
+            precoAnterior = metaPrevClose;
+        } else if (Number.isFinite(penultimoPrice) && penultimoPrice > 0) {
+            precoAnterior = penultimoPrice;
+        } else {
+            precoAnterior = precoAtual; // sem referência, variação = 0
+        }
 
         const variacao = precoAtual - precoAnterior;
         const variacaoPct = precoAnterior > 0 ? (variacao / precoAnterior) * 100 : 0;
+
+        // Open / High / Low: prioriza meta quando disponível
+        const metaOpen = Number(meta.regularMarketOpen);
+        const metaHigh = Number(meta.regularMarketDayHigh);
+        const metaLow = Number(meta.regularMarketDayLow);
+        const aberturaRaw = Number(ultimo?.open);
+        const maxRaw = Number(ultimo?.high);
+        const minRaw = Number(ultimo?.low);
 
         return {
             symbol: String(symbol || historico?.ticker || '').toUpperCase().replace('.SA', ''),
@@ -6348,9 +6370,9 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
             regularMarketChange: variacao,
             regularMarketChangePercent: variacaoPct,
             regularMarketPreviousClose: precoAnterior,
-            regularMarketOpen: Number.isFinite(aberturaRaw) ? aberturaRaw : precoAtual,
-            regularMarketDayHigh: Number.isFinite(maxRaw) ? maxRaw : precoAtual,
-            regularMarketDayLow: Number.isFinite(minRaw) ? minRaw : precoAtual,
+            regularMarketOpen: Number.isFinite(metaOpen) && metaOpen > 0 ? metaOpen : (Number.isFinite(aberturaRaw) ? aberturaRaw : precoAtual),
+            regularMarketDayHigh: Number.isFinite(metaHigh) && metaHigh > 0 ? metaHigh : (Number.isFinite(maxRaw) ? maxRaw : precoAtual),
+            regularMarketDayLow: Number.isFinite(metaLow) && metaLow > 0 ? metaLow : (Number.isFinite(minRaw) ? minRaw : precoAtual),
             source: 'yahoo'
         };
     }
@@ -6366,29 +6388,13 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
         }
     }
 
-    async function buscarQuoteBrapi(symbol) {
-        const tickerParaApi = isFII(symbol) ? `${symbol}.SA` : symbol;
-        try {
-            const data = await fetchBFF(`/api/brapi?path=/quote/${tickerParaApi}?range=1d&interval=1d`);
-            const result = data?.results?.[0];
-            if (!result || result.error) return null;
-
-            const quote = { ...result, source: 'brapi' };
-            if (quote.symbol?.endsWith('.SA')) quote.symbol = quote.symbol.replace('.SA', '');
-            if (!quote.symbol) quote.symbol = String(symbol || '').toUpperCase();
-            return quote;
-        } catch (err) {
-            console.warn(`BRAPI falhou para ${symbol}:`, err?.message || err);
-            return null;
-        }
-    }
-
     async function fetchQuoteWithYahooFallback(symbol) {
         const yahooQuote = await buscarQuoteYahoo(symbol);
         if (yahooQuote && Number.isFinite(Number(yahooQuote.regularMarketPrice))) {
             return yahooQuote;
         }
-        return await buscarQuoteBrapi(symbol);
+        console.warn(`[Quote] Sem dados Yahoo para ${symbol}`);
+        return null;
     }
 
     async function buscarCotacoesEmLotes(ativos = [], duracaoCachePreco = CACHE_PRECO_MERCADO_FECHADO) {

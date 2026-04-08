@@ -1418,12 +1418,12 @@ function normalizeIntradayOpenPoint(points, meta, rangeFilter) {
     }
 
     const baselineCandidates = [
+        Number(meta?.chartPreviousClose),
+        Number(meta?.previousClose),
+        Number(meta?.regularMarketPreviousClose),
         Number(meta?.regularMarketOpen),
         Number(firstPoint?.open),
         Number(firstPoint?.price),
-        Number(meta?.regularMarketPreviousClose),
-        Number(meta?.chartPreviousClose),
-        Number(meta?.previousClose),
         Number(firstPoint?.high),
         Number(firstPoint?.low)
     ];

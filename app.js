@@ -5967,9 +5967,9 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
 
                 const dadoPreco = intradayPrecosMap.get(ativo.symbol);
                 const fallbackCandidates = [
+                    Number(dadoPreco?.regularMarketPreviousClose),
                     Number(firstPointPrice),
                     Number(dadoPreco?.regularMarketOpen),
-                    Number(dadoPreco?.regularMarketPreviousClose),
                     Number(dadoPreco?.regularMarketPrice),
                     Number(ativo.precoMedio)
                 ];

@@ -1614,31 +1614,44 @@ module.exports = async function handler(req, res) {
     res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,POST');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
-    const modeForCache = typeof req.body?.mode === 'string' ? req.body.mode : '';
-    if (req.method === 'GET' || req.method === 'POST') {
-        if (modeForCache === 'fundamentos') {
-            res.setHeader('Cache-Control', 's-maxage=14400, stale-while-revalidate=86400');
-        } else if (modeForCache === 'cotacao_historica') {
-            res.setHeader('Cache-Control', 's-maxage=300, stale-while-revalidate=3600');
-        } else if (modeForCache === 'proximo_provento' || modeForCache === 'historico_12m') {
-            res.setHeader('Cache-Control', 's-maxage=7200, stale-while-revalidate=43200');
-        } else if (modeForCache === 'rankings') {
-            res.setHeader('Cache-Control', 's-maxage=900, stale-while-revalidate=3600');
-        } else {
-            res.setHeader('Cache-Control', 's-maxage=3600, stale-while-revalidate=86400');
-        }
-    }
-
     if (req.method === 'OPTIONS') { res.status(200).end(); return; }
-    if (req.method !== 'POST') { return res.status(405).json({ error: "Use POST" }); }
 
-    try {
+    // ── Suporte GET + POST: CDN cacheia GET automaticamente ──
+    let mode = '';
+    let payload = {};
+
+    if (req.method === 'GET') {
+        mode = typeof req.query?.mode === 'string' ? req.query.mode.trim() : '';
+        // Suporte: ?mode=fundamentos&ticker=PETR4&range=1A
+        if (req.query?.ticker) payload.ticker = req.query.ticker;
+        if (req.query?.range) payload.range = req.query.range;
+        if (req.query?.fiiList) {
+            try { payload.fiiList = JSON.parse(req.query.fiiList); } catch(e) {}
+        }
+    } else if (req.method === 'POST') {
         if (!req.body || typeof req.body !== 'object') {
             return res.status(400).json({ error: "Payload invalido" });
         }
+        mode = typeof req.body.mode === 'string' ? req.body.mode.trim() : '';
+        payload = (req.body.payload && typeof req.body.payload === 'object') ? req.body.payload : {};
+    } else {
+        return res.status(405).json({ error: "Use GET ou POST" });
+    }
 
-        const mode = typeof req.body.mode === 'string' ? req.body.mode.trim() : '';
-        const payload = (req.body.payload && typeof req.body.payload === 'object') ? req.body.payload : {};
+    // ── Cache-Control por modo (CDN cacheia GET) ──
+    if (mode === 'fundamentos') {
+        res.setHeader('Cache-Control', 's-maxage=14400, stale-while-revalidate=86400');
+    } else if (mode === 'cotacao_historica') {
+        res.setHeader('Cache-Control', 's-maxage=300, stale-while-revalidate=3600');
+    } else if (mode === 'proximo_provento' || mode === 'historico_12m') {
+        res.setHeader('Cache-Control', 's-maxage=7200, stale-while-revalidate=43200');
+    } else if (mode === 'rankings') {
+        res.setHeader('Cache-Control', 's-maxage=900, stale-while-revalidate=3600');
+    } else {
+        res.setHeader('Cache-Control', 's-maxage=3600, stale-while-revalidate=86400');
+    }
+
+    try {
         if (!ALLOWED_MODES.has(mode)) {
             return res.status(400).json({ error: "Modo invalido" });
         }

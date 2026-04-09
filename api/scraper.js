@@ -40,12 +40,12 @@ const AEROSCRAPE_URL = 'https://aero-scrape.vercel.app/api/scrape';
 
 async function aeroScrape(url, payloadOpts = {}) {
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 15000);
+    const timeout = setTimeout(() => controller.abort(), 8000);
 
     try {
         const res = await fetch(AEROSCRAPE_URL, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 'Content-Type': 'application/json', 'Accept-Encoding': 'gzip, deflate, br' },
             body: JSON.stringify({ url, ...payloadOpts }),
             signal: controller.signal,
         });
@@ -69,7 +69,7 @@ async function fetchWithRetry(url, options = {}, retries = 3, baseBackoff = 1000
 
     for (let i = 0; i < retries; i++) {
         const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 10000);
+        const timeout = setTimeout(() => controller.abort(), 5000);
 
         try {
             const res = await fetch(url, { ...options, signal: controller.signal });
@@ -883,24 +883,21 @@ async function scrapeFundamentos(ticker) {
                         .then(r => ({ tipo: 'payout', data: r.data })).catch(() => null)
                 );
             }
-            chartPromise = Promise.all(chartRequests);
+            // Promise.race com timeout de 3s para não travar se APIs estiverem lentas
+            chartPromise = Promise.race([
+                Promise.all(chartRequests),
+                new Promise(r => setTimeout(() => r(null), 3000))
+            ]);
         }
 
-        // Comparação via API (data-url já extraído pelo multi-selector)
-        const compareUrls = results.compareUrl || [];
-        const apiUrl = compareUrls.length > 0 ? compareUrls[0] : null;
-        let comparacaoApiPromise = Promise.resolve(null);
-        if (apiUrl) {
-            const fullUrl = apiUrl.startsWith('http') ? apiUrl : `https://investidor10.com.br${apiUrl}`;
-            comparacaoApiPromise = fetchWithRetry(fullUrl);
-        }
+        // Comparação: extraída direto do HTML (sem chamada API extra)
 
         // ── Resolver comparação ──
         dados.comparacao = [];
         const tickersVistos = new Set();
 
         try {
-            const resApi = await comparacaoApiPromise;
+            const resApi = null; // comparação via HTML abaixo
             if (resApi && resApi.data) {
                 let arrayComparacao = resApi.data.data || resApi.data || [];
 

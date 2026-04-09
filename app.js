@@ -6652,10 +6652,6 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
     }
 
     async function callScraperFundamentosAPI(ticker) {
-        const cacheKey = `fundamentos_${ticker.toUpperCase()}`;
-        const cached = await getCache(cacheKey);
-        if (cached) return cached;
-
         const body = {
             mode: 'fundamentos',
             payload: { ticker }
@@ -6665,12 +6661,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(body)
         });
-        const result = response.json;
-        if (result) {
-            const ttl = isB3Open() ? CACHE_FUNDAMENTOS_ABERTO : CACHE_FUNDAMENTOS_FECHADO;
-            await setCache(cacheKey, result, ttl);
-        }
-        return result;
+        return response.json;
     }
 
     // ── Rankings: Variação do Dia (Altas + Baixas) ──

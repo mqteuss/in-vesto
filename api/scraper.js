@@ -457,11 +457,11 @@ const FUNDAMENTOS_SELECTORS = {
     cells_titles: { selector: '.cell span.d-flex, .cell span.title' },
     cells_values: { selector: '.cell .value' },
     table: { selector: 'table tbody tr td' },
-    about: { selector: '#about-section p, .profile-description p, #description p, .text-description p, .link-card--description, .company-description' },
-    logo: { selector: '.header-company img, #header-container img, .brand-company img', extract: 'src' },
-    compareUrl: { selector: '#table-compare-fiis, #table-compare-segments, #table-compare-tickers', extract: 'data-url' },
-    props: { selector: 'div.card-propertie h3' },
-    propsSmall: { selector: 'div.card-propertie small' }
+    about: { selector: '.description-text, .content--description, .description p, .link-card--description, .text-description p' },
+    logo: { selector: '.header-company img, #header-container img, .logo img, .img-logo', extract: 'src' },
+    compareUrl: { selector: '#table-compare-tickers, #table-compare-segments, #table-compare-fiis, [data-url*="comparador"]', extract: 'data-url' },
+    props: { selector: 'div.card-propertie h3, div.card-property h3' },
+    propsSmall: { selector: 'div.card-propertie small, div.card-property small' }
 };
 
 // ─── PARTE 1: FUNDAMENTOS → INVESTIDOR10 ─────────────────────────────────────

@@ -1,7 +1,7 @@
 const { createClient } = require('@supabase/supabase-js');
 const webpush = require('web-push');
 const RSSParser = require('rss-parser');
-const scraperHandler = require('../scraper.js');
+const { scrapeAsset } = require('../scraper.js');
 
 // ---------------------------------------------------------
 // CONFIGURAÇÃO
@@ -80,29 +80,43 @@ const rssParser = new RSSParser({
 // ---------------------------------------------------------
 // PARTE 3: ATUALIZAÇÃO DE PROVENTOS
 //
-// Substitui o padrão de req/res falso por uma chamada direta
-// ao scraperHandler com objetos mínimos mas corretos.
-// Se a assinatura do handler mudar, o erro será explícito.
+// Chama scrapeAsset diretamente (exportado pelo scraper.js)
+// sem passar pelo handler HTTP — elimina fakeReq/fakeRes.
 // ---------------------------------------------------------
-async function atualizarProventosPeloScraper(fiiList) {
-    return new Promise((resolve) => {
-        let resultado = [];
-        const fakeReq = {
-            method: 'POST',
-            body: { mode: 'proventos_carteira', payload: { fiiList } },
-        };
-        const fakeRes = {
-            setHeader: () => { },
-            status: () => ({
-                json: (d) => { resultado = d?.json ?? []; resolve(resultado); },
-            }),
-            json: (d) => { resultado = d?.json ?? []; resolve(resultado); },
-        };
-        scraperHandler(fakeReq, fakeRes).catch(err => {
-            log.error('scraperHandler error', { error: err.message });
-            resolve([]);
-        });
-    });
+const PROVENTO_BATCH_SIZE = 5;
+const PROVENTO_DEFAULT_LIMIT = 12;
+
+async function atualizarProventosPeloScraper(symbols) {
+    const results = [];
+
+    // Processa em batches para não sobrecarregar
+    for (let i = 0; i < symbols.length; i += PROVENTO_BATCH_SIZE) {
+        const batch = symbols.slice(i, i + PROVENTO_BATCH_SIZE);
+
+        const batchResults = await Promise.all(
+            batch.map(async (ticker) => {
+                try {
+                    const history = await scrapeAsset(ticker);
+                    return history
+                        .filter(h => h.paymentDate && h.value > 0)
+                        .slice(0, PROVENTO_DEFAULT_LIMIT)
+                        .map(r => ({ symbol: ticker.toUpperCase(), ...r }));
+                } catch (err) {
+                    log.warn('scrapeAsset failed', { ticker, error: err.message });
+                    return [];
+                }
+            })
+        );
+
+        results.push(...batchResults.flat());
+
+        // Delay entre batches para não levar rate-limit
+        if (i + PROVENTO_BATCH_SIZE < symbols.length) {
+            await new Promise(r => setTimeout(r, 200));
+        }
+    }
+
+    return results;
 }
 
 // ---------------------------------------------------------

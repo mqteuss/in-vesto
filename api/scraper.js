@@ -484,7 +484,8 @@ async function scrapeFundamentos(ticker) {
             const res = await aeroScrape(primaryUrl, {
                 returnHtml: true,
                 includeScripts: true,
-                selectors: FUNDAMENTOS_SELECTORS
+                selectors: FUNDAMENTOS_SELECTORS,
+                cacheTtl: 14400000
             });
             if (!res.html) throw new Error('Sem html');
             html = res.html;
@@ -495,7 +496,8 @@ async function scrapeFundamentos(ticker) {
                 const res = await aeroScrape(fallbackUrl, {
                     returnHtml: true,
                     includeScripts: true,
-                    selectors: FUNDAMENTOS_SELECTORS
+                    selectors: FUNDAMENTOS_SELECTORS,
+                    cacheTtl: 14400000
                 });
                 if (!res.html) throw new Error('Sem html');
                 html = res.html;
@@ -1063,7 +1065,8 @@ async function scrapeRankings() {
         // Estratégia 1: multi-selectors (mais rápido, sem HTML parsing)
         const res = await aeroScrape('https://investidor10.com.br/', {
             returnHtml: true,
-            selectors: RANKINGS_SELECTORS
+            selectors: RANKINGS_SELECTORS,
+            cacheTtl: 900000
         });
 
         const results = res.results || {};
@@ -1241,7 +1244,7 @@ async function scrapeAsset(ticker) {
 
 async function scrapeIpca() {
     try {
-        const { html } = await aeroScrape('https://investidor10.com.br/indices/ipca/', { returnHtml: true });
+        const { html } = await aeroScrape('https://investidor10.com.br/indices/ipca/', { returnHtml: true, cacheTtl: 86400000 });
         if (!html) throw new Error("Sem HTML retornado");
 
         const historico = [];

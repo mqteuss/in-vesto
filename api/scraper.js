@@ -969,9 +969,20 @@ async function scrapeFundamentos(ticker) {
         return dados;
     } catch (error) {
         console.error("Erro scraper:", error.message);
-        return { dy: '-', pvp: '-' };
+        return null;
     }
 }
+
+// Retry wrapper: se o 1º scrape falha, espera 1.5s e tenta de novo
+// (resolve race condition quando AeroScrape processa request de outro device)
+const _origScrapeFundamentos = scrapeFundamentos;
+scrapeFundamentos = async function(ticker) {
+    const result = await _origScrapeFundamentos(ticker);
+    if (result && result.dy && result.dy !== '-' && result.dy !== 'N/A') return result;
+    await new Promise(r => setTimeout(r, 1500));
+    const retry = await _origScrapeFundamentos(ticker);
+    return retry || { dy: '-', pvp: '-' };
+};
 
 // ─── PARTE 1.4: ÍNDICES DE MERCADO (IBOV, IFIX, SP500, Dólar) → YAHOO v8 ───
 

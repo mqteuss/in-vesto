@@ -8,6 +8,32 @@
  * - Cleaned up fetchWithRetry
  */
 
+// ─── Cache JSON Final (persiste em instâncias quentes do Vercel) ──────────────
+// Evita reprocessar HTML+APIs internas quando o mesmo ticker já foi processado.
+const _jsonCache = new Map();
+const _JSON_CACHE_TTL = {
+    fundamentos: 4 * 60 * 60 * 1000,      // 4h
+    rankings: 15 * 60 * 1000,               // 15min
+    indices: 60 * 60 * 1000,                // 1h
+    ipca: 24 * 60 * 60 * 1000,              // 24h
+    proximo_provento: 2 * 60 * 60 * 1000,   // 2h
+};
+function _cacheGet(key) {
+    const e = _jsonCache.get(key);
+    if (!e) return null;
+    if (Date.now() > e.exp) { _jsonCache.delete(key); return null; }
+    return e.data;
+}
+function _cacheSet(key, data, mode) {
+    if (!data) return;
+    const ttl = _JSON_CACHE_TTL[mode] || 60 * 60 * 1000;
+    if (_jsonCache.size > 300) {
+        const oldest = _jsonCache.keys().next().value;
+        _jsonCache.delete(oldest);
+    }
+    _jsonCache.set(key, { data, exp: Date.now() + ttl });
+}
+
 // ─── AeroScrape Helper (com timeout) ─────────────────────────────────────────
 
 const AEROSCRAPE_URL = 'https://aero-scrape.vercel.app/api/scrape';
@@ -1653,24 +1679,37 @@ module.exports = async function handler(req, res) {
         }
 
         if (mode === 'rankings') {
+            const hit = _cacheGet('rankings');
+            if (hit) return res.status(200).json({ json: hit, _src: 'cache' });
             const dados = await scrapeRankings();
+            if (dados && (dados.altas?.length > 0 || dados.baixas?.length > 0)) _cacheSet('rankings', dados, 'rankings');
             return res.status(200).json({ json: dados });
         }
 
         if (mode === 'indices') {
+            const hit = _cacheGet('indices');
+            if (hit) return res.status(200).json({ json: hit, _src: 'cache' });
             const dados = await scrapeMarketIndices();
+            if (dados && dados.length > 0) _cacheSet('indices', dados, 'indices');
             return res.status(200).json({ json: dados });
         }
 
         if (mode === 'ipca') {
+            const hit = _cacheGet('ipca');
+            if (hit) return res.status(200).json({ json: hit, _src: 'cache' });
             const dados = await scrapeIpca();
+            if (dados) _cacheSet('ipca', dados, 'ipca');
             return res.status(200).json({ json: dados });
         }
 
         if (mode === 'fundamentos') {
             const ticker = sanitizeTickerInput(payload.ticker);
             if (!ticker) return res.status(400).json({ error: "Ticker invalido" });
+            const ck = 'fund_' + ticker;
+            const hit = _cacheGet(ck);
+            if (hit) return res.status(200).json({ json: hit, _src: 'cache' });
             const dados = await scrapeFundamentos(ticker);
+            if (dados && dados.dy && dados.dy !== '-') _cacheSet(ck, dados, 'fundamentos');
             return res.status(200).json({ json: dados });
         }
 

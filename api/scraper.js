@@ -8,6 +8,53 @@
  * - Cleaned up fetchWithRetry
  */
 
+// ─── ScraperCache — Cache JSON final em memória do serverless ─────────────────
+// Quando a função Vercel está quente, requests subsequentes pegam o JSON
+// em ~0ms sem chamar AeroScrape. Compartilhado entre TODOS os devices.
+
+class ScraperCache {
+    constructor(maxEntries = 200) {
+        this.cache = new Map();
+        this.maxEntries = maxEntries;
+    }
+
+    get(key) {
+        const entry = this.cache.get(key);
+        if (!entry) return null;
+        if (Date.now() > entry.expiresAt) {
+            this.cache.delete(key);
+            return null;
+        }
+        this.cache.delete(key);
+        this.cache.set(key, entry);
+        return entry.data;
+    }
+
+    set(key, data, ttlMs) {
+        if (!data || (typeof data === 'object' && Object.keys(data).length === 0)) return;
+        if (this.cache.size >= this.maxEntries) {
+            const oldest = this.cache.keys().next().value;
+            this.cache.delete(oldest);
+        }
+        this.cache.set(key, { data, expiresAt: Date.now() + ttlMs });
+    }
+
+    clear() { this.cache.clear(); }
+    get size() { return this.cache.size; }
+}
+
+const SCRAPER_CACHE_TTL = {
+    fundamentos:       1000 * 60 * 60 * 4,
+    rankings:          1000 * 60 * 15,
+    indices:           1000 * 60 * 60,
+    ipca:              1000 * 60 * 60 * 24,
+    proximo_provento:  1000 * 60 * 60 * 2,
+    cotacao_historica: 1000 * 60 * 5,
+    historico_12m:     1000 * 60 * 60 * 2,
+};
+
+const scraperCache = new ScraperCache(200);
+
 // ─── AeroScrape Helper (com timeout) ─────────────────────────────────────────
 
 const AEROSCRAPE_URL = 'https://aero-scrape.vercel.app/api/scrape';
@@ -1657,24 +1704,40 @@ module.exports = async function handler(req, res) {
         }
 
         if (mode === 'rankings') {
+            const cacheKey = 'rankings';
+            const cached = scraperCache.get(cacheKey);
+            if (cached) return res.status(200).json({ json: cached, _cache: 'HIT' });
             const dados = await scrapeRankings();
+            if (dados && (dados.altas?.length > 0 || dados.baixas?.length > 0)) scraperCache.set(cacheKey, dados, SCRAPER_CACHE_TTL.rankings);
             return res.status(200).json({ json: dados });
         }
 
         if (mode === 'indices') {
+            const cacheKey = 'indices';
+            const cached = scraperCache.get(cacheKey);
+            if (cached) return res.status(200).json({ json: cached, _cache: 'HIT' });
             const dados = await scrapeMarketIndices();
+            if (dados && dados.length > 0) scraperCache.set(cacheKey, dados, SCRAPER_CACHE_TTL.indices);
             return res.status(200).json({ json: dados });
         }
 
         if (mode === 'ipca') {
+            const cacheKey = 'ipca';
+            const cached = scraperCache.get(cacheKey);
+            if (cached) return res.status(200).json({ json: cached, _cache: 'HIT' });
             const dados = await scrapeIpca();
+            if (dados) scraperCache.set(cacheKey, dados, SCRAPER_CACHE_TTL.ipca);
             return res.status(200).json({ json: dados });
         }
 
         if (mode === 'fundamentos') {
             const ticker = sanitizeTickerInput(payload.ticker);
             if (!ticker) return res.status(400).json({ error: "Ticker invalido" });
+            const cacheKey = 'fund_' + ticker;
+            const cached = scraperCache.get(cacheKey);
+            if (cached) return res.status(200).json({ json: cached, _cache: 'HIT' });
             const dados = await scrapeFundamentos(ticker);
+            if (dados && dados.dy && dados.dy !== '-') scraperCache.set(cacheKey, dados, SCRAPER_CACHE_TTL.fundamentos);
             return res.status(200).json({ json: dados });
         }
 
@@ -1727,6 +1790,9 @@ module.exports = async function handler(req, res) {
         if (mode === 'proximo_provento') {
             const ticker = sanitizeTickerInput(payload.ticker);
             if (!ticker) return res.status(400).json({ error: "Ticker invalido" });
+            const cacheKeyProv = 'prov_' + ticker;
+            const cachedProv = scraperCache.get(cacheKeyProv);
+            if (cachedProv) return res.status(200).json({ json: cachedProv, _cache: 'HIT' });
             const history = await scrapeAsset(ticker);
 
             const hoje = new Date();
@@ -1753,7 +1819,9 @@ module.exports = async function handler(req, res) {
                 ultimoPago = history[0];
             }
 
-            return res.status(200).json({ json: { ultimoPago, proximo } });
+            const resultado = { ultimoPago, proximo };
+            if (ultimoPago || proximo) scraperCache.set(cacheKeyProv, resultado, SCRAPER_CACHE_TTL.proximo_provento);
+            return res.status(200).json({ json: resultado });
         }
 
         if (mode === 'cotacao_historica') {

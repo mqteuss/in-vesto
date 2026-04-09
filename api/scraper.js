@@ -1659,9 +1659,6 @@ module.exports = async function handler(req, res) {
         if (mode === 'fundamentos') {
             const ticker = sanitizeTickerInput(payload.ticker);
             if (!ticker) return res.status(400).json({ error: "Ticker invalido" });
-            const cacheKey = 'fund_' + ticker;
-            const cached = scraperCache.get(cacheKey);
-            if (cached) return res.status(200).json({ json: cached, _cache: 'HIT' });
             const dados = await scrapeFundamentos(ticker);
             return res.status(200).json({ json: dados });
         }

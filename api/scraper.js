@@ -1801,3 +1801,6 @@ module.exports = async function handler(req, res) {
         return res.status(500).json({ error: error.message });
     }
 };
+
+// Exporta funções internas para uso direto pelo cron (evita fakeReq/fakeRes)
+module.exports.scrapeAsset = scrapeAsset;

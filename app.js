@@ -6644,7 +6644,8 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
             body: JSON.stringify(body)
         });
         const result = response.json;
-        if (result) {
+        // Só cacheia se tem dados reais (ultimoPago ou proximo)
+        if (result && (result.ultimoPago || result.proximo)) {
             const ttl = isB3Open() ? CACHE_PROXIMO_PROVENTO_ABERTO : CACHE_PROXIMO_PROVENTO_FECHADO;
             await setCache(cacheKey, result, ttl);
         }
@@ -6654,7 +6655,9 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
     async function callScraperFundamentosAPI(ticker) {
         const cacheKey = `fundamentos_${ticker.toUpperCase()}`;
         const cached = await getCache(cacheKey);
-        if (cached) return cached;
+        // Valida cache existente: se está vazio/degradado, descarta e refaz
+        if (cached && cached.dy && cached.dy !== '-' && cached.dy !== 'N/A') return cached;
+        if (cached) await vestoDB.delete('apiCache', cacheKey); // Purge stale empty cache
 
         const body = {
             mode: 'fundamentos',
@@ -6666,7 +6669,8 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
             body: JSON.stringify(body)
         });
         const result = response.json;
-        if (result) {
+        // Só cacheia se o resultado tem dados reais (não o fallback vazio do scraper)
+        if (result && result.dy && result.dy !== '-' && result.dy !== 'N/A') {
             const ttl = isB3Open() ? CACHE_FUNDAMENTOS_ABERTO : CACHE_FUNDAMENTOS_FECHADO;
             await setCache(cacheKey, result, ttl);
         }

@@ -1041,60 +1041,127 @@ async function scrapeMarketIndices() {
 }
 
 // ─── PARTE 1.5: RANKINGS (Maiores Altas + Baixas) → INVESTIDOR10 ────────────
+// Otimizado: usa multi-selectors AeroScrape + fallback para HTML parsing
+
+const RANKINGS_SELECTORS = {
+    altasLinks:   { selector: '.maioresAltas a[href*="/acoes/"]' },
+    baixasLinks:  { selector: '.maioresBaixas a[href*="/acoes/"]' },
+    altasTickers: { selector: '.maioresAltas .ticker, .maioresAltas .name, .maioresAltas a[href*="/acoes/"] span' },
+    baixasTickers:{ selector: '.maioresBaixas .ticker, .maioresBaixas .name, .maioresBaixas a[href*="/acoes/"] span' },
+    altasVars:    { selector: '.maioresAltas .variation, .maioresAltas .percent, .maioresAltas .change' },
+    baixasVars:   { selector: '.maioresBaixas .variation, .maioresBaixas .percent, .maioresBaixas .change' },
+    altasPrices:  { selector: '.maioresAltas .price, .maioresAltas .value, .maioresAltas .cotacao' },
+    baixasPrices: { selector: '.maioresBaixas .price, .maioresBaixas .value, .maioresBaixas .cotacao' },
+    altasHrefs:   { selector: '.maioresAltas a[href*="/acoes/"]', extract: 'href' },
+    baixasHrefs:  { selector: '.maioresBaixas a[href*="/acoes/"]', extract: 'href' },
+};
 
 async function scrapeRankings() {
     const resultados = { altas: [], baixas: [] };
 
     try {
-        const { html } = await aeroScrape('https://investidor10.com.br/', {
-            returnHtml: true
+        // Estratégia 1: multi-selectors (mais rápido, sem HTML parsing)
+        const res = await aeroScrape('https://investidor10.com.br/', {
+            returnHtml: true,
+            selectors: RANKINGS_SELECTORS
         });
 
-        if (!html) return resultados;
+        const results = res.results || {};
+        const html = res.html || '';
 
-        // Delimitar blocos usando indexOf para evitar sobreposição
-        const altasIdx = html.indexOf('Maiores Altas');
-        const baixasIdx = html.indexOf('Maiores Baixas');
+        // Tentar extrair via hrefs dos seletores
+        const altasHrefs = results.altasHrefs || [];
+        const baixasHrefs = results.baixasHrefs || [];
 
-        if (altasIdx < 0 || baixasIdx < 0) return resultados;
-
-        const blockAltas = html.substring(altasIdx, baixasIdx);
-        // Baixas vai até o próximo <h2 ou até 10000 chars depois
-        const nextH2 = html.indexOf('<h2', baixasIdx + 20);
-        const blockBaixas = html.substring(baixasIdx, nextH2 > baixasIdx ? nextH2 : baixasIdx + 10000);
-
-        const parseItems = (blockHtml, limit = 6) => {
+        const buildFromSelectors = (hrefs, tickers, vars, prices, limit = 6) => {
             const items = [];
-            if (!blockHtml) return items;
             const seen = new Set();
 
-            // Parsear diretamente os <a> tags com href para /acoes/TICKER/
-            const linkMatches = blockHtml.match(/<a[^>]*acoes\/[a-z]{4}\d{1,2}[^>]*>[\s\S]*?<\/a>/gi) || [];
+            // Se temos hrefs, extraímos tickers deles
+            if (hrefs.length > 0) {
+                for (let i = 0; i < Math.min(hrefs.length, limit); i++) {
+                    const href = hrefs[i] || '';
+                    const tickerMatch = href.match(/acoes\/([a-z]{4}\d{1,2})\//i);
+                    if (!tickerMatch) continue;
+                    const ticker = tickerMatch[1].toUpperCase();
+                    if (seen.has(ticker)) continue;
+                    seen.add(ticker);
 
-            for (const linkHtml of linkMatches) {
-                if (items.length >= limit) break;
-
-                const tickerMatch = linkHtml.match(/acoes\/([a-z]{4}\d{1,2})\//i);
-                if (!tickerMatch) continue;
-
-                const ticker = tickerMatch[1].toUpperCase();
-                if (seen.has(ticker)) continue;
-                seen.add(ticker);
-
-                const varMatch = linkHtml.match(/([+-]?\d+[,.]\d+\s*%)/); 
-                const precoMatch = linkHtml.match(/R\$\s*([\d.,]+)/);
-                items.push({
-                    ticker,
-                    variacao: varMatch ? varMatch[1].replace(/\s/g, '') : '',
-                    preco: precoMatch ? `R$ ${precoMatch[1]}` : '',
-                    logo_url: ''
-                });
+                    items.push({
+                        ticker,
+                        variacao: vars[i] || '',
+                        preco: prices[i] || '',
+                        logo_url: ''
+                    });
+                }
+            }
+            // Se não temos hrefs mas temos tickers via text
+            if (items.length === 0 && tickers.length > 0) {
+                for (let i = 0; i < Math.min(tickers.length, limit); i++) {
+                    const text = (tickers[i] || '').trim().toUpperCase();
+                    if (!TICKER_REGEX.test(text) || seen.has(text)) continue;
+                    seen.add(text);
+                    items.push({
+                        ticker: text,
+                        variacao: vars[i] || '',
+                        preco: prices[i] || '',
+                        logo_url: ''
+                    });
+                }
             }
             return items;
         };
 
-        resultados.altas = parseItems(blockAltas, 6);
-        resultados.baixas = parseItems(blockBaixas, 6);
+        resultados.altas = buildFromSelectors(
+            altasHrefs, results.altasTickers || [], results.altasVars || [], results.altasPrices || []
+        );
+        resultados.baixas = buildFromSelectors(
+            baixasHrefs, results.baixasTickers || [], results.baixasVars || [], results.baixasPrices || []
+        );
+
+        // Estratégia 2 (fallback): parse HTML bruto — cobre mudanças de estrutura
+        if ((resultados.altas.length === 0 || resultados.baixas.length === 0) && html) {
+            const parseItemsFromHtml = (blockHtml, limit = 6) => {
+                const items = [];
+                if (!blockHtml) return items;
+                const seen = new Set();
+
+                // Links genéricos com /acoes/TICKER/
+                const linkMatches = blockHtml.match(/<a[^>]*acoes\/[a-z]{4}\d{1,2}[^>]*>[\s\S]*?<\/a>/gi) || [];
+                for (const linkHtml of linkMatches) {
+                    if (items.length >= limit) break;
+                    const tickerMatch = linkHtml.match(/acoes\/([a-z]{4}\d{1,2})\//i);
+                    if (!tickerMatch) continue;
+                    const ticker = tickerMatch[1].toUpperCase();
+                    if (seen.has(ticker)) continue;
+                    seen.add(ticker);
+                    const varMatch = linkHtml.match(/([+-]?\d+[,.]\d+\s*%)/); 
+                    const precoMatch = linkHtml.match(/R\$\s*([\d.,]+)/);
+                    items.push({
+                        ticker,
+                        variacao: varMatch ? varMatch[1].replace(/\s/g, '') : '',
+                        preco: precoMatch ? `R$ ${precoMatch[1]}` : '',
+                        logo_url: ''
+                    });
+                }
+                return items;
+            };
+
+            const altasIdx = html.indexOf('Maiores Altas');
+            const baixasIdx = html.indexOf('Maiores Baixas');
+
+            if (altasIdx >= 0 && baixasIdx >= 0) {
+                if (resultados.altas.length === 0) {
+                    resultados.altas = parseItemsFromHtml(html.substring(altasIdx, baixasIdx), 6);
+                }
+                if (resultados.baixas.length === 0) {
+                    const nextH2 = html.indexOf('<h2', baixasIdx + 20);
+                    resultados.baixas = parseItemsFromHtml(
+                        html.substring(baixasIdx, nextH2 > baixasIdx ? nextH2 : baixasIdx + 10000), 6
+                    );
+                }
+            }
+        }
 
     } catch (e) {
         console.error('Erro rankings:', e.message);

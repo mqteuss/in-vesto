@@ -6347,18 +6347,20 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
 
         if (!Number.isFinite(precoAtual) || precoAtual <= 0) return null;
 
-        // Previous close: prioriza meta.chartPreviousClose (valor do dia anterior, usado pelo Yahoo)
-        const chartPrevClose = Number(meta.chartPreviousClose);
+        // CORREÇÃO: previousClose = fechamento de ONTEM (variação diária correta).
+        // chartPreviousClose = fechamento anterior ao início do range do chart (5D),
+        // ou seja, ~6 dias úteis atrás — NÃO serve para variação do dia.
         const metaPrevClose = Number(meta.previousClose);
+        const chartPrevClose = Number(meta.chartPreviousClose);
         // Fallback: penúltimo ponto do histórico 5D (se existir)
         const penultimo = pontos.length > 1 ? pontos[pontos.length - 2] : null;
         const penultimoPrice = Number(penultimo?.price);
 
         let precoAnterior = 0;
-        if (Number.isFinite(chartPrevClose) && chartPrevClose > 0) {
-            precoAnterior = chartPrevClose;
-        } else if (Number.isFinite(metaPrevClose) && metaPrevClose > 0) {
+        if (Number.isFinite(metaPrevClose) && metaPrevClose > 0) {
             precoAnterior = metaPrevClose;
+        } else if (Number.isFinite(chartPrevClose) && chartPrevClose > 0) {
+            precoAnterior = chartPrevClose;
         } else if (Number.isFinite(penultimoPrice) && penultimoPrice > 0) {
             precoAnterior = penultimoPrice;
         } else {

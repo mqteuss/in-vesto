@@ -903,6 +903,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     let newWorker;
     let transacaoEmEdicao = null;
     let currentDetalhesSymbol = null;
+    let _limparDetalhesTimerId = null;
+    let _detalhesSessionId = 0;
     let currentDetalhesMeses = 3;
     let currentDetalhesHistoricoJSON = null;
     let currentDetalhesFundamentos = null;
@@ -2187,6 +2189,16 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     function showDetalhesModal(symbol) {
         if (document.getElementById('batch-toolbar')?.classList.contains('visible')) return;
+
+        // CORREÇÃO: Cancela qualquer limparDetalhes pendente do fechamento anterior.
+        // Sem isso, se o usuário reabrir o modal em < 400ms o setTimeout do
+        // hideDetalhesModal dispara limparDetalhes() e apaga os dados recém-carregados.
+        if (_limparDetalhesTimerId) {
+            clearTimeout(_limparDetalhesTimerId);
+            _limparDetalhesTimerId = null;
+            limparDetalhes(); // executa limpeza sincronamente antes de carregar novos dados
+        }
+
         detalhesPageContent.style.transform = '';
         detalhesPageContent.classList.remove('closing');
         detalhesPageModal.classList.add('visible');
@@ -2243,7 +2255,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         currentDetalhesSymbol = null;
 
         // Limpeza visual (reset de textos, icones, estado) continua apos a animacao
-        setTimeout(() => {
+        _limparDetalhesTimerId = setTimeout(() => {
+            _limparDetalhesTimerId = null;
             limparDetalhes();
         }, 400);
     }
@@ -6652,6 +6665,14 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
     }
 
     async function callScraperFundamentosAPI(ticker) {
+        // CORREÇÃO: cache local para fundamentos (antes não tinha cache nenhum).
+        // Sem isso, fechar e reabrir o modal requeria um fetch completo ao scraper,
+        // e como a Promise demora segundos, a guarda currentDetalhesSymbol abortava
+        // a renderização se o modal fosse fechado antes da resposta.
+        const cacheKey = `fundamentos_${ticker.toUpperCase()}`;
+        const cached = await getCache(cacheKey);
+        if (cached) return cached;
+
         const body = {
             mode: 'fundamentos',
             payload: { ticker }
@@ -6661,7 +6682,12 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(body)
         });
-        return response.json;
+        const result = response.json;
+        if (result && Object.keys(result).length > 0) {
+            const ttl = isB3Open() ? CACHE_FUNDAMENTOS_ABERTO : CACHE_FUNDAMENTOS_FECHADO;
+            await setCache(cacheKey, result, ttl);
+        }
+        return result;
     }
 
     // ── Rankings: Variação do Dia (Altas + Baixas) ──
@@ -9019,6 +9045,11 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
         currentDetalhesMeses = 3;
         currentDetalhesHistoricoJSON = null;
 
+        // CORREÇÃO: Token de sessão que identifica ESTA abertura específica do modal.
+        // Impede que callbacks assíncronos de aberturas anteriores (que compartilham
+        // a mesma closure de `symbol`) escribam dados na sessão errada.
+        const sessionToken = ++_detalhesSessionId;
+
         const cacheKeyPreco = `detalhe_preco_${symbol}`;
 
         // ─── LANÇAR TODAS AS PROMISES EM PARALELO ────────────────────────────────────
@@ -9049,8 +9080,8 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
             showToast("Erro ao buscar preço.");
         }
 
-        // Guarda para saber se o modal ainda é desse símbolo
-        if (currentDetalhesSymbol !== symbol) return;
+        // Guarda para saber se o modal ainda é desse símbolo / sessão
+        if (currentDetalhesSymbol !== symbol || _detalhesSessionId !== sessionToken) return;
 
         detalhesLoading.classList.add('hidden');
 
@@ -9120,7 +9151,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
         // Roda em background, sem bloquear mais nada
         Promise.all([promiseFundamentos, promiseProvento]).then(([fundData, provData]) => {
             // Garante que o modal ainda é desse símbolo
-            if (currentDetalhesSymbol !== symbol || !precoData) return;
+            if (currentDetalhesSymbol !== symbol || !precoData || _detalhesSessionId !== sessionToken) return;
 
             const fundamentos = fundData || {};
             const nextProventoData = provData;

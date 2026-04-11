@@ -9066,7 +9066,10 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
             throw new Error('Ativo não encontrado');
         });
 
-        const promiseFundamentos = callScraperFundamentosAPI(symbol).catch(() => ({}));
+        const promiseFundamentos = callScraperFundamentosAPI(symbol).catch(err => {
+            console.warn(`[Detalhes] Fundamentos falhou para ${symbol}:`, err?.message || err);
+            return {};
+        });
         const promiseProvento = callScraperProximoProventoAPI(symbol).catch(() => null);
 
         // Disparo de gráficos sem bloquear o fluxo principal

@@ -513,8 +513,10 @@ async function scrapeFundamentos(ticker) {
                 selectors: FUNDAMENTOS_SELECTORS,
                 cacheTtl: 14400000
             });
-            if (!res.html) throw new Error('Sem html');
-            html = res.html;
+            // FIX: accept response if we have results even without html
+            // (AeroScrape result-cache may strip html in edge cases)
+            if (!res.html && (!res.results || Object.keys(res.results).length === 0)) throw new Error('Sem html');
+            html = res.html || '';
             results = res.results || {};
             tipoAtivo = guess;
         } catch (e) {
@@ -525,8 +527,8 @@ async function scrapeFundamentos(ticker) {
                     selectors: FUNDAMENTOS_SELECTORS,
                     cacheTtl: 14400000
                 });
-                if (!res.html) throw new Error('Sem html');
-                html = res.html;
+                if (!res.html && (!res.results || Object.keys(res.results).length === 0)) throw new Error('Sem html');
+                html = res.html || '';
                 results = res.results || {};
                 tipoAtivo = guess === 'fii' ? 'acao' : 'fii';
                 urlToUse = fallbackUrl;
@@ -535,7 +537,7 @@ async function scrapeFundamentos(ticker) {
             }
         }
 
-        if (!html.includes('cotacao') && !html.includes('Cotação')) throw new Error('Página inválida');
+        if (html && !html.includes('cotacao') && !html.includes('Cotação')) throw new Error('Página inválida');
 
         let dados = {
             dy: 'N/A', pvp: 'N/A', pl: 'N/A', roe: 'N/A', roa: 'N/A', roic: 'N/A', lpa: 'N/A', vp_cota: 'N/A',

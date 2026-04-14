@@ -3096,3 +3096,8 @@ body:not(.light-mode) .vesto-card {
 #tab-historico #lista-historico-proventos .history-card {
     background-color: #000000 !important;
 }
+
+/* Notícias (aba Mercado): mantém o drawer sem fundo cinza */
+#tab-noticias #fii-news-list .card-drawer > .drawer-content {
+    background-color: transparent !important;
+}

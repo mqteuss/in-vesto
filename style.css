@@ -2987,3 +2987,49 @@ body.light-mode .skeleton::after {
         transform: translateX(100%);
     }
 }
+
+/* =========================================
+   CARD RADIUS (VERCEL-LIKE)
+   ========================================= */
+:root {
+    --card-radius-vercel: 12px;
+}
+
+/* Cards com classes dedicadas */
+.card-bg,
+.wallet-card,
+.history-card,
+.fav-card,
+.fav-card-skeleton,
+.card-drawer > .drawer-content,
+.details-group-card,
+.details-highlight-card,
+.agenda-card,
+.square-payment-card,
+.news-card-summary,
+.news-card-interactive,
+.modal-content,
+.notif-card-payment,
+.notif-card-datacom,
+#proventos-summary-cards > div,
+#btn-open-proventos,
+#btn-open-alocacao,
+#btn-open-ipca,
+#btn-open-objetivos {
+    border-radius: var(--card-radius-vercel) !important;
+}
+
+/* Cards utilitários com arredondamento grande (Tailwind) */
+#app-container :is(div, section, article)[class*="rounded-3xl"],
+#app-container :is(div, section, article)[class*="rounded-2xl"],
+#app-container :is(div, section, article)[class*="rounded-[2rem]"] {
+    border-radius: var(--card-radius-vercel) !important;
+}
+
+/* Exceção: timeline de pagamentos mantém o visual atual */
+#timeline-pagamentos-container [class*="rounded-3xl"],
+#timeline-pagamentos-container [class*="rounded-2xl"],
+#timeline-pagamentos-container [class*="rounded-xl"],
+#timeline-pagamentos-container [class*="rounded-[2rem]"] {
+    border-radius: 1.5rem !important;
+}

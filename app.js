@@ -247,6 +247,7 @@ function shouldApplyVestoCardClass(el) {
     if (!(el instanceof HTMLElement)) return false;
     if (VESTO_CARD_EXCLUDED_TAGS.has(el.tagName)) return false;
     if (el.closest('#timeline-pagamentos-container')) return false; // Mantém exceção da timeline
+    if (el.closest('#tab-historico')) return false; // Extrato mantém estilo próprio
 
     const className = typeof el.className === 'string' ? el.className : '';
     if (!className) return false;

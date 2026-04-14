@@ -3090,3 +3090,9 @@ body:not(.light-mode) :is(#app-container, #auth-container) [class*="bg-[#222]"] 
 body:not(.light-mode) .vesto-card {
     background-color: var(--card-surface-soft-1) !important;
 }
+
+/* Extrato: cards de Transações e Proventos em preto puro */
+#tab-historico #lista-historico .history-card,
+#tab-historico #lista-historico-proventos .history-card {
+    background-color: #000000 !important;
+}

@@ -3081,3 +3081,12 @@ body:not(.light-mode) :is(#app-container, #auth-container) [class*="bg-[#1a1a1c]
 body:not(.light-mode) :is(#app-container, #auth-container) [class*="bg-[#1F1F1F]"] { background-color: var(--card-surface-soft-2) !important; }
 body:not(.light-mode) :is(#app-container, #auth-container) [class*="bg-[#1f1f1f]"] { background-color: var(--card-surface-soft-2) !important; }
 body:not(.light-mode) :is(#app-container, #auth-container) [class*="bg-[#222]"] { background-color: #2a2a2a !important; }
+
+/* Classe utilitária para cards vindos de HTML/JS dinâmico */
+.vesto-card {
+    border-radius: var(--card-radius-vercel) !important;
+}
+
+body:not(.light-mode) .vesto-card {
+    background-color: var(--card-surface-soft-1) !important;
+}

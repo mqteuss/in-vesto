@@ -225,6 +225,98 @@ const isFII = (symbol) => {
 };
 const isAcao = (symbol) => !!(symbol && !isFII(symbol));
 
+const VESTO_CARD_CLASS = 'vesto-card';
+const VESTO_CARD_BG_HINTS = [
+    'bg-[#',
+    'card-bg',
+    'wallet-card',
+    'history-card',
+    'fav-card',
+    'details-group-card',
+    'details-highlight-card',
+    'agenda-card',
+    'square-payment-card',
+    'news-card-summary',
+    'modal-content',
+    'notif-card-payment',
+    'notif-card-datacom'
+];
+const VESTO_CARD_EXCLUDED_TAGS = new Set(['INPUT', 'TEXTAREA', 'SELECT', 'BUTTON', 'SVG', 'PATH', 'USE', 'CANVAS']);
+
+function shouldApplyVestoCardClass(el) {
+    if (!(el instanceof HTMLElement)) return false;
+    if (VESTO_CARD_EXCLUDED_TAGS.has(el.tagName)) return false;
+    if (el.closest('#timeline-pagamentos-container')) return false; // Mantém exceção da timeline
+
+    const className = typeof el.className === 'string' ? el.className : '';
+    if (!className) return false;
+    if (/\brounded-full\b/.test(className)) return false;
+    if (/\brounded-(?:t|b|l|r)(?:-|$)/.test(className)) return false;
+
+    const hasRoundedToken = /\brounded(?:-(?:sm|md|lg|xl|2xl|3xl|\[[^\]]+\]))?\b/.test(className);
+    if (!hasRoundedToken) return false;
+
+    return VESTO_CARD_BG_HINTS.some(hint => className.includes(hint));
+}
+
+function applyVestoCardClass(el) {
+    if (!shouldApplyVestoCardClass(el)) return;
+    if (!el.classList.contains(VESTO_CARD_CLASS)) {
+        el.classList.add(VESTO_CARD_CLASS);
+    }
+}
+
+function decorateVestoCardsInNode(node) {
+    if (!(node instanceof HTMLElement || node instanceof Document)) return;
+    if (node instanceof HTMLElement) applyVestoCardClass(node);
+
+    const descendants = node.querySelectorAll ? node.querySelectorAll('[class]') : [];
+    descendants.forEach(applyVestoCardClass);
+}
+
+function startVestoCardAutoStyleSync() {
+    if (!document.body) return;
+
+    decorateVestoCardsInNode(document.body);
+
+    const observer = new MutationObserver((mutations) => {
+        mutations.forEach((mutation) => {
+            if (mutation.type === 'attributes') {
+                applyVestoCardClass(mutation.target);
+                return;
+            }
+
+            mutation.addedNodes.forEach((node) => {
+                if (node instanceof HTMLElement) {
+                    decorateVestoCardsInNode(node);
+                }
+            });
+        });
+    });
+
+    observer.observe(document.body, {
+        childList: true,
+        subtree: true,
+        attributes: true,
+        attributeFilter: ['class']
+    });
+}
+
+let hasBootedVestoCardAutoStyle = false;
+function bootVestoCardAutoStyleSync() {
+    if (hasBootedVestoCardAutoStyle) return;
+    hasBootedVestoCardAutoStyle = true;
+    startVestoCardAutoStyleSync();
+}
+
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', bootVestoCardAutoStyleSync, { once: true });
+} else {
+    bootVestoCardAutoStyleSync();
+}
+
+window.applyVestoCardStyling = () => decorateVestoCardsInNode(document.body);
+
 function parseMesAno(mesAnoStr) {
     try {
         const [mesStr, anoStr] = mesAnoStr.split('/');
@@ -7816,10 +7908,10 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
                 </div>
             </div>
 
-            <div id="chart-wrapper-cotacao" class="relative w-full ${wrapperBg} rounded-2xl shadow-inner overflow-hidden" style="height: 320px;">
+            <div id="chart-wrapper-cotacao" class="vesto-card relative w-full ${wrapperBg} rounded-2xl shadow-inner overflow-hidden" style="height: 320px;">
                 
                 <div class="absolute top-2 left-2 right-2 z-20 flex justify-between items-center gap-2 pointer-events-auto">
-                    <div class="relative flex items-center gap-0.5 p-1 ${filterBg} backdrop-blur-md rounded-xl overflow-x-auto no-scrollbar flex-1" id="chart-filters">
+                    <div class="vesto-card relative flex items-center gap-0.5 p-1 ${filterBg} backdrop-blur-md rounded-xl overflow-x-auto no-scrollbar flex-1" id="chart-filters">
                         <div id="cotacao-slider" class="absolute top-1 bottom-1 left-0 bg-[#2C2C2E] rounded-lg shadow-sm transition-all duration-300 ease-out z-0" style="width: 0px;"></div>
                         ${window.gerarBotaoFiltro('1D', symbol, true)}
                         ${window.gerarBotaoFiltro('5D', symbol)}
@@ -7831,7 +7923,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
                         ${window.gerarBotaoFiltro('Tudo', symbol)}
                     </div>
                     
-                    <div class="relative flex gap-1 p-1 ${filterBg} backdrop-blur-md rounded-xl flex-shrink-0" id="chart-type-toggle">
+                    <div class="vesto-card relative flex gap-1 p-1 ${filterBg} backdrop-blur-md rounded-xl flex-shrink-0" id="chart-type-toggle">
                         <div id="chart-type-slider" class="absolute top-1 bottom-1 bg-[#2C2C2E] rounded-lg shadow-sm transition-all duration-300 ease-out pointer-events-none z-0" style="width: 0px;"></div>
                         <button id="btn-type-line" onclick="window.mudarTipoGrafico('line', '${symbol}')"
                             class="chart-type-btn px-2.5 py-1.5 rounded-lg text-[10px] font-bold uppercase transition-colors duration-200 select-none relative z-10 text-white"
@@ -9122,7 +9214,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
 
             // ── Skeleton KPIs no tab Resumo ──
             const skeletonGrid = Array(6).fill(0).map(() => `
-            <div class="bg-[#151515] rounded-xl p-3 flex flex-col items-center justify-center shadow-sm">
+            <div class="vesto-card bg-[#151515] rounded-xl p-3 flex flex-col items-center justify-center shadow-sm">
                 <div class="h-2 skeleton rounded w-16 mb-2"></div>
                 <div class="h-4 skeleton rounded w-10"></div>
             </div>`).join('');
@@ -9233,7 +9325,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
                         const corGraham = margemSeguranca > 0 ? 'text-green-400 bg-green-500/10' : 'text-red-400 bg-red-500/10';
 
                         valuationHtml += `
-                        <div class="bg-[#151515] rounded-xl p-3 flex justify-between items-center shadow-sm">
+                        <div class="vesto-card bg-[#151515] rounded-xl p-3 flex justify-between items-center shadow-sm">
                             <div>
                                 <span class="text-[10px] text-blue-400 font-bold uppercase tracking-widest block mb-0.5">Fórmula de Graham</span>
                                 <span class="text-xs text-gray-500 font-medium block">Preço Justo Estimado</span>
@@ -9255,7 +9347,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
                         const corBazin = upsideBazin > 0 ? 'text-green-400 bg-green-500/10' : 'text-red-400 bg-red-500/10';
 
                         valuationHtml += `
-                        <div class="bg-[#151515] rounded-xl p-3 flex justify-between items-center shadow-sm">
+                        <div class="vesto-card bg-[#151515] rounded-xl p-3 flex justify-between items-center shadow-sm">
                             <div>
                                 <span class="text-[10px] text-yellow-500 font-bold uppercase tracking-widest block mb-0.5">Método de Bazin</span>
                                 <span class="text-xs text-gray-500 font-medium block">Preço Teto (Mín. 6% DY)</span>
@@ -9278,7 +9370,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
             const formatarCardProvento = (titulo, provento, isFuturo) => {
                 if (!provento) {
                     return `
-                <div class="flex-1 p-3 rounded-xl bg-[#151515] flex flex-col justify-center items-center opacity-50 shadow-sm">
+                <div class="vesto-card flex-1 p-3 rounded-xl bg-[#151515] flex flex-col justify-center items-center opacity-50 shadow-sm">
                     <span class="text-[9px] uppercase tracking-widest font-bold text-gray-500 mb-1">${titulo}</span>
                     <span class="text-sm font-bold text-[#444]">-</span>
                 </div>`;
@@ -9292,7 +9384,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
                 const valueClass = isFuturo ? "text-green-400" : "text-white";
 
                 return `
-            <div class="flex-1 p-3 rounded-xl ${bgClass} flex flex-col justify-between shadow-sm relative overflow-hidden">
+            <div class="vesto-card flex-1 p-3 rounded-xl ${bgClass} flex flex-col justify-between shadow-sm relative overflow-hidden">
                 ${isFuturo ? '<div class="absolute top-0 right-0 w-8 h-8 bg-green-500/10 blur-xl rounded-full"></div>' : ''}
                 <span class="text-[9px] uppercase tracking-widest font-bold ${textClass} mb-1.5 relative z-10">${titulo}</span>
                 <span class="text-xl font-bold ${valueClass} mb-3 leading-none tracking-tight relative z-10">${formatBRL(provento.value)}</span>
@@ -9320,7 +9412,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
 
             // Grid topo e listas
             const renderKpi = (label, value, cor = 'text-white') => `
-            <div class="bg-[#151515] rounded-xl p-3 flex flex-col items-center justify-center shadow-sm">
+            <div class="vesto-card bg-[#151515] rounded-xl p-3 flex flex-col items-center justify-center shadow-sm">
                 <span class="text-[9px] text-gray-500 uppercase font-bold tracking-widest mb-1.5 text-center leading-tight">${label}</span>
                 <span class="text-sm font-bold ${cor} leading-none">${value}</span>
             </div>`;
@@ -9384,7 +9476,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
 
                 return `
                 <h4 class="text-[10px] font-bold text-gray-300 uppercase tracking-widest mt-4 mb-2 pl-1">Histórico de Indicadores Fundamentalistas</h4>
-                <div class="bg-[#151515] rounded-xl shadow-sm mb-4 border border-white/5 overflow-hidden">
+                <div class="vesto-card bg-[#151515] rounded-xl shadow-sm mb-4 border border-white/5 overflow-hidden">
                     <div class="overflow-x-auto custom-scroll">
                         <table class="w-full min-w-[680px] border-collapse">
                             <thead class="bg-white/[0.03]">
@@ -9429,7 +9521,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
                             : '<circle cx="12" cy="12" r="4" />');
 
                     return `
-                    <div class="rounded-xl border p-3 ${cardClass} flex items-start gap-2.5">
+                    <div class="vesto-card rounded-xl border p-3 ${cardClass} flex items-start gap-2.5">
                         <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 ${iconClass} mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                             ${iconSvg}
                         </svg>
@@ -9458,7 +9550,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
 
                 listasHtml = `
                 <h4 class="text-[10px] font-bold text-gray-300 uppercase tracking-widest mt-2 mb-2 pl-1">Rentabilidade</h4>
-                <div class="bg-[#151515] rounded-xl px-3 shadow-sm mb-4">
+                <div class="vesto-card bg-[#151515] rounded-xl px-3 shadow-sm mb-4">
                     ${renderRow('Marg. Líquida', dados.margem_liquida)}
                     ${renderRow('Marg. Bruta', dados.margem_bruta)}
                     ${renderRow('Marg. EBIT', dados.margem_ebit)}
@@ -9466,19 +9558,19 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
                     ${renderRow('LPA', dados.lpa)}
                 </div>
                 <h4 class="text-[10px] font-bold text-gray-300 uppercase tracking-widest mt-4 mb-2 pl-1">Endividamento</h4>
-                <div class="bg-[#151515] rounded-xl px-3 shadow-sm mb-4">
+                <div class="vesto-card bg-[#151515] rounded-xl px-3 shadow-sm mb-4">
                     ${renderRow('Dív. Líq./EBITDA', dados.divida_liquida_ebitda)}
                     ${renderRow('Díd. Líq./PL', dados.divida_liquida_pl)}
                     ${renderRow('EV/EBITDA', dados.ev_ebitda)}
                 </div>
                 <h4 class="text-[10px] font-bold text-gray-300 uppercase tracking-widest mt-4 mb-2 pl-1">Crescimento (5A)</h4>
-                <div class="bg-[#151515] rounded-xl px-3 shadow-sm mb-4">
+                <div class="vesto-card bg-[#151515] rounded-xl px-3 shadow-sm mb-4">
                     ${renderRow('CAGR Receita', dados.cagr_receita)}
                     ${renderRow('CAGR Lucros', dados.cagr_lucros)}
                     ${renderRow('Payout', dados.payout)}
                 </div>
                 <h4 class="text-[10px] font-bold text-gray-300 uppercase tracking-widest mt-4 mb-2 pl-1">Mercado</h4>
-                <div class="bg-[#151515] rounded-xl px-3 shadow-sm mb-4">
+                <div class="vesto-card bg-[#151515] rounded-xl px-3 shadow-sm mb-4">
                     ${renderRow('Valor de Mercado', dados.val_mercado)}
                     ${renderRow('Liquidez', dados.liquidez)}
                     ${renderRow('VP por Ação', dados.vp_cota)}
@@ -9497,14 +9589,14 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
 
                 listasHtml = `
                 <h4 class="text-[10px] font-bold text-gray-300 uppercase tracking-widest mt-2 mb-2 pl-1">Indicadores</h4>
-                <div class="bg-[#151515] rounded-xl px-3 shadow-sm mb-4">
+                <div class="vesto-card bg-[#151515] rounded-xl px-3 shadow-sm mb-4">
                     ${renderRow('DY', dados.dy)}
                     ${renderRow('P/VP', dados.pvp)}
                     ${renderRow('Vacância', dados.vacancia)}
                     ${renderRow('Último Rend.', dados.ultimo_rendimento)}
                 </div>
                 <h4 class="text-[10px] font-bold text-gray-300 uppercase tracking-widest mt-4 mb-2 pl-1">Patrimônio & Mercado</h4>
-                <div class="bg-[#151515] rounded-xl px-3 shadow-sm mb-4">
+                <div class="vesto-card bg-[#151515] rounded-xl px-3 shadow-sm mb-4">
                     ${renderRow('Patrimônio Líq.', dados.patrimonio_liquido)}
                     ${renderRow('VP por Cota', dados.vp_cota)}
                     ${renderRow('Valor de Mercado', dados.val_mercado)}
@@ -9512,14 +9604,14 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
                     ${renderRow('Cotas Emitidas', dados.cotas_emitidas)}
                 </div>
                 <h4 class="text-[10px] font-bold text-gray-300 uppercase tracking-widest mt-4 mb-2 pl-1">Sobre o Fundo</h4>
-                <div class="bg-[#151515] rounded-xl px-3 shadow-sm mb-4">
+                <div class="vesto-card bg-[#151515] rounded-xl px-3 shadow-sm mb-4">
                     ${renderRow('Segmento', dados.segmento)}
                     ${renderRow('Tipo', dados.tipo_fundo)}
                     ${renderRow('Público Alvo', dados.publico_alvo)}
                     ${renderRow('Gestão', dados.tipo_gestao)}
                 </div>
                 <h4 class="text-[10px] font-bold text-gray-300 uppercase tracking-widest mt-4 mb-2 pl-1">Taxas & Informações</h4>
-                <div class="bg-[#151515] rounded-xl px-3 shadow-sm mb-4">
+                <div class="vesto-card bg-[#151515] rounded-xl px-3 shadow-sm mb-4">
                     ${renderRow('Taxa Adm.', dados.taxa_adm)}
                     ${renderRow('CNPJ', `<span class="font-mono text-xs opacity-80">${dados.cnpj}</span>`)}
                 </div>
@@ -9534,7 +9626,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
             if (dados.sobre && dados.sobre.length > 10) {
                 sobreHtml = `
                 <h4 class="text-[10px] font-bold text-gray-300 uppercase tracking-widest mt-6 mb-2 pl-1">Sobre o Ativo</h4>
-                <div class="bg-[#151515] rounded-xl p-4 shadow-sm mb-4">
+                <div class="vesto-card bg-[#151515] rounded-xl p-4 shadow-sm mb-4">
                     <p class="text-xs text-gray-400 leading-relaxed text-justify">
                         ${dados.sobre}
                     </p>
@@ -9806,7 +9898,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
                             const txtValue = isLight ? 'text-gray-900' : 'text-white';
                             const txtSetor = isLight ? 'text-gray-400' : 'text-gray-600';
                             const setorStr = ok(item.setor) ? `<span class="text-[9px] font-normal ${txtSetor}">Setor: ${fmt(item.setor)}</span>` : '';
-                            return `<div class="rounded-xl ${bgCard} border p-3 flex flex-col gap-0.5">
+                            return `<div class="vesto-card rounded-xl ${bgCard} border p-3 flex flex-col gap-0.5">
                                 <span class="text-[10px] font-semibold ${txtLabel} uppercase tracking-wide">${item.label}</span>
                                 <span class="text-sm font-bold ${txtValue}">${fmt(item.ativo)}</span>
                                 ${setorStr}
@@ -10301,10 +10393,10 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
                     </div>
                 </div>
 
-                <div id="chart-wrapper-proventos" class="relative w-full ${isLight ? 'bg-white border-gray-200' : 'bg-[#0f0f0f] border-[#1a1a1a]'} rounded-2xl shadow-inner overflow-hidden" style="height:320px;">
+                <div id="chart-wrapper-proventos" class="vesto-card relative w-full ${isLight ? 'bg-white border-gray-200' : 'bg-[#0f0f0f] border-[#1a1a1a]'} rounded-2xl shadow-inner overflow-hidden" style="height:320px;">
                     
                     <div class="absolute top-2 left-2 right-2 z-20 flex justify-center pointer-events-auto">
-                        <div class="relative flex items-center gap-1 p-1 ${isLight ? 'bg-white/90 border-gray-200' : 'bg-[#151515]/90 border-white/5'} backdrop-blur-md rounded-xl overflow-x-auto no-scrollbar w-full snap-x" id="proventos-filters-container">
+                        <div class="vesto-card relative flex items-center gap-1 p-1 ${isLight ? 'bg-white/90 border-gray-200' : 'bg-[#151515]/90 border-white/5'} backdrop-blur-md rounded-xl overflow-x-auto no-scrollbar w-full snap-x" id="proventos-filters-container">
                             <div id="proventos-slider" class="absolute top-1 bottom-1 left-0 bg-[#2C2C2E] rounded-lg shadow-sm transition-all duration-300 ease-out z-0" style="width: 0px;"></div>
                             <button id="btn-prov-12m" onclick="window.mudarFiltroProventos('12m')" class="${getBtnClass('12m')} snap-start">1A</button>
                             <button id="btn-prov-5y" onclick="window.mudarFiltroProventos('5y')" class="${getBtnClass('5y')} snap-start">5A</button>
@@ -10351,7 +10443,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
                 const bgLabel = isLight ? 'bg-white text-gray-500' : 'bg-[#111] text-[#555]';
 
                 customContainer.innerHTML = `
-                <div class="animate-fade-in grid grid-cols-2 gap-3 ${bgInputContainer} p-3 mt-3 rounded-xl border">
+                <div class="vesto-card animate-fade-in grid grid-cols-2 gap-3 ${bgInputContainer} p-3 mt-3 rounded-xl border">
                     <div class="relative group">
                         <label class="absolute -top-1.5 left-2 ${bgLabel} px-1 text-[9px] font-bold">DE</label>
                         <input type="month" id="custom-start" value="${customRangeStart}" class="w-full ${bgInput} text-xs h-9 border rounded-lg px-3 outline-none focus:border-[#555] transition-colors appearance-none" style="color-scheme: ${isLight ? 'light' : 'dark'};" onchange="window.atualizarFiltroCustom()">

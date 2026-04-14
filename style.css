@@ -3033,3 +3033,51 @@ body.light-mode .skeleton::after {
 #timeline-pagamentos-container [class*="rounded-[2rem]"] {
     border-radius: 1.5rem !important;
 }
+
+/* =========================================
+   CARD SURFACE BRIGHTNESS (GLOBAL)
+   ========================================= */
+body:not(.light-mode) {
+    --card-surface-soft-1: #1a1a1a;
+    --card-surface-soft-2: #1c1c1c;
+    --card-surface-soft-3: #222225;
+    --card-surface-soft-4: #141416;
+}
+
+/* Classes de card usadas no app */
+body:not(.light-mode) .card-bg,
+body:not(.light-mode) .wallet-card,
+body:not(.light-mode) .history-card,
+body:not(.light-mode) .fav-card,
+body:not(.light-mode) .fav-card-skeleton,
+body:not(.light-mode) .details-group-card,
+body:not(.light-mode) .details-highlight-card,
+body:not(.light-mode) .agenda-card,
+body:not(.light-mode) .square-payment-card,
+body:not(.light-mode) .news-card-summary,
+body:not(.light-mode) .modal-content,
+body:not(.light-mode) .notif-card-payment,
+body:not(.light-mode) .notif-card-datacom,
+body:not(.light-mode) .notif-item,
+body:not(.light-mode) .card-drawer > .drawer-content {
+    background-color: var(--card-surface-soft-1) !important;
+}
+
+/* Cards montados com classes utilitárias (HTML + app.js) */
+body:not(.light-mode) :is(#app-container, #auth-container) [class*="bg-[#151515]"] { background-color: #1a1a1a !important; }
+body:not(.light-mode) :is(#app-container, #auth-container) [class*="bg-[#141414]"] { background-color: #191919 !important; }
+body:not(.light-mode) :is(#app-container, #auth-container) [class*="bg-[#121212]"] { background-color: #181818 !important; }
+body:not(.light-mode) :is(#app-container, #auth-container) [class*="bg-[#111]"] { background-color: #171717 !important; }
+body:not(.light-mode) :is(#app-container, #auth-container) [class*="bg-[#0f0f0f]"] { background-color: #161616 !important; }
+body:not(.light-mode) :is(#app-container, #auth-container) [class*="bg-[#0d0d0d]"] { background-color: #151515 !important; }
+body:not(.light-mode) :is(#app-container, #auth-container) [class*="bg-[#0a0a0a]"] { background-color: #131313 !important; }
+body:not(.light-mode) :is(#app-container, #auth-container) [class*="bg-[#09090b]"] { background-color: var(--card-surface-soft-4) !important; }
+body:not(.light-mode) :is(#app-container, #auth-container) [class*="bg-[#1C1C1E]"] { background-color: #242427 !important; }
+body:not(.light-mode) :is(#app-container, #auth-container) [class*="bg-[#1c1c1e]"] { background-color: #242427 !important; }
+body:not(.light-mode) :is(#app-container, #auth-container) [class*="bg-[#1A1A1A]"] { background-color: #212121 !important; }
+body:not(.light-mode) :is(#app-container, #auth-container) [class*="bg-[#1a1a1a]"] { background-color: #212121 !important; }
+body:not(.light-mode) :is(#app-container, #auth-container) [class*="bg-[#1A1A1C]"] { background-color: #222224 !important; }
+body:not(.light-mode) :is(#app-container, #auth-container) [class*="bg-[#1a1a1c]"] { background-color: #222224 !important; }
+body:not(.light-mode) :is(#app-container, #auth-container) [class*="bg-[#1F1F1F]"] { background-color: var(--card-surface-soft-2) !important; }
+body:not(.light-mode) :is(#app-container, #auth-container) [class*="bg-[#1f1f1f]"] { background-color: var(--card-surface-soft-2) !important; }
+body:not(.light-mode) :is(#app-container, #auth-container) [class*="bg-[#222]"] { background-color: #2a2a2a !important; }

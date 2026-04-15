@@ -3104,6 +3104,6 @@ body:not(.light-mode) .vesto-card {
 
 /* Timeline: cards levemente menores */
 .timeline-card-compact {
-    width: 6.5rem;
-    height: 6.5rem;
+    width: 6.75rem;
+    height: 7rem;
 }

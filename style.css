@@ -1680,7 +1680,7 @@ body.light-mode .filter-funnel-btn:active {
 }
 
 .settings-group {
-    background-color: #141414;
+    background-color: var(--card-surface-soft-1, #202022);
     border: none;
     border-radius: 1.5rem;
     box-shadow: none;
@@ -1705,7 +1705,7 @@ body.light-mode .filter-funnel-btn:active {
 }
 
 .settings-item:active {
-    background-color: #1c1c1e !important;
+    background-color: var(--card-surface-soft-2, #252528) !important;
 }
 
 .settings-icon-box {
@@ -1717,7 +1717,7 @@ body.light-mode .filter-funnel-btn:active {
     justify-content: center;
     flex-shrink: 0;
     margin-right: 12px;
-    background-color: #18181b;
+    background-color: #242428;
     border: none;
 }
 

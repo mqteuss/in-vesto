@@ -5401,7 +5401,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
             container.classList.remove('hidden');
             lista.className = 'flex gap-3 px-1 mt-0 hide-scrollbar';
             lista.innerHTML = `
-                <div class="w-28 h-28 flex-shrink-0 bg-[#151515] bg-opacity-70 rounded-3xl p-3.5 flex flex-col justify-between cursor-default">
+                <div class="timeline-card-compact flex-shrink-0 bg-[#151515] bg-opacity-70 rounded-3xl p-3.5 flex flex-col justify-between cursor-default">
                     <div class="w-8 h-8 rounded-full bg-[#1c1c1e] border border-white/5 flex flex-col items-center justify-center">
                         <svg class="w-4 h-4 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
@@ -5472,7 +5472,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
 
             const item = document.createElement('div');
             // Formato 'Squarish' do screenshot sem bordas e conditionally snappable
-            item.className = `w-28 h-28 flex-shrink-0 ${isScrollable ? 'snap-start' : ''} bg-[#151515] rounded-3xl p-3.5 flex flex-col justify-between cursor-pointer active:scale-95 transition-transform`;
+            item.className = `timeline-card-compact flex-shrink-0 ${isScrollable ? 'snap-start' : ''} bg-[#151515] rounded-3xl p-3.5 flex flex-col justify-between cursor-pointer active:scale-95 transition-transform`;
 
             item.onclick = () => {
                 window.abrirDetalhesAtivo?.(prov.symbol);

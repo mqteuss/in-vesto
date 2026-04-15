@@ -3101,3 +3101,9 @@ body:not(.light-mode) .vesto-card {
 #tab-noticias #fii-news-list .card-drawer > .drawer-content {
     background-color: transparent !important;
 }
+
+/* Timeline: cards levemente menores */
+.timeline-card-compact {
+    width: 6.5rem;
+    height: 6.5rem;
+}

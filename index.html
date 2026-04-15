@@ -9,7 +9,7 @@
     <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192x192.png">
     <link rel="icon" type="image/png" sizes="512x512" href="icons/icon-512x512.png">
     <link rel="apple-touch-icon" href="icons/icon-192x192.png">
-    <link rel="manifest" href="/manifest.json">
+    <link rel="manifest" href="/manifest.json?v=36">
     <meta name="theme-color" content="#2e154f">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -166,10 +166,14 @@
             }
 
             const isLight = localStorage.getItem('vesto_theme') === 'light';
+            const startupThemeColor = isLight ? '#f9fafb' : '#2e154f';
             if (isLight) {
                 document.body.classList.add('light-mode');
-                document.querySelector('meta[name="theme-color"]').setAttribute('content', '#f9fafb');
             }
+            const themeMeta = document.querySelector('meta[name="theme-color"]');
+            if (themeMeta) themeMeta.setAttribute('content', startupThemeColor);
+            document.documentElement.style.backgroundColor = startupThemeColor;
+            document.body.style.backgroundColor = startupThemeColor;
         } catch (e) { console.error('Erro ao verificar configs iniciais', e); }
     </script>
 

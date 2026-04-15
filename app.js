@@ -2116,7 +2116,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.register('/sw.js?v=39').then(registration => {
+        navigator.serviceWorker.register('/sw.js?v=40').then(registration => {
             registration.addEventListener('updatefound', () => {
                 newWorker = registration.installing;
                 newWorker.addEventListener('statechange', () => {

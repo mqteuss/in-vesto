@@ -196,6 +196,21 @@ body {
     padding: 0;
 }
 
+:root {
+    --vesto-safe-top: env(safe-area-inset-top, 0px);
+}
+
+#app-container {
+    min-height: 100dvh;
+    height: 100dvh;
+}
+
+/* Edge-to-edge no topo da Home (hero passa por baixo da câmera/status bar) */
+#dashboard-hero-shell {
+    margin-top: calc(var(--vesto-safe-top) * -1);
+    padding-top: var(--vesto-safe-top);
+}
+
 html::-webkit-scrollbar,
 body::-webkit-scrollbar {
     display: none;

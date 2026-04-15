@@ -3105,5 +3105,8 @@ body:not(.light-mode) .vesto-card {
 /* Timeline: cards levemente menores */
 .timeline-card-compact {
     width: 6.75rem;
-    height: 7rem;
+    min-height: 7rem;
+    height: auto;
+    padding: 0.75rem !important;
+    box-sizing: border-box;
 }

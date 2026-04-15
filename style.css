@@ -198,6 +198,7 @@ body {
 
 :root {
     --vesto-safe-top: env(safe-area-inset-top, 0px);
+    --vesto-top-edge-fill: env(safe-area-inset-top, 0px);
 }
 
 #app-container {
@@ -207,8 +208,15 @@ body {
 
 /* Edge-to-edge no topo da Home (hero passa por baixo da câmera/status bar) */
 #dashboard-hero-shell {
-    margin-top: calc(var(--vesto-safe-top) * -1);
-    padding-top: var(--vesto-safe-top);
+    margin-top: calc(var(--vesto-top-edge-fill) * -1);
+    padding-top: var(--vesto-top-edge-fill);
+}
+
+@media (min-width: 1024px) {
+    #dashboard-hero-shell {
+        margin-top: 0;
+        padding-top: 0;
+    }
 }
 
 html::-webkit-scrollbar,

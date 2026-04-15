@@ -2,7 +2,7 @@
 // CONFIGURAÇÃO
 // Incremente CACHE_VERSION a cada deploy para forçar atualização.
 // ---------------------------------------------------------
-const CACHE_VERSION = 'v35'; // Ajustes de responsividade desktop + melhorias do modo claro
+const CACHE_VERSION = 'v37'; // Rollback para standalone + refresh de cache do manifesto
 const CACHE_NAME = `vesto-cache-${CACHE_VERSION}`;
 const DEFAULT_URL = '/?tab=tab-carteira';
 
@@ -27,6 +27,7 @@ const LOCAL_FILES = [
     '/style.css',
     '/style-tailwind.css',
     '/manifest.json',
+    '/manifest.json?v=37',
     '/logo-vesto.png',
     '/sininhov2.png',
     '/icons/carteira.png',

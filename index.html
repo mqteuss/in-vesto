@@ -9,7 +9,7 @@
     <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192x192.png">
     <link rel="icon" type="image/png" sizes="512x512" href="icons/icon-512x512.png">
     <link rel="apple-touch-icon" href="icons/icon-192x192.png">
-    <link rel="manifest" href="/manifest.json?v=37">
+    <link rel="manifest" href="/manifest.json?v=39">
     <meta name="theme-color" content="#2e154f">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -166,14 +166,10 @@
             }
 
             const isLight = localStorage.getItem('vesto_theme') === 'light';
-            const startupThemeColor = isLight ? '#f9fafb' : '#2e154f';
             if (isLight) {
                 document.body.classList.add('light-mode');
+                document.querySelector('meta[name="theme-color"]').setAttribute('content', '#f9fafb');
             }
-            const themeMeta = document.querySelector('meta[name="theme-color"]');
-            if (themeMeta) themeMeta.setAttribute('content', startupThemeColor);
-            document.documentElement.style.backgroundColor = startupThemeColor;
-            document.body.style.backgroundColor = startupThemeColor;
         } catch (e) { console.error('Erro ao verificar configs iniciais', e); }
     </script>
 
@@ -324,7 +320,7 @@
 
     <div id="app-wrapper" class="hidden">
 
-        <div id="app-container" class="max-w-lg mx-auto h-[100dvh] overflow-hidden relative bg-black pb-[env(safe-area-inset-bottom)]">
+        <div id="app-container" class="max-w-lg mx-auto h-screen overflow-hidden relative bg-black pb-[env(safe-area-inset-bottom)]">
 
             <div id="tabs-slider"
                 class="flex w-full h-full transition-transform duration-300 ease-out will-change-transform">

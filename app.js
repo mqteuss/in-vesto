@@ -1544,13 +1544,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (_dynamicThemeReady) {
             updateDynamicThemeColor();
         } else {
-            const startupColor = isLight ? '#f2f2f7' : '#000000';
+            const startupColor = isLight ? '#f2f2f7' : '#010101';
 
             if (metaTheme) metaTheme.setAttribute('content', startupColor);
             document.body.style.backgroundColor = startupColor;
             document.documentElement.style.backgroundColor = startupColor;
-            const appContainerEl = document.getElementById('app-container');
-            if (appContainerEl) appContainerEl.style.backgroundColor = startupColor;
         }
 
         if (toggleThemeBtn && themeToggleKnob) {
@@ -1635,7 +1633,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     // do dashboard, dando impressão de app nativo imersivo.
     const _metaThemeColor = document.querySelector('meta[name="theme-color"]');
     const _dashboardTab = document.getElementById('tab-dashboard');
-    const _appContainerThemeLayer = document.getElementById('app-container');
     const _heroCard = document.getElementById('resumo-carteira-card')?.closest('.relative') || (_dashboardTab ? _dashboardTab.querySelector(':scope > .relative') : null);
     let _isDashboardActive = true; // Dashboard é a tab inicial
     _dynamicThemeReady = true;
@@ -1653,7 +1650,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     function _getDefaultThemeColor() {
-        return localStorage.getItem('vesto_theme') === 'light' ? '#f2f2f7' : '#000000';
+        return localStorage.getItem('vesto_theme') === 'light' ? '#f2f2f7' : '#010101';
     }
 
     function _getHeroThemeColor() {
@@ -1670,7 +1667,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             _metaThemeColor.setAttribute('content', defColor);
             document.body.style.backgroundColor = defColor;
             document.documentElement.style.backgroundColor = defColor;
-            if (_appContainerThemeLayer) _appContainerThemeLayer.style.backgroundColor = defColor;
             return;
         }
 
@@ -1680,7 +1676,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             _metaThemeColor.setAttribute('content', heroColor);
             document.body.style.backgroundColor = heroColor;
             document.documentElement.style.backgroundColor = heroColor;
-            if (_appContainerThemeLayer) _appContainerThemeLayer.style.backgroundColor = heroColor;
             return;
         }
 
@@ -1703,7 +1698,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         _metaThemeColor.setAttribute('content', color);
         document.body.style.backgroundColor = color;
         document.documentElement.style.backgroundColor = color;
-        if (_appContainerThemeLayer) _appContainerThemeLayer.style.backgroundColor = color;
     }
 
     if (_dashboardTab) {
@@ -2122,7 +2116,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.register('/sw.js?v=38').then(registration => {
+        navigator.serviceWorker.register('/sw.js?v=39').then(registration => {
             registration.addEventListener('updatefound', () => {
                 newWorker = registration.installing;
                 newWorker.addEventListener('statechange', () => {

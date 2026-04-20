@@ -523,7 +523,7 @@ body.light-mode .side-panel-content {
 /* Bottom Nav */
 body.light-mode .bottom-nav {
     background: linear-gradient(180deg, rgba(255, 255, 255, 0.9) 0%, rgba(246, 246, 247, 0.95) 100%) !important;
-    border: 1px solid rgba(0, 0, 0, 0.08) !important;
+    border: none !important;
     box-shadow: 0 10px 28px rgba(0, 0, 0, 0.12) !important;
 }
 
@@ -541,7 +541,6 @@ body.light-mode .tab-button.active {
 
 body.light-mode .bottom-nav-pill {
     background: rgba(124, 58, 237, 0.14);
-    border-color: rgba(124, 58, 237, 0.3);
     box-shadow: 0 1px 8px rgba(124, 58, 237, 0.18);
 }
 
@@ -809,7 +808,7 @@ body.light-mode .btn-cancel:hover {
     background: linear-gradient(180deg, rgba(26, 26, 28, 0.86) 0%, rgba(18, 18, 20, 0.92) 100%);
     backdrop-filter: blur(22px) saturate(1.25);
     -webkit-backdrop-filter: blur(22px) saturate(1.25);
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    border: none;
     position: fixed;
     bottom: calc(env(safe-area-inset-bottom, 0px) + 0.65rem);
     left: 50%;
@@ -830,23 +829,23 @@ body.light-mode .btn-cancel:hover {
 
 .bottom-nav-pill {
     position: absolute;
-    top: 0.42rem;
+    top: 0;
     left: 0;
     width: 0;
-    height: 2rem;
+    height: 1.9rem;
     border-radius: 999px;
     background: rgba(192, 132, 252, 0.2);
-    border: 1px solid rgba(192, 132, 252, 0.36);
+    border: none;
     box-shadow: 0 1px 8px rgba(192, 132, 252, 0.22);
     transform: translate3d(0, 0, 0);
     transition: none;
-    will-change: transform, width;
+    will-change: transform, width, height;
     pointer-events: none;
     z-index: 0;
 }
 
 .bottom-nav-pill.is-animating {
-    transition: transform 280ms cubic-bezier(0.22, 1, 0.36, 1), width 280ms cubic-bezier(0.22, 1, 0.36, 1);
+    transition: transform 280ms cubic-bezier(0.22, 1, 0.36, 1), width 280ms cubic-bezier(0.22, 1, 0.36, 1), height 280ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .tab-button {

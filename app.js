@@ -10633,17 +10633,36 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
         const btn = tabButtons[index];
         if (!btn) return null;
         const navRect = bottomNavEl.getBoundingClientRect();
+        const iconWrapper = btn.querySelector('.tab-button-icon-wrapper');
+
+        if (iconWrapper) {
+            const iconRect = iconWrapper.getBoundingClientRect();
+            const width = Math.max(44, iconRect.width + 16);
+            const height = Math.max(28, iconRect.height + 8);
+            const centerX = (iconRect.left - navRect.left) + (iconRect.width / 2);
+            const centerY = (iconRect.top - navRect.top) + (iconRect.height / 2);
+            const x = centerX - (width / 2);
+            const y = centerY - (height / 2);
+            return { x, y, width, height, centerX, centerY };
+        }
+
         const btnRect = btn.getBoundingClientRect();
-        const x = btnRect.left - navRect.left;
-        const width = btnRect.width;
-        const centerX = x + (width / 2);
-        return { x, width, centerX };
+        const width = Math.max(44, btnRect.width * 0.58);
+        const height = 30;
+        const centerX = (btnRect.left - navRect.left) + (btnRect.width / 2);
+        const x = centerX - (width / 2);
+        const y = Math.max(0, (btnRect.top - navRect.top) + 6);
+        return { x, y, width, height, centerX };
     }
 
-    function applyBottomNavPillRect(x, width) {
+    function applyBottomNavPillRect(x, width, y, height) {
         if (!bottomNavPill) return;
         bottomNavPill.style.width = `${width}px`;
-        bottomNavPill.style.transform = `translate3d(${x}px, 0, 0)`;
+        if (typeof height === 'number') {
+            bottomNavPill.style.height = `${height}px`;
+        }
+        const translateY = typeof y === 'number' ? y : 0;
+        bottomNavPill.style.transform = `translate3d(${x}px, ${translateY}px, 0)`;
     }
 
     function triggerTabButtonBounce(button) {
@@ -10661,20 +10680,22 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
 
         if (options.instant) {
             bottomNavPill.classList.remove('is-animating');
-            applyBottomNavPillRect(target.x, target.width);
+            applyBottomNavPillRect(target.x, target.width, target.y, target.height);
             return;
         }
 
-        const collapsedWidth = Math.max(26, Math.min(36, target.width * 0.42));
+        const collapsedWidth = Math.max(24, Math.min(34, target.width * 0.48));
+        const collapsedHeight = Math.max(24, target.height * 0.9);
         const collapsedX = target.centerX - (collapsedWidth / 2);
+        const collapsedY = (target.y + (target.height / 2)) - (collapsedHeight / 2);
 
         bottomNavPill.classList.remove('is-animating');
-        applyBottomNavPillRect(collapsedX, collapsedWidth);
+        applyBottomNavPillRect(collapsedX, collapsedWidth, collapsedY, collapsedHeight);
 
         requestAnimationFrame(() => {
             if (!bottomNavPill) return;
             bottomNavPill.classList.add('is-animating');
-            applyBottomNavPillRect(target.x, target.width);
+            applyBottomNavPillRect(target.x, target.width, target.y, target.height);
         });
     }
 

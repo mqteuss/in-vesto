@@ -10625,6 +10625,53 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
     // Ordem exata das telas (deve bater com a ordem das divs no HTML)
     const tabOrder = ['tab-dashboard', 'tab-carteira', 'tab-noticias', 'tab-historico', 'tab-config'];
     let currentTabIndex = 0;
+    const bottomNavEl = document.querySelector('.bottom-nav');
+    const bottomNavPill = bottomNavEl?.querySelector('.bottom-nav-pill');
+
+    function updateBottomNavPillByProgress(progress, options = {}) {
+        if (!bottomNavEl || !bottomNavPill || tabButtons.length === 0) return;
+
+        const maxIdx = tabButtons.length - 1;
+        const clamped = Math.max(0, Math.min(maxIdx, progress));
+        const lowerIdx = Math.floor(clamped);
+        const upperIdx = Math.min(maxIdx, lowerIdx + 1);
+        const t = clamped - lowerIdx;
+
+        const lowerBtn = tabButtons[lowerIdx];
+        const upperBtn = tabButtons[upperIdx];
+        if (!lowerBtn || !upperBtn) return;
+
+        const navRect = bottomNavEl.getBoundingClientRect();
+        const lowerRect = lowerBtn.getBoundingClientRect();
+        const upperRect = upperBtn.getBoundingClientRect();
+
+        const xLower = lowerRect.left - navRect.left;
+        const xUpper = upperRect.left - navRect.left;
+        const wLower = lowerRect.width;
+        const wUpper = upperRect.width;
+
+        const x = xLower + (xUpper - xLower) * t;
+        const w = wLower + (wUpper - wLower) * t;
+
+        if (options.instant) {
+            bottomNavPill.style.transition = 'none';
+        }
+
+        bottomNavPill.style.width = `${w}px`;
+        bottomNavPill.style.transform = `translate3d(${x}px, 0, 0)`;
+
+        if (options.instant) {
+            requestAnimationFrame(() => {
+                if (bottomNavPill) bottomNavPill.style.transition = '';
+            });
+        }
+    }
+
+    function updateBottomNavPill(tabId, options = {}) {
+        const index = tabOrder.indexOf(tabId);
+        if (index === -1) return;
+        updateBottomNavPillByProgress(index, options);
+    }
 
     function mudarAba(tabId, options = {}) {
         const index = tabOrder.indexOf(tabId);
@@ -10654,6 +10701,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
         tabButtons.forEach(button => {
             button.classList.toggle('active', button.dataset.tab === tabId);
         });
+        updateBottomNavPill(tabId, options);
 
         if (showAddModalBtn) {
             if (tabId === 'tab-carteira') {
@@ -12657,6 +12705,8 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
         }
 
         tabsSliderEl.style.transform = `translateX(${nextOffset}px)`;
+        const dragProgress = Math.max(0, Math.min(tabOrder.length - 1, -nextOffset / tabSwipeState.width));
+        updateBottomNavPillByProgress(dragProgress, { instant: true });
         tabSwipeState.lastDeltaX = deltaX;
     }, { passive: false });
 
@@ -12716,6 +12766,12 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
         });
     }
     window.mudarAba = mudarAba;
+    window.addEventListener('resize', () => {
+        updateBottomNavPill(tabOrder[currentTabIndex], { instant: true });
+    });
+    requestAnimationFrame(() => {
+        updateBottomNavPill(tabOrder[currentTabIndex], { instant: true });
+    });
 
     window.confirmarExclusao = handleRemoverAtivo;
     window.abrirDetalhesAtivo = showDetalhesModal;

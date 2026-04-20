@@ -540,8 +540,8 @@ body.light-mode .tab-button.active {
 }
 
 body.light-mode .bottom-nav-pill {
-    background: rgba(124, 58, 237, 0.14);
-    box-shadow: 0 1px 8px rgba(124, 58, 237, 0.18);
+    background: #2e154f;
+    box-shadow: none;
 }
 
 /* Notificações */
@@ -834,9 +834,10 @@ body.light-mode .btn-cancel:hover {
     width: 0;
     height: 1.9rem;
     border-radius: 999px;
-    background: rgba(192, 132, 252, 0.2);
+    background: #2e154f;
     border: none;
-    box-shadow: 0 1px 8px rgba(192, 132, 252, 0.22);
+    box-shadow: none;
+    filter: none;
     transform: translate3d(0, 0, 0);
     transition: none;
     will-change: transform, width, height;

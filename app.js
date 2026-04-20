@@ -1,7 +1,7 @@
 import * as supabaseDB from './supabase.js';
 
 window.dismissNotificationGlobal = function (id, btnElement) {
-    // Usa o Set em RAM — localStorage só é escrito aqui, nunca relido
+    // Usa o Set em RAM â€” localStorage sÃ³ Ã© escrito aqui, nunca relido
     if (typeof dismissedNotifsSet !== 'undefined') {
         dismissedNotifsSet.add(id);
         localStorage.setItem('vesto_dismissed_notifs', JSON.stringify([...dismissedNotifsSet]));
@@ -12,7 +12,7 @@ window.dismissNotificationGlobal = function (id, btnElement) {
         localStorage.setItem('vesto_dismissed_notifs', JSON.stringify([...d]));
     }
 
-    // Animação de saída
+    // AnimaÃ§Ã£o de saÃ­da
     const card = btnElement.closest('.notif-item');
     if (card) {
         card.style.transform = 'translateX(100%)';
@@ -64,13 +64,13 @@ function limparTodasNotificacoes() {
     const visibleCards = list.querySelectorAll('.notif-item');
     if (visibleCards.length === 0) return;
 
-    // Usa o Set em RAM — sem leitura de localStorage durante o loop
+    // Usa o Set em RAM â€” sem leitura de localStorage durante o loop
     const dismissed = (typeof dismissedNotifsSet !== 'undefined')
         ? dismissedNotifsSet
         : new Set(JSON.parse(localStorage.getItem('vesto_dismissed_notifs') || '[]'));
 
     visibleCards.forEach((card, index) => {
-        // Salva ID e aplica efeito cascata na saída
+        // Salva ID e aplica efeito cascata na saÃ­da
         const id = card.getAttribute('data-notif-id');
         if (id) dismissed.add(id);
 
@@ -136,8 +136,8 @@ function decodeHtmlEntities(value) {
     return textarea.value;
 }
 
-// OTIMIZAÇÃO: Intl.NumberFormat instanciado UMA vez e reutilizado.
-// Evita criar um novo objeto de formatação a cada chamada (até 10x mais rápido em loops).
+// OTIMIZAÃ‡ÃƒO: Intl.NumberFormat instanciado UMA vez e reutilizado.
+// Evita criar um novo objeto de formataÃ§Ã£o a cada chamada (atÃ© 10x mais rÃ¡pido em loops).
 const _fmtBRL = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
 const _fmtNumber = new Intl.NumberFormat('pt-BR');
 
@@ -145,19 +145,19 @@ const isPrivacyModeActive = () => document.body.classList.contains('privacy-mode
 
 const formatBRL = (value) => {
     if (value == null) return 'N/A';
-    if (isPrivacyModeActive()) return 'R$ ••••';
+    if (isPrivacyModeActive()) return 'R$ â€¢â€¢â€¢â€¢';
     return _fmtBRL.format(value);
 };
 
 const formatNumber = (value) => {
     if (value == null) return 'N/A';
-    if (isPrivacyModeActive()) return '••••';
+    if (isPrivacyModeActive()) return 'â€¢â€¢â€¢â€¢';
     return _fmtNumber.format(value);
 };
 
 const formatCurrencyShort = (value) => {
     if (value == null) return 'N/A';
-    if (isPrivacyModeActive()) return 'R$ ••••';
+    if (isPrivacyModeActive()) return 'R$ â€¢â€¢â€¢â€¢';
     return _fmtNumber.format(value);
 };
 
@@ -189,8 +189,8 @@ const formatDateToInput = (dateString) => {
     }
 };
 
-// Lista principal de grandes BDRs e Units da B3 que terminam com 11, mas NÃO SÃO FIIs e devem receber logos
-// OTIMIZAÇÃO: Set para lookup O(1) em vez de Array.includes() O(97)
+// Lista principal de grandes BDRs e Units da B3 que terminam com 11, mas NÃƒO SÃƒO FIIs e devem receber logos
+// OTIMIZAÃ‡ÃƒO: Set para lookup O(1) em vez de Array.includes() O(97)
 const KNOWN_UNITS_BDRS = new Set([
     'BPAC11', 'BIDI11', 'ENGI11', 'TAEE11', 'KLBN11', 'SANB11', 'ALUP11', 'BBAS11',
     'MODL11', 'BRBI11', 'SULA11', 'SAPR11', 'IGTI11', 'CPLE11', 'ABEV11', 'PETR11',
@@ -246,9 +246,9 @@ const VESTO_CARD_EXCLUDED_TAGS = new Set(['INPUT', 'TEXTAREA', 'SELECT', 'BUTTON
 function shouldApplyVestoCardClass(el) {
     if (!(el instanceof HTMLElement)) return false;
     if (VESTO_CARD_EXCLUDED_TAGS.has(el.tagName)) return false;
-    if (el.closest('#timeline-pagamentos-container')) return false; // Mantém exceção da timeline
-    if (el.closest('#tab-historico')) return false; // Extrato mantém estilo próprio
-    if (el.closest('#tab-noticias')) return false; // Notícias mantém visual próprio
+    if (el.closest('#timeline-pagamentos-container')) return false; // MantÃ©m exceÃ§Ã£o da timeline
+    if (el.closest('#tab-historico')) return false; // Extrato mantÃ©m estilo prÃ³prio
+    if (el.closest('#tab-noticias')) return false; // NotÃ­cias mantÃ©m visual prÃ³prio
 
     const className = typeof el.className === 'string' ? el.className : '';
     if (!className) return false;
@@ -534,10 +534,10 @@ const CACHE_PRECO_MERCADO_FECHADO = 1000 * 60 * 60 * 12;
 const CACHE_NOTICIAS = 1000 * 60 * 15;
 const CACHE_IA_HISTORICO = 1000 * 60 * 60 * 24;
 const CACHE_PROVENTOS = 1000 * 60 * 60 * 12;
-// Fundamentos mudam pouco durante o dia — cache de 4h no mercado aberto, 24h no fechado
+// Fundamentos mudam pouco durante o dia â€” cache de 4h no mercado aberto, 24h no fechado
 const CACHE_FUNDAMENTOS_ABERTO = 1000 * 60 * 60 * 4;
 const CACHE_FUNDAMENTOS_FECHADO = 1000 * 60 * 60 * 24;
-// Próximo provento — 30min no mercado aberto, 4h no fechado
+// PrÃ³ximo provento â€” 30min no mercado aberto, 4h no fechado
 const CACHE_PROXIMO_PROVENTO_ABERTO = 1000 * 60 * 30;
 const CACHE_PROXIMO_PROVENTO_FECHADO = 1000 * 60 * 60 * 4;
 
@@ -639,7 +639,7 @@ function toggleDrawer(symbol) {
 
 function loadSheetJS() {
     return new Promise((resolve, reject) => {
-        // Se a biblioteca já existe na janela, não baixa de novo
+        // Se a biblioteca jÃ¡ existe na janela, nÃ£o baixa de novo
         if (window.XLSX) {
             return resolve();
         }
@@ -649,7 +649,7 @@ function loadSheetJS() {
         script.onload = () => {
             resolve();
         };
-        script.onerror = () => reject(new Error("Falha ao baixar a biblioteca Excel. Verifique sua conexão."));
+        script.onerror = () => reject(new Error("Falha ao baixar a biblioteca Excel. Verifique sua conexÃ£o."));
         document.body.appendChild(script);
     });
 }
@@ -722,7 +722,7 @@ function renderProventosHtml(proventosParaExibir, quantidade) {
 
     return `<div class="mt-4 pt-3 border-t border-[#2C2C2E]">
         <div class="flex justify-between items-center mb-2">
-            <span class="text-[10px] text-gray-500 font-bold uppercase tracking-wider">Provisão Futura</span>
+            <span class="text-[10px] text-gray-500 font-bold uppercase tracking-wider">ProvisÃ£o Futura</span>
             <span class="text-xs font-bold text-green-400 bg-green-900/10 px-2 py-0.5 rounded border border-green-900/20">
                 Total: ${formatBRL(totalReceberGeral)}
             </span>
@@ -752,7 +752,7 @@ function criarCardElemento(ativo, dados) {
         : `<div class="w-full h-full flex items-center justify-center bg-[#0a0a0a] border border-[#222] rounded-xl text-xs font-bold text-gray-200 tracking-wider">${sigla}</div>`;
 
     const bgBadge = lucroPrejuizo >= 0 ? 'bg-green-500/10 text-green-500' : 'bg-red-500/10 text-red-500';
-    const plArrow = lucroPrejuizo >= 0 ? '▲' : '▼';
+    const plArrow = lucroPrejuizo >= 0 ? 'â–²' : 'â–¼';
     const plTagHtml = dadoPreco
         ? `<span class="px-1.5 py-0.5 rounded text-[10px] font-bold ${bgBadge} border border-white/5 flex items-center gap-1">
              ${plArrow} ${Math.abs(lucroPrejuizoPercent).toFixed(1)}%
@@ -766,7 +766,7 @@ function criarCardElemento(ativo, dados) {
 
     const card = document.createElement('div');
 
-    // O card agora é estático no clique, apenas a seta vai girar.
+    // O card agora Ã© estÃ¡tico no clique, apenas a seta vai girar.
     card.className = 'wallet-card group cursor-pointer select-none';
     card.setAttribute('data-symbol', ativo.symbol);
 
@@ -777,7 +777,7 @@ function criarCardElemento(ativo, dados) {
         // 1. Identifica a seta deste card
         const currentArrow = this.querySelector('.drawer-arrow');
 
-        // 2. Reseta TODAS as outras setas da página para baixo
+        // 2. Reseta TODAS as outras setas da pÃ¡gina para baixo
         const allArrows = document.querySelectorAll('.drawer-arrow');
         allArrows.forEach(arrow => {
             if (arrow !== currentArrow) {
@@ -821,7 +821,7 @@ function criarCardElemento(ativo, dados) {
                         </div>
                         <div class="text-[11px] text-gray-500 mt-0.5 flex items-center">
                             <span data-field="cota-qtd">${ativo.quantity} cotas</span>
-                            <span class="mx-1">•</span>
+                            <span class="mx-1">â€¢</span>
                             <span data-field="preco-unitario" class="font-medium text-gray-400">${precoFormatado}</span>
                         </div>
                     </div>
@@ -852,11 +852,11 @@ function criarCardElemento(ativo, dados) {
                         <p data-field="custo-valor" class="text-sm ${textDrawerVal} font-medium">${formatBRL(custoTotal)}</p>
                     </div>
                     <div class="text-right">
-                         <span class="text-[10px] text-gray-400 uppercase font-bold tracking-wider">Lucro/Prejuízo</span>
+                         <span class="text-[10px] text-gray-400 uppercase font-bold tracking-wider">Lucro/PrejuÃ­zo</span>
                          <p data-field="pl-valor" class="text-sm font-bold ${corPL}">${dadoPreco ? formatBRL(lucroPrejuizo) : '...'}</p>
                     </div>
                     <div>
-                        <span class="text-[10px] text-gray-400 uppercase font-bold tracking-wider">Preço Médio</span>
+                        <span class="text-[10px] text-gray-400 uppercase font-bold tracking-wider">PreÃ§o MÃ©dio</span>
                         <p class="text-sm ${textDrawerVal} font-medium">${formatBRL(ativo.precoMedio)}</p>
                     </div>
                     <div class="text-right relative">
@@ -865,7 +865,7 @@ function criarCardElemento(ativo, dados) {
                              ${percentWallet > 30 ? '<svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>' : ''}${formatPercent(percentWallet)}
                          </p>
                          <div class="peso-popover absolute right-0 top-full mt-1 w-48 bg-[#1C1C1E] border border-[#2C2C2E] rounded-xl p-3 shadow-2xl transition-all duration-200 text-left hidden opacity-0 z-50 cursor-default" onclick="event.stopPropagation()">
-                             <p class="text-[11px] text-gray-300 leading-relaxed"><span class="text-amber-500 font-bold block mb-1">Atenção à Concentração</span>Este ativo representa <strong>mais de 30%</strong> do seu patrimônio. Uma alta concentração pode aumentar seu nível de risco.</p>
+                             <p class="text-[11px] text-gray-300 leading-relaxed"><span class="text-amber-500 font-bold block mb-1">AtenÃ§Ã£o Ã  ConcentraÃ§Ã£o</span>Este ativo representa <strong>mais de 30%</strong> do seu patrimÃ´nio. Uma alta concentraÃ§Ã£o pode aumentar seu nÃ­vel de risco.</p>
                          </div>
                     </div>
                 </div>
@@ -900,14 +900,14 @@ function atualizarCardElemento(card, ativo, dados) {
         listaProventos = []
     } = dados;
 
-    // Atualiza Cabeçalho
+    // Atualiza CabeÃ§alho
     card.querySelector('[data-field="cota-qtd"]').textContent = `${ativo.quantity} cotas`;
     card.querySelector('[data-field="preco-unitario"]').textContent = precoFormatado;
 
     // Atualiza Valores Principais
     card.querySelector('[data-field="posicao-valor"]').textContent = dadoPreco ? formatBRL(totalPosicao) : '...';
 
-    // Atualiza Variação
+    // Atualiza VariaÃ§Ã£o
     const varEl = card.querySelector('[data-field="variacao-valor"]');
     varEl.className = `text-xs font-medium ${corVariacao} mt-0.5`;
     varEl.textContent = dadoPreco ? variacaoFormatada : '0.00%';
@@ -916,7 +916,7 @@ function atualizarCardElemento(card, ativo, dados) {
     const headerDiv = card.querySelector('.flex.items-center.gap-2 > span.px-1\\.5');
     if (dadoPreco && headerDiv) {
         const bgBadge = lucroPrejuizo >= 0 ? 'bg-green-500/10 text-green-500' : 'bg-red-500/10 text-red-500';
-        const plArrow = lucroPrejuizo >= 0 ? '▲' : '▼';
+        const plArrow = lucroPrejuizo >= 0 ? 'â–²' : 'â–¼';
         headerDiv.className = `px-1.5 py-0.5 rounded text-[10px] font-bold ${bgBadge} border border-white/5 flex items-center gap-1`;
         headerDiv.innerHTML = `${plArrow} ${Math.abs(lucroPrejuizoPercent).toFixed(1)}%`;
     }
@@ -941,7 +941,7 @@ function atualizarCardElemento(card, ativo, dados) {
         }
     }
 
-    // Atualização dos Proventos
+    // AtualizaÃ§Ã£o dos Proventos
     const containerProventos = card.querySelector('[data-field="provento-container"]');
     let proventosParaExibir = (listaProventos && listaProventos.length > 0) ? listaProventos : (dadoProvento ? [dadoProvento] : []);
 
@@ -955,8 +955,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     let historicoVirtualizer = null;
     let proventosVirtualizer = null;
-    const ROW_HEIGHT_CARD = 84;   // Altura estimada do card de transação (pixels)
-    const ROW_HEIGHT_HEADER = 50; // Altura estimada do cabeçalho do mês (pixels)
+    const ROW_HEIGHT_CARD = 84;   // Altura estimada do card de transaÃ§Ã£o (pixels)
+    const ROW_HEIGHT_HEADER = 50; // Altura estimada do cabeÃ§alho do mÃªs (pixels)
     let lastTransacoesSignature = '';
     let lastPatrimonioCalcSignature = '';
     let lastHistoricoListSignature = '';
@@ -974,8 +974,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     let saldoCaixa = 0;
     let proventosConhecidos = [];
     let watchlist = [];
-    // Set em memória para notificações dispensadas — populado uma única vez
-    // em carregarDadosIniciais. Leituras usam RAM; escrita só ocorre no dismiss.
+    // Set em memÃ³ria para notificaÃ§Ãµes dispensadas â€” populado uma Ãºnica vez
+    // em carregarDadosIniciais. Leituras usam RAM; escrita sÃ³ ocorre no dismiss.
     let dismissedNotifsSet = new Set();
     let alocacaoChartInstance = null;
     let historicoChartInstance = null;
@@ -1015,10 +1015,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     const isLikelyMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent || '');
 
     const NEWS_CATEGORY_QUERIES = {
-        geral: '("Ações" OR "FIIs" OR "Bolsa de Valores" OR "Dividendos")',
-        fiis: '("Fundo Imobiliário" OR "Fundos Imobiliários" OR "IFIX")',
-        acoes: '("Ibovespa" OR "B3" OR "Balanço" OR "Ações")',
-        economia: '("Economia" OR "Selic" OR "IPCA" OR "Inflação" OR "Copom")'
+        geral: '("AÃ§Ãµes" OR "FIIs" OR "Bolsa de Valores" OR "Dividendos")',
+        fiis: '("Fundo ImobiliÃ¡rio" OR "Fundos ImobiliÃ¡rios" OR "IFIX")',
+        acoes: '("Ibovespa" OR "B3" OR "BalanÃ§o" OR "AÃ§Ãµes")',
+        economia: '("Economia" OR "Selic" OR "IPCA" OR "InflaÃ§Ã£o" OR "Copom")'
     };
     const patrimonioPageModal = document.getElementById('patrimonio-page-modal');
     const patrimonioPageContent = document.getElementById('tab-patrimonio-content');
@@ -1067,7 +1067,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     let isDraggingIpca = false;
     let touchStartIpcaY = 0;
     let touchMoveIpcaY = 0;
-    // Variável para armazenar cache simples do IPCA
+    // VariÃ¡vel para armazenar cache simples do IPCA
     let ipcaCacheData = null;
 
     const btnOpenRaiox = document.getElementById('btn-carteira-raiox');
@@ -1112,7 +1112,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             });
         },
         _getStore(storeName, mode = 'readonly') {
-            if (!this.db) throw new Error('DB não inicializado.');
+            if (!this.db) throw new Error('DB nÃ£o inicializado.');
             return this.db.transaction(storeName, mode).objectStore(storeName);
         },
         get(storeName, key) {
@@ -1306,9 +1306,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     const btnSairLock = document.getElementById('btn-sair-lock');
     const installSection = document.getElementById('install-section');
     const installBtn = document.getElementById('install-app-btn');
-    // Range buttons e slider antigos foram removidos – período agora é via bottom sheet
+    // Range buttons e slider antigos foram removidos â€“ perÃ­odo agora Ã© via bottom sheet
 
-    // ─── NAVEGAÇÃO POR TABS DO MODAL DE DETALHES ─────────────────────────────
+    // â”€â”€â”€ NAVEGAÃ‡ÃƒO POR TABS DO MODAL DE DETALHES â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     function switchDetalhesTab(tabName) {
         document.querySelectorAll('.detalhe-tab-panel').forEach(p => p.classList.add('hidden'));
         document.querySelectorAll('.detalhe-tab-btn').forEach(b => {
@@ -1321,7 +1321,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (btn) {
             btn.classList.remove('text-gray-500');
             btn.classList.add('text-white');
-            // Anima o slider branco até o botão ativo
+            // Anima o slider branco atÃ© o botÃ£o ativo
             const slider = document.getElementById('detalhes-tab-slider');
             if (slider) {
                 slider.style.left = `${btn.offsetLeft}px`;
@@ -1383,7 +1383,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (dadosChart.profitabilities.length > 0) {
             const baseSeries = dadosChart.profitabilities[0];
 
-            // Tratativa: Se o range pedido for maior que o disponível, mostramos o maximo
+            // Tratativa: Se o range pedido for maior que o disponÃ­vel, mostramos o maximo
             const totalMeses = baseSeries.length;
             const startIndex = Math.max(0, totalMeses - monthsRange);
 
@@ -1478,7 +1478,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             // Se pediu mais do que tem (ex: pediu 120 e tem 70) -> limita a 70
             if (range > mesesDisponiveis && mesesDisponiveis > 1) {
                 const anosLms = (mesesDisponiveis / 12).toFixed(1).replace('.0', '');
-                showToast(`Exibindo máximo de ${anosLms} anos disponíveis.`);
+                showToast(`Exibindo mÃ¡ximo de ${anosLms} anos disponÃ­veis.`);
                 range = mesesDisponiveis;
             }
         }
@@ -1540,7 +1540,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             Chart.defaults.borderColor = 'rgba(255,255,255,0.05)';
         }
 
-        // Delega a cor da status bar ao sistema dinâmico de scroll
+        // Delega a cor da status bar ao sistema dinÃ¢mico de scroll
         if (_dynamicThemeReady) {
             updateDynamicThemeColor();
         } else {
@@ -1561,7 +1561,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         }
 
-        // 2. Função para forçar atualização profunda nas instâncias já criadas
+        // 2. FunÃ§Ã£o para forÃ§ar atualizaÃ§Ã£o profunda nas instÃ¢ncias jÃ¡ criadas
         const updateChartColors = (chart) => {
             if (!chart?.options) return;
 
@@ -1597,10 +1597,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                 chart.options.plugins.tooltip.borderColor = tooltipBorder;
                 chart.options.plugins.tooltip.borderWidth = 1;
 
-                // Adiciona sombra no tooltip light mode via CSS (ChartJS não suporta shadow nativo fácil, mas o bg ajuda)
+                // Adiciona sombra no tooltip light mode via CSS (ChartJS nÃ£o suporta shadow nativo fÃ¡cil, mas o bg ajuda)
             }
 
-            // Borda do Gráfico de Rosca (Alocação)
+            // Borda do GrÃ¡fico de Rosca (AlocaÃ§Ã£o)
             if (chart.config.type === 'doughnut') {
                 if (chart.data.datasets[0]) {
                     chart.data.datasets[0].borderColor = doughnutBorder;
@@ -1608,7 +1608,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 }
             }
 
-            // Cores do Gráfico de Patrimônio (Linha)
+            // Cores do GrÃ¡fico de PatrimÃ´nio (Linha)
             if (chart.config.type === 'line' && chart.data.datasets.length > 1) {
                 // Linha de "Investido" (tracejada) precisa escurecer no light mode
                 const colorInvestido = isLight ? '#6b7280' : '#525252';
@@ -1618,7 +1618,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             chart.update();
         };
 
-        // 3. Aplica a correção em todos os gráficos ativos
+        // 3. Aplica a correÃ§Ã£o em todos os grÃ¡ficos ativos
         updateChartColors(alocacaoChartInstance);
         updateChartColors(patrimonioChartInstance);
         updateChartColors(historicoChartInstance);
@@ -1628,13 +1628,13 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     updateThemeUI();
 
-    // ─── DYNAMIC THEME-COLOR (Status Bar Imersiva) ─────────────────────
+    // â”€â”€â”€ DYNAMIC THEME-COLOR (Status Bar Imersiva) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     // Muda a cor da status bar do Android para combinar com o hero roxo
-    // do dashboard, dando impressão de app nativo imersivo.
+    // do dashboard, dando impressÃ£o de app nativo imersivo.
     const _metaThemeColor = document.querySelector('meta[name="theme-color"]');
     const _dashboardTab = document.getElementById('tab-dashboard');
     const _heroCard = document.getElementById('resumo-carteira-card')?.closest('.relative') || (_dashboardTab ? _dashboardTab.querySelector(':scope > .relative') : null);
-    let _isDashboardActive = true; // Dashboard é a tab inicial
+    let _isDashboardActive = true; // Dashboard Ã© a tab inicial
     _dynamicThemeReady = true;
 
     function _lerpColor(a, b, t) {
@@ -1654,14 +1654,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     function _getHeroThemeColor() {
-        // Cor do hero no dark mode é #2e154f, no light mode usa um tom mais claro
+        // Cor do hero no dark mode Ã© #2e154f, no light mode usa um tom mais claro
         return localStorage.getItem('vesto_theme') === 'light' ? '#e8dff5' : '#2e154f';
     }
 
     function updateDynamicThemeColor() {
         if (!_metaThemeColor) return;
 
-        // Fora do dashboard → sempre cor padrão
+        // Fora do dashboard â†’ sempre cor padrÃ£o
         if (!_isDashboardActive) {
             const defColor = _getDefaultThemeColor();
             _metaThemeColor.setAttribute('content', defColor);
@@ -1670,7 +1670,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             return;
         }
 
-        // No dashboard mas sem hero → cor do hero fixa (topo)
+        // No dashboard mas sem hero â†’ cor do hero fixa (topo)
         if (!_dashboardTab || !_heroCard) {
             const heroColor = _getHeroThemeColor();
             _metaThemeColor.setAttribute('content', heroColor);
@@ -1681,7 +1681,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         const scrollTop = _dashboardTab.scrollTop;
         const heroHeight = _heroCard.offsetHeight;
-        // Começa a transição quando o hero está 90% scrollado, completa quando 100% scrollado
+        // ComeÃ§a a transiÃ§Ã£o quando o hero estÃ¡ 90% scrollado, completa quando 100% scrollado
         const fadeStart = heroHeight * 0.95;
         const fadeEnd = heroHeight * 1.0;
 
@@ -1713,7 +1713,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         }, { passive: true });
     }
 
-    // Detecta mudança de tab de forma infalível observando a classe "active" do dashboard
+    // Detecta mudanÃ§a de tab de forma infalÃ­vel observando a classe "active" do dashboard
     if (_dashboardTab) {
         const observer = new MutationObserver((mutations) => {
             mutations.forEach((mutation) => {
@@ -1734,7 +1734,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // Seta a cor inicial ao carregar (dashboard no topo = hero roxo)
     updateDynamicThemeColor();
-    // ─── FIM DYNAMIC THEME-COLOR ───────────────────────────────────────
+    // â”€â”€â”€ FIM DYNAMIC THEME-COLOR â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     if (toggleThemeBtn) {
         toggleThemeBtn.addEventListener('click', () => {
@@ -1742,11 +1742,11 @@ document.addEventListener('DOMContentLoaded', async () => {
             localStorage.setItem('vesto_theme', current ? 'dark' : 'light');
             updateThemeUI();
 
-            // Força a re-renderização imediata de componentes com caches de cor (como as listas virtuais)
+            // ForÃ§a a re-renderizaÃ§Ã£o imediata de componentes com caches de cor (como as listas virtuais)
             if (typeof window.renderizarHistoricoGlobal === 'function') window.renderizarHistoricoGlobal();
             if (typeof window.renderizarHistoricoProventosGlobal === 'function') window.renderizarHistoricoProventosGlobal();
 
-            // Re-pinta a lista de objetivos chamando a função do arquivo
+            // Re-pinta a lista de objetivos chamando a funÃ§Ã£o do arquivo
             if (typeof renderizarObjetivos === 'function') renderizarObjetivos();
 
             // Para a carteira, chamamos o render direto da janela global
@@ -1846,7 +1846,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             return true;
         }
 
-        // Se o prompt inline já autenticou com sucesso, não re-disparamos.
+        // Se o prompt inline jÃ¡ autenticou com sucesso, nÃ£o re-disparamos.
         if (window.__vestoUnlockedEarly) {
             esconderTelaBloqueioBiometrico();
             return true;
@@ -1854,7 +1854,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         mostrarTelaBloqueioBiometrico(true);
 
-        // Se o script inline ainda está em execução, evita dupla chamada de WebAuthn.
+        // Se o script inline ainda estÃ¡ em execuÃ§Ã£o, evita dupla chamada de WebAuthn.
         if (window.__vestoBioPromptInFlight) return false;
 
         return await autenticarBiometria({ source: 'auto' });
@@ -1879,22 +1879,22 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     async function ativarBiometria() {
         if (!window.PublicKeyCredential || !navigator.credentials?.create) {
-            showToast('Seu dispositivo não suporta biometria.');
+            showToast('Seu dispositivo nÃ£o suporta biometria.');
             return;
         }
         if (!window.isSecureContext) {
-            showToast('Biometria requer conexão segura (HTTPS).');
+            showToast('Biometria requer conexÃ£o segura (HTTPS).');
             return;
         }
         if (!currentUserId) {
-            showToast('Sessão inválida. Entre novamente para ativar biometria.');
+            showToast('SessÃ£o invÃ¡lida. Entre novamente para ativar biometria.');
             return;
         }
 
         try {
             const platformAvailable = await isPlatformAuthenticatorAvailable();
             if (!platformAvailable) {
-                showToast('Biometria indisponível neste dispositivo.');
+                showToast('Biometria indisponÃ­vel neste dispositivo.');
                 return;
             }
 
@@ -1910,7 +1910,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 user: {
                     id: userIdBuffer,
                     name: "usuario@vesto",
-                    displayName: "Usuário Vesto"
+                    displayName: "UsuÃ¡rio Vesto"
                 },
                 pubKeyCredParams: [
                     { type: "public-key", alg: -7 },
@@ -1956,7 +1956,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         } catch (e) {
             console.error("Erro biometria:", e);
             if (e?.name === 'NotAllowedError') {
-                showToast('Ativação cancelada. Tente novamente e confirme no Android.');
+                showToast('AtivaÃ§Ã£o cancelada. Tente novamente e confirme no Android.');
                 return;
             }
             showToast(`Erro ao ativar: ${e.message || e.name}`);
@@ -1977,7 +1977,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         if (savedRpId && savedRpId !== currentRpId) {
             desativarBiometria();
-            showToast('O domínio do app mudou. Ative a biometria novamente.');
+            showToast('O domÃ­nio do app mudou. Ative a biometria novamente.');
             return false;
         }
 
@@ -2048,11 +2048,11 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             if (['EncodingError', 'DataError', 'TypeError'].includes(e?.name)) {
                 desativarBiometria();
-                showToast('Credencial biométrica inválida. Ative novamente nas configurações.');
+                showToast('Credencial biomÃ©trica invÃ¡lida. Ative novamente nas configuraÃ§Ãµes.');
                 return false;
             }
 
-            // Se falhou ou cancelou, exibe o botão na tela para tentar de novo
+            // Se falhou ou cancelou, exibe o botÃ£o na tela para tentar de novo
             mostrarTelaBloqueioBiometrico(true);
             if (source === 'manual' && !['NotAllowedError', 'AbortError'].includes(e?.name)) {
                 showToast(`Falha na biometria: ${e.name || 'erro desconhecido'}.`);
@@ -2269,14 +2269,14 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             // Reset do Toggle para Compra
             const btnCompra = document.getElementById('btn-opt-compra');
-            if (btnCompra) btnCompra.click(); // Simula clique para resetar animação e valor
+            if (btnCompra) btnCompra.click(); // Simula clique para resetar animaÃ§Ã£o e valor
 
             transacaoEmEdicao = null;
             tickerInput.disabled = false;
-            addModalTitle.textContent = 'Nova Transação';
+            addModalTitle.textContent = 'Nova TransaÃ§Ã£o';
             addButton.textContent = 'Salvar';
 
-            // Esconde botão de excluir
+            // Esconde botÃ£o de excluir
             const btnExcluir = document.getElementById('btn-excluir-transacao');
             if (btnExcluir) btnExcluir.classList.add('hidden');
 
@@ -2288,9 +2288,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     function showDetalhesModal(symbol) {
         if (document.getElementById('batch-toolbar')?.classList.contains('visible')) return;
 
-        // CORREÇÃO: Cancela qualquer limparDetalhes pendente do fechamento anterior.
-        // Sem isso, se o usuário reabrir o modal em < 400ms o setTimeout do
-        // hideDetalhesModal dispara limparDetalhes() e apaga os dados recém-carregados.
+        // CORREÃ‡ÃƒO: Cancela qualquer limparDetalhes pendente do fechamento anterior.
+        // Sem isso, se o usuÃ¡rio reabrir o modal em < 400ms o setTimeout do
+        // hideDetalhesModal dispara limparDetalhes() e apaga os dados recÃ©m-carregados.
         if (_limparDetalhesTimerId) {
             clearTimeout(_limparDetalhesTimerId);
             _limparDetalhesTimerId = null;
@@ -2313,12 +2313,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         document.body.style.overflow = '';
 
         // CORRECAO REAL: os charts precisam ser destruidos AGORA, nao apos 400ms.
-        // A animacao de fechamento e apenas CSS — nao depende dos charts existirem.
+        // A animacao de fechamento e apenas CSS â€” nao depende dos charts existirem.
         // Se o usuario navegar para outra aba em < 400ms, o ResizeObserver do
-        // Chart.js disparava no canvas ainda vivo no DOM → crash.
+        // Chart.js disparava no canvas ainda vivo no DOM â†’ crash.
         currentChartFetchId++; // Cancela qualquer fetch em voo imediatamente
 
-        // ✅ CORREÇÃO: Destruir todas as instâncias ANTES de remover containers do DOM.
+        // âœ… CORREÃ‡ÃƒO: Destruir todas as instÃ¢ncias ANTES de remover containers do DOM.
         if (cotacaoChartInstance) {
             cotacaoChartInstance.destroy();
             cotacaoChartInstance = null;
@@ -2336,8 +2336,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             window.imoveisChartInstance = null;
         }
 
-        // ✅ Zerar dimensões do canvas impede que observers residuais encontrem
-        //    um contexto 2D válido após a remoção do elemento.
+        // âœ… Zerar dimensÃµes do canvas impede que observers residuais encontrem
+        //    um contexto 2D vÃ¡lido apÃ³s a remoÃ§Ã£o do elemento.
         const canvasCotacao = document.getElementById('canvas-cotacao');
         if (canvasCotacao) {
             canvasCotacao.width = 0;
@@ -2361,7 +2361,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     async function carregarTransacoes() {
         transacoes = await supabaseDB.getTransacoes();
-        _rebuiltTxIndex(); // Reconstrói índice symbol → transações para getQuantidadeNaData
+        _rebuiltTxIndex(); // ReconstrÃ³i Ã­ndice symbol â†’ transaÃ§Ãµes para getQuantidadeNaData
     }
 
 
@@ -2389,7 +2389,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         carouselEl.innerHTML = '';
 
-        // 1. ESTADO VAZIO (BOTÃO "ADD")
+        // 1. ESTADO VAZIO (BOTÃƒO "ADD")
         if (watchlist.length === 0) {
             carouselEl.innerHTML = `
             <div onclick="mudarAba('tab-carteira'); setTimeout(() => document.getElementById('carteira-search-input').focus(), 400);" 
@@ -2402,7 +2402,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         const precosMap = new Map(precosAtuais.map(p => [p.symbol, p]));
 
-        // Isso garante que os ícones fiquem sempre na mesma posição
+        // Isso garante que os Ã­cones fiquem sempre na mesma posiÃ§Ã£o
         watchlist.sort((a, b) => a.symbol.localeCompare(b.symbol));
 
         watchlist.forEach(item => {
@@ -2464,7 +2464,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         hoje.setHours(0, 0, 0, 0);
         const hojeString = hoje.toISOString().split('T')[0];
 
-        // Cria uma assinatura única para evitar re-cálculos desnecessários se nada mudou
+        // Cria uma assinatura Ãºnica para evitar re-cÃ¡lculos desnecessÃ¡rios se nada mudou
         const currentSignature = `${hojeString}-${proventosConhecidos.length}-${transacoes.length}`;
 
         if (currentSignature === lastProventosCalcSignature) {
@@ -2476,7 +2476,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         let novoSaldoCalculado = 0;
         let proventosParaMarcarComoProcessado = [];
 
-        // 1. Cálculo em Memória (Rápido, pode manter o loop síncrono)
+        // 1. CÃ¡lculo em MemÃ³ria (RÃ¡pido, pode manter o loop sÃ­ncrono)
         for (const provento of proventosConhecidos) {
             if (provento.paymentDate && provento.value > 0) {
                 const parts = provento.paymentDate.split('-');
@@ -2507,38 +2507,38 @@ document.addEventListener('DOMContentLoaded', async () => {
         await salvarCaixa();
         if (totalCaixaValor) totalCaixaValor.textContent = formatBRL(saldoCaixa);
 
-        // 2. OTIMIZAÇÃO AQUI: Atualização em Massa no Supabase
+        // 2. OTIMIZAÃ‡ÃƒO AQUI: AtualizaÃ§Ã£o em Massa no Supabase
         // Em vez de esperar um por um (await no loop), disparamos todos juntos.
         if (proventosParaMarcarComoProcessado.length > 0) {
             try {
-                // Promise.all executa todas as requisições de update em paralelo
+                // Promise.all executa todas as requisiÃ§Ãµes de update em paralelo
                 await Promise.all(proventosParaMarcarComoProcessado.map(provento =>
                     supabaseDB.updateProventoProcessado(provento.id)
                 ));
             } catch (error) {
                 console.error("Erro ao atualizar status dos proventos:", error);
-                // Não bloqueia o fluxo visual se falhar a atualização no servidor
+                // NÃ£o bloqueia o fluxo visual se falhar a atualizaÃ§Ã£o no servidor
             }
         }
     }
 
     function calcularCarteira() {
-        // 1. Snapshot: Verificamos o tamanho do array e o ID da última transação
+        // 1. Snapshot: Verificamos o tamanho do array e o ID da Ãºltima transaÃ§Ã£o
         const lastId = transacoes.length > 0 ? transacoes[transacoes.length - 1].id : 'none';
         const currentSignature = `${transacoes.length}-${lastId}`;
 
-        // 2. Trava de Cache: Se a "assinatura" for idêntica, nada mudou desde o último cálculo
+        // 2. Trava de Cache: Se a "assinatura" for idÃªntica, nada mudou desde o Ãºltimo cÃ¡lculo
         if (currentSignature === lastTransacoesSignature && carteiraCalculada.length > 0) {
-            return; // Interrompe a função aqui para economizar processamento
+            return; // Interrompe a funÃ§Ã£o aqui para economizar processamento
         }
 
         const ativosMap = new Map();
-        // OTIMIZAÇÃO: Comparação direta de strings ISO (YYYY-MM-DD) com localeCompare.
-        // Elimina a criação de milhares de objetos Date descartáveis no Garbage Collector.
+        // OTIMIZAÃ‡ÃƒO: ComparaÃ§Ã£o direta de strings ISO (YYYY-MM-DD) com localeCompare.
+        // Elimina a criaÃ§Ã£o de milhares de objetos Date descartÃ¡veis no Garbage Collector.
         const transacoesOrdenadas = [...transacoes].sort((a, b) => {
             const dateCmp = a.date.localeCompare(b.date);
             if (dateCmp !== 0) return dateCmp;
-            // Se as datas são iguais, 'buy' sempre processa antes de 'sell' para não gerar saldos negativos falsos
+            // Se as datas sÃ£o iguais, 'buy' sempre processa antes de 'sell' para nÃ£o gerar saldos negativos falsos
             if (a.type === 'buy' && b.type === 'sell') return -1;
             if (a.type === 'sell' && b.type === 'buy') return 1;
             return 0;
@@ -2555,14 +2555,14 @@ document.addEventListener('DOMContentLoaded', async () => {
                 ativo.totalCost += t.quantity * t.price;
             } else if (t.type === 'sell') {
                 if (ativo.quantity > 0) {
-                    // O custo total é reduzido proporcionalmente ao Preço Médio atual
+                    // O custo total Ã© reduzido proporcionalmente ao PreÃ§o MÃ©dio atual
                     const pmAtual = ativo.totalCost / ativo.quantity;
                     ativo.quantity -= t.quantity;
                     ativo.totalCost -= t.quantity * pmAtual;
                 }
             }
 
-            // Proteção contra dízimas periódicas (resíduos matemáticos do JS)
+            // ProteÃ§Ã£o contra dÃ­zimas periÃ³dicas (resÃ­duos matemÃ¡ticos do JS)
             if (ativo.quantity < 0.0001) { ativo.quantity = 0; ativo.totalCost = 0; }
             ativosMap.set(symbol, ativo);
         }
@@ -2577,7 +2577,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 dataCompra: a.dataCompra
             }));
 
-        // 3. Salva a nova assinatura para o próximo ciclo de atualização
+        // 3. Salva a nova assinatura para o prÃ³ximo ciclo de atualizaÃ§Ã£o
         lastTransacoesSignature = currentSignature;
     }
 
@@ -2587,9 +2587,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         itens.forEach(item => {
             if (!item[dateField]) return;
 
-            // Ajuste de fuso horário simples para garantir o mês correto
+            // Ajuste de fuso horÃ¡rio simples para garantir o mÃªs correto
             const dataObj = new Date(item[dateField]);
-            // Formata como "Dezembro 2025" com primeira letra maiúscula
+            // Formata como "Dezembro 2025" com primeira letra maiÃºscula
             const mesAno = dataObj.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
             const chave = mesAno[0].toUpperCase() + mesAno.slice(1);
 
@@ -2601,7 +2601,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     class VirtualScroller {
         constructor(scrollContainer, listContainer, items, renderRowFn, options = {}) {
-            // 1. Inicializa variáveis CRÍTICAS primeiro para evitar crash
+            // 1. Inicializa variÃ¡veis CRÃTICAS primeiro para evitar crash
             this.visibleItems = new Map();
             this.positions = [];
             this.totalHeight = 0;
@@ -2611,17 +2611,17 @@ document.addEventListener('DOMContentLoaded', async () => {
             this.items = items;
             this.renderRowFn = renderRowFn;
 
-            // Configurações dinâmicas de altura
+            // ConfiguraÃ§Ãµes dinÃ¢micas de altura
             this.headerHeight = options.headerHeight || 36;
             this.rowHeight = options.rowHeight || 72;
 
             // Limpeza de estilos conflitantes do container original
-            this.listContainer.innerHTML = ''; // Limpa qualquer conteúdo residual (ex: mensagem "Nenhum provento")
+            this.listContainer.innerHTML = ''; // Limpa qualquer conteÃºdo residual (ex: mensagem "Nenhum provento")
             this.listContainer.classList.remove('px-4', 'pt-2', 'pb-20');
             this.listContainer.style.marginTop = '0px';
 
-            // Removemos qualquer lógica de header fixo/sticky aqui.
-            // O código fica muito mais leve.
+            // Removemos qualquer lÃ³gica de header fixo/sticky aqui.
+            // O cÃ³digo fica muito mais leve.
 
             this.init();
         }
@@ -2629,7 +2629,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         init() {
             let currentY = 0;
 
-            // Mapeia posições de TODOS os itens
+            // Mapeia posiÃ§Ãµes de TODOS os itens
             this.positions = this.items.map(item => {
                 const height = item.type === 'header' ? this.headerHeight : this.rowHeight;
                 const pos = { top: currentY, height, item };
@@ -2638,7 +2638,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             });
 
             // AUMENTEI DE 120 PARA 180 AQUI
-            // Isso garante que o último item suba acima da navbar
+            // Isso garante que o Ãºltimo item suba acima da navbar
             this.totalHeight = currentY + 100;
 
             this.listContainer.style.height = `${this.totalHeight}px`;
@@ -2651,7 +2651,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
 
         onScroll() {
-            // Verificação de segurança: se a lista foi destruída ou não existe, para.
+            // VerificaÃ§Ã£o de seguranÃ§a: se a lista foi destruÃ­da ou nÃ£o existe, para.
             if (!this.listContainer.isConnected || !this.visibleItems) return;
 
             const scrollTop = this.scrollContainer.scrollTop;
@@ -2668,11 +2668,11 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const pos = this.positions[i];
                 const bottom = pos.top + pos.height;
 
-                // Se o item está dentro da área visível (+ buffer)
+                // Se o item estÃ¡ dentro da Ã¡rea visÃ­vel (+ buffer)
                 if (bottom >= startY && pos.top <= endY) {
                     activeIndices.add(i);
 
-                    // Se ainda não está no DOM, cria
+                    // Se ainda nÃ£o estÃ¡ no DOM, cria
                     if (!this.visibleItems.has(i)) {
                         const el = document.createElement('div');
                         el.className = 'virtual-item';
@@ -2682,9 +2682,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                         if (pos.item.type === 'header') {
                             // Renderiza o header como um item normal da lista
                             el.innerHTML = `<div class="virtual-header-row">${pos.item.htmlContent}</div>`;
-                            // Headers não precisam de padding lateral extra
+                            // Headers nÃ£o precisam de padding lateral extra
                         } else {
-                            // Cards precisam de padding lateral (px-4 = 16px, igual à aba Início)
+                            // Cards precisam de padding lateral (px-4 = 16px, igual Ã  aba InÃ­cio)
                             el.style.paddingLeft = '16px';
                             el.style.paddingRight = '16px';
                             el.innerHTML = this.renderRowFn(pos.item.data);
@@ -2696,7 +2696,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 }
             }
 
-            // Limpeza: remove itens que saíram da tela
+            // Limpeza: remove itens que saÃ­ram da tela
             for (const [index, el] of this.visibleItems.entries()) {
                 if (!activeIndices.has(index)) {
                     el.remove();
@@ -2716,7 +2716,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             this.listContainer.classList.remove('virtual-list-container');
             this.listContainer.style.marginTop = '';
 
-            // Restaura estilo original (Opcional, caso você desligue a virtualização)
+            // Restaura estilo original (Opcional, caso vocÃª desligue a virtualizaÃ§Ã£o)
             this.listContainer.classList.add('px-4', 'pt-2', 'pb-20');
 
             this.visibleItems.clear();
@@ -2727,7 +2727,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const flatList = [];
         for (const [mes, itens] of Object.entries(grupos)) {
 
-            // SOMA DO CABEÇALHO
+            // SOMA DO CABEÃ‡ALHO
             const totalMes = itens.reduce((acc, item) => {
                 if (item.totalCalculado !== undefined) {
                     return acc + Number(item.totalCalculado);
@@ -2738,7 +2738,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 return acc + Number(item.value || 0);
             }, 0);
 
-            // HTML do Header — estilo unificado com Mercado + botão de compartilhar
+            // HTML do Header â€” estilo unificado com Mercado + botÃ£o de compartilhar
             const headerHtml = `
             <div class="flex items-center justify-between w-full">
                 <h3 class="text-[11px] font-bold text-gray-500 uppercase tracking-widest">${mes}</h3>
@@ -2801,7 +2801,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         historicoStatus.classList.add('hidden');
 
-        // OTIMIZAÇÃO: localeCompare em strings ISO é equivalente e não cria objetos Date.
+        // OTIMIZAÃ‡ÃƒO: localeCompare em strings ISO Ã© equivalente e nÃ£o cria objetos Date.
         dadosFiltrados.sort((a, b) => b.date.localeCompare(a.date)); // desc: b antes de a
         const grupos = agruparPorMes(dadosFiltrados, 'date');
 
@@ -2824,7 +2824,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 // Ignore fallback to raw string
             }
 
-            // Ícones condicionais: Casa (ação) ou Prédio (FII)
+            // Ãcones condicionais: Casa (aÃ§Ã£o) ou PrÃ©dio (FII)
             const isFundo = typeof isFII === 'function' ? isFII(t.symbol) : t.symbol.endsWith('11');
 
             const iconSvg = isFundo
@@ -2835,7 +2835,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                      <path stroke-linecap="round" stroke-linejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0h6" />
                    </svg>`;
 
-            // Badge: verde+seta↓ para compra, vermelho+seta↑ para venda
+            // Badge: verde+setaâ†“ para compra, vermelho+setaâ†‘ para venda
             const badgeColor = isVenda ? 'bg-red-500' : 'bg-green-500';
             const badgeArrow = isVenda
                 ? `<path stroke-linecap="round" stroke-linejoin="round" d="M5 10l7-7m0 0l7 7m-7-7v18" />`
@@ -2862,7 +2862,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                             </div>
                         <div class="flex items-center gap-1.5 mt-1 text-[11px] text-gray-500 leading-none">
                             <span class="font-medium text-gray-400">${diaStr}</span>
-                            <span>•</span>
+                            <span>â€¢</span>
                             <span>${t.quantity} cotas</span>
                         </div>
                     </div>
@@ -2878,7 +2878,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         historicoVirtualizer = new VirtualScroller(scrollContainer, listaHistorico, flatItems, rowRenderer);
     }
 
-    // Mantém compatibilidade com chamadas originais
+    // MantÃ©m compatibilidade com chamadas originais
     function renderizarHistorico() {
         if (window.renderizarHistoricoGlobal) window.renderizarHistoricoGlobal();
     }
@@ -2961,7 +2961,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             const total = p.totalCalculado;
 
-            // Cálculo do Valor Unitário (para exibir abaixo do total)
+            // CÃ¡lculo do Valor UnitÃ¡rio (para exibir abaixo do total)
             const valorUnitario = total / (qtd || 1);
 
             const isFundo = typeof isFII === 'function' ? isFII(p.symbol) : p.symbol.endsWith('11');
@@ -3004,7 +3004,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                         </div>
                         <div class="flex items-center gap-1.5 mt-1 text-[11px] text-gray-500 leading-none">
                             <span class="font-medium text-gray-400">${diaStr}</span>
-                            <span>•</span>
+                            <span>â€¢</span>
                             <span>${qtd} cotas</span>
                         </div>
                     </div>
@@ -3021,7 +3021,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         proventosVirtualizer = new VirtualScroller(scrollContainer, listaHistoricoProventos, flatItems, rowRenderer);
     }
 
-    // Mantém compatibilidade
+    // MantÃ©m compatibilidade
     function renderizarHistoricoProventos() {
         if (window.renderizarHistoricoProventosGlobal) window.renderizarHistoricoProventosGlobal();
     }
@@ -3035,7 +3035,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const tabIndicator = document.getElementById('tab-indicator');
 
         btnHistTransacoes.addEventListener('click', () => {
-            // Atualiza botões
+            // Atualiza botÃµes
             btnHistTransacoes.classList.add('active');
             btnHistProventos.classList.remove('active');
 
@@ -3056,7 +3056,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
 
         btnHistProventos.addEventListener('click', () => {
-            // Atualiza botões
+            // Atualiza botÃµes
             btnHistProventos.classList.add('active');
             btnHistTransacoes.classList.remove('active');
 
@@ -3077,7 +3077,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
 
-    // 2. Busca no Histórico
+    // 2. Busca no HistÃ³rico
     const histSearchInput = document.getElementById('historico-search-input');
     if (histSearchInput) {
         histSearchInput.addEventListener('input', (e) => {
@@ -3090,14 +3090,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     const provSearchInput = document.getElementById('proventos-search-input');
     if (provSearchInput) {
         provSearchInput.addEventListener('input', (e) => {
-            // Atualiza a variável global definida no início do arquivo
+            // Atualiza a variÃ¡vel global definida no inÃ­cio do arquivo
             provSearchTerm = e.target.value.trim().toUpperCase();
-            // Chama a renderização novamente para aplicar o filtro
+            // Chama a renderizaÃ§Ã£o novamente para aplicar o filtro
             renderizarHistoricoProventos();
         });
     }
 
-    // 3. NOVO: Lógica do Menu de Filtro (Funil) - Substitui os Chips antigos
+    // 3. NOVO: LÃ³gica do Menu de Filtro (Funil) - Substitui os Chips antigos
     const btnFilter = document.getElementById('btn-history-filter');
     const filterMenu = document.getElementById('history-filter-menu');
     const filterItems = filterMenu ? filterMenu.querySelectorAll('.filter-dropdown-item') : [];
@@ -3109,7 +3109,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             filterMenu.classList.toggle('visible');
         });
 
-        // Clique nas opções do menu
+        // Clique nas opÃ§Ãµes do menu
         filterItems.forEach(item => {
             item.addEventListener('click', () => {
                 const value = item.dataset.value; // 'all', 'buy', 'sell'
@@ -3124,7 +3124,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 item.querySelector('.check-icon').classList.remove('opacity-0');
                 item.querySelector('.check-icon').classList.add('opacity-100');
 
-                // Atualiza variável global e renderiza
+                // Atualiza variÃ¡vel global e renderiza
                 histFilterType = value;
                 renderizarHistorico();
 
@@ -3157,10 +3157,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         ontem.setDate(ontem.getDate() - 1);
 
         articles.forEach(article => {
-            // Tenta criar data. Se falhar, usa "DATA DESCONHECIDA" para não quebrar o app
+            // Tenta criar data. Se falhar, usa "DATA DESCONHECIDA" para nÃ£o quebrar o app
             let d = new Date(article.publicationDate);
             if (isNaN(d.getTime())) {
-                d = new Date(); // Fallback para hoje se a data for inválida
+                d = new Date(); // Fallback para hoje se a data for invÃ¡lida
             }
 
             const dZero = new Date(d);
@@ -3174,7 +3174,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             } else {
                 // Formata: "17 DE DEZEMBRO"
                 labelData = d.toLocaleDateString('pt-BR', { day: 'numeric', month: 'long' }).toUpperCase();
-                // Adiciona ano se não for o ano atual
+                // Adiciona ano se nÃ£o for o ano atual
                 if (d.getFullYear() !== hoje.getFullYear()) {
                     labelData += ` DE ${d.getFullYear()}`;
                 }
@@ -3198,8 +3198,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         const defaultFavicon = `https://www.google.com/s2/favicons?domain=${article.sourceHostname || 'google.com'}&sz=64`;
         const faviconUrl = sanitizeHttpUrl(article.favicon, defaultFavicon);
         const safeLink = sanitizeHttpUrl(article.link, '#');
-        const safeSummary = escapeHtml(article.summary || 'Resumo não disponível.');
-        const rawTitle = article.title || 'Título indisponível';
+        const safeSummary = escapeHtml(article.summary || 'Resumo nÃ£o disponÃ­vel.');
+        const rawTitle = article.title || 'TÃ­tulo indisponÃ­vel';
         let horaPub = '';
         try { horaPub = new Date(article.publicationDate).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }); } catch (e) { horaPub = '--:--'; }
         const safeLabel = dataLabel.replace(/[^a-zA-Z0-9]/g, '');
@@ -3256,12 +3256,12 @@ document.addEventListener('DOMContentLoaded', async () => {
             const diffMin = Math.floor(diffMs / 60000);
             const diffH = Math.floor(diffMin / 60);
             if (diffMin < 60) {
-                tempoRelativo = `${diffMin} min atrás`;
+                tempoRelativo = `${diffMin} min atrÃ¡s`;
             } else if (diffH < 24) {
-                tempoRelativo = `${diffH} hora${diffH > 1 ? 's' : ''} atrás`;
+                tempoRelativo = `${diffH} hora${diffH > 1 ? 's' : ''} atrÃ¡s`;
             } else {
                 const diffD = Math.floor(diffH / 24);
-                tempoRelativo = `${diffD} dia${diffD > 1 ? 's' : ''} atrás`;
+                tempoRelativo = `${diffD} dia${diffD > 1 ? 's' : ''} atrÃ¡s`;
             }
         } catch (e) {
             tempoRelativo = horaPub;
@@ -3282,7 +3282,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                         <span class="text-[11px] font-bold text-gray-400">${sourceName}</span>
                     </div>
 
-                    <!-- Linha 2: Título + Imagem de Capa -->
+                    <!-- Linha 2: TÃ­tulo + Imagem de Capa -->
                     <div class="flex items-start gap-3">
                         <div class="flex-1 min-w-0">
                             <h4 class="${titleClass} pointer-events-auto">
@@ -3292,14 +3292,14 @@ document.addEventListener('DOMContentLoaded', async () => {
                         ${hasImage ? `<div class="w-[72px] h-[72px] rounded-xl overflow-hidden flex-shrink-0 bg-[#1a1a1a]">${coverHtml}</div>` : ''}
                     </div>
 
-                    <!-- Linha 3: Tempo + Botão Compartilhar -->
+                    <!-- Linha 3: Tempo + BotÃ£o Compartilhar -->
                     <div class="flex items-center justify-between mt-2 pointer-events-auto">
                         <span class="text-[11px] text-gray-500">${tempoRelativo}</span>
                         <button class="share-news-btn text-gray-600 hover:text-white transition-colors p-1.5 rounded-full hover:bg-white/5 active:scale-90"
                                 data-action="share-news" 
                                 data-title="${safeShareTitle}" 
                                 data-link="${safeLink}"
-                                aria-label="Compartilhar notícia">
+                                aria-label="Compartilhar notÃ­cia">
                             <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
                             </svg>
@@ -3314,7 +3314,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                         </div>
                         <div class="mt-4 pl-3">
                             <a href="${safeLink}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1.5 text-xs font-bold transition-colors hover:underline active:scale-95" style="color:#8ab4f8">
-                                Ler notícia completa
+                                Ler notÃ­cia completa
                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
                             </a>
                         </div>
@@ -3326,7 +3326,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     function _renderizarProximoLoteNoticias() {
         if (_newsCurrentIndex >= _newsPendingArticles.length) {
-            // Remove sentinela quando não há mais artigos
+            // Remove sentinela quando nÃ£o hÃ¡ mais artigos
             const sentinel = fiiNewsList.querySelector('.news-sentinel');
             if (sentinel) sentinel.remove();
             if (_newsObserver) _newsObserver.disconnect();
@@ -3351,7 +3351,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         fiiNewsList.appendChild(fragment);
         _newsCurrentIndex = end;
 
-        // Adiciona nova sentinela se ainda há mais artigos
+        // Adiciona nova sentinela se ainda hÃ¡ mais artigos
         if (_newsCurrentIndex < _newsPendingArticles.length) {
             const sentinel = document.createElement('div');
             sentinel.className = 'news-sentinel h-4';
@@ -3396,8 +3396,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         if (!articlesToRender || articlesToRender.length === 0) {
             fiiNewsMensagem.textContent = newsSearchTerm
-                ? `Nenhuma notícia encontrada para "${newsSearchTerm}".`
-                : 'Nenhuma notícia recente encontrada.';
+                ? `Nenhuma notÃ­cia encontrada para "${newsSearchTerm}".`
+                : 'Nenhuma notÃ­cia recente encontrada.';
             fiiNewsMensagem.classList.remove('hidden');
             return;
         }
@@ -3405,7 +3405,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const sortedArticles = [...articlesToRender].sort((a, b) => new Date(b.publicationDate) - new Date(a.publicationDate));
         const grupos = agruparNoticiasPorData(sortedArticles);
 
-        // Achata em lista plana com labels para renderização incremental
+        // Achata em lista plana com labels para renderizaÃ§Ã£o incremental
         _newsPendingArticles = [];
         _newsCurrentIndex = 0;
         _newsIsFirstItem = true;
@@ -3420,7 +3420,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         _renderizarProximoLoteNoticias();
     }
 
-    // ── Status do Mercado (B3 Aberta/Fechada) ──
+    // â”€â”€ Status do Mercado (B3 Aberta/Fechada) â”€â”€
     function atualizarStatusMercado() {
         const status = getB3MarketStatus();
         const open = status.open;
@@ -3457,7 +3457,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
 
-    // Nova Lógica de Alocação em Barra Stacked
+    // Nova LÃ³gica de AlocaÃ§Ã£o em Barra Stacked
 window.alocacaoSelectedMode = 'ativo';
 window.alocacaoSelectedIdx = -1;
 window.alocacaoDadosAtuais = [];
@@ -3466,13 +3466,13 @@ window.alocacaoAnimInterval = null;
 // --- REINSERINDO GETSEGMENTO PARA CORRIGIR POR SEGMENTO ---
 const SEGMENTOS_CACHE_KEY = 'vesto_segmentos_cache';
 const SEGMENTOS_FII = {
-    'BTCI11': 'Recebíveis', 'KNCR11': 'Recebíveis', 'MXRF11': 'Híbrido',
-    'HGLG11': 'Logística', 'XPLG11': 'Logística', 'VILG11': 'Logística',
+    'BTCI11': 'RecebÃ­veis', 'KNCR11': 'RecebÃ­veis', 'MXRF11': 'HÃ­brido',
+    'HGLG11': 'LogÃ­stica', 'XPLG11': 'LogÃ­stica', 'VILG11': 'LogÃ­stica',
     'VISC11': 'Shopping', 'XPML11': 'Shopping', 'HSML11': 'Shopping',
-    'HGRE11': 'Escritório', 'BRCR11': 'Escritório', 'PVBI11': 'Escritório',
-    'GARE11': 'Renda Urbana', 'TRXF11': 'Renda Urbana', 'GGRC11': 'Logística',
-    'KNRI11': 'Híbrido', 'BCFF11': 'Fundo de Fundos', 'RZAT11': 'Agro',
-    'XPCA11': 'Agro', 'VGIR11': 'Recebíveis', 'CPTS11': 'Recebíveis'
+    'HGRE11': 'EscritÃ³rio', 'BRCR11': 'EscritÃ³rio', 'PVBI11': 'EscritÃ³rio',
+    'GARE11': 'Renda Urbana', 'TRXF11': 'Renda Urbana', 'GGRC11': 'LogÃ­stica',
+    'KNRI11': 'HÃ­brido', 'BCFF11': 'Fundo de Fundos', 'RZAT11': 'Agro',
+    'XPCA11': 'Agro', 'VGIR11': 'RecebÃ­veis', 'CPTS11': 'RecebÃ­veis'
 };
 let _segmentosCache = null;
 function _carregarSegmentosCache() {
@@ -3869,7 +3869,7 @@ function renderizarGraficoAlocacaoPorSegmento() {
     renderizarGraficoAlocacao();
 }
 
-// Configurar Botões de Filtro Direto
+// Configurar BotÃµes de Filtro Direto
 setTimeout(() => {
     const btnAtivo = document.getElementById('alocacao-filter-ativo');
     const btnSeg = document.getElementById('alocacao-filter-segmento');
@@ -3937,7 +3937,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
 
         html += `</div>
         <div class="mt-4 pt-3 border-t border-[#2C2C2E] flex justify-between items-center">
-            <span class="text-xs font-bold text-gray-400 uppercase tracking-widest">Total do Mês</span>
+            <span class="text-xs font-bold text-gray-400 uppercase tracking-widest">Total do MÃªs</span>
             <span class="text-lg font-bold text-gray-100">${formatBRL(totalMes)}</span>
         </div>`;
 
@@ -3964,7 +3964,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
             modal.classList.remove('visible');
             setTimeout(() => {
                 if (modalContent) {
-                    modalContent.style.border = ''; // Volta ao padrão do CSS/HTML
+                    modalContent.style.border = ''; // Volta ao padrÃ£o do CSS/HTML
                     modalContent.style.boxShadow = '';
                 }
 
@@ -3992,7 +3992,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
             dataAReceberFiltrados = new Array(labelsFiltrados.length).fill(0);
         }
 
-        // Dados Locais (Padrão)
+        // Dados Locais (PadrÃ£o)
         const grupos = {};
         const hoje = new Date(); hoje.setHours(0, 0, 0, 0);
         const mesAtualKey = `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}`;
@@ -4032,21 +4032,21 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
             keysRaw.push(mesIso);
         });
 
-        // Filtro de período
+        // Filtro de perÃ­odo
         const sliceCount = proventosPeriodoAtual > 0 ? proventosPeriodoAtual : labelsRaw.length;
         labelsFiltrados = labelsRaw.slice(-sliceCount);
         dataRecebidoFiltrados = dataR.slice(-sliceCount);
         dataAReceberFiltrados = dataA.slice(-sliceCount);
         keysFiltrados = keysRaw.slice(-sliceCount);
 
-        // ═══════════════════════════════════════════════════
+        // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
         // SUMMARY CARDS
-        // ═══════════════════════════════════════════════════
+        // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
         const totalRecebido = dataRecebidoFiltrados.reduce((a, b) => a + b, 0);
         const mesesComDados = dataRecebidoFiltrados.filter(v => v > 0).length;
         const mediaMensal = mesesComDados > 0 ? totalRecebido / mesesComDados : 0;
 
-        // Melhor mês
+        // Melhor mÃªs
         let melhorMesLabel = '-';
         let melhorMesValor = 0;
         dataRecebidoFiltrados.forEach((v, i) => {
@@ -4057,7 +4057,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
             }
         });
 
-        // YoC médio (proventos últimos 12m / custo total da carteira)
+        // YoC mÃ©dio (proventos Ãºltimos 12m / custo total da carteira)
         let custoTotal = 0;
         if (Array.isArray(carteiraCalculada)) {
             carteiraCalculada.forEach(a => {
@@ -4086,17 +4086,17 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
         const ctx = canvas.getContext('2d');
         const isLight = document.body.classList.contains('light-mode');
 
-        // Cores Cleans e Sólidas
+        // Cores Cleans e SÃ³lidas
         const colorRecebido = isLight ? '#8b5cf6' : '#a78bfa';
         const colorAReceber = isLight ? '#e5e7eb' : '#333333';
         const linhaCrescimentoColor = isLight ? '#9ca3af' : '#6b7280';
 
-        // Destaque do mês atual — borda diferente na barra
+        // Destaque do mÃªs atual â€” borda diferente na barra
         const currentMonthIdx = keysFiltrados.indexOf(mesAtualKey);
         const borderColors = keysFiltrados.map((k, i) => i === currentMonthIdx ? (isLight ? '#6d28d9' : '#d8b4fe') : 'transparent');
         const borderWidths = keysFiltrados.map((k, i) => i === currentMonthIdx ? 1.5 : 0);
 
-        // Total usado para traçar a linha de crescimento
+        // Total usado para traÃ§ar a linha de crescimento
         const dataTotal = dataRecebidoFiltrados.map((recebido, index) => recebido + dataAReceberFiltrados[index]);
 
         historicoChartInstance = new Chart(ctx, {
@@ -4267,7 +4267,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
         } else {
             popover.style.display = 'block';
             requestAnimationFrame(() => { popover.style.opacity = '1'; });
-            // Auto-fecha após 8s
+            // Auto-fecha apÃ³s 8s
             setTimeout(() => {
                 popover.style.opacity = '0';
                 setTimeout(() => { popover.style.display = 'none'; }, 200);
@@ -4313,7 +4313,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
         if (!container) return;
         if (labelMes) labelMes.textContent = labelAmigavel;
 
-        // Remove o espaçamento forçado de blocos para permitir a lista contínua
+        // Remove o espaÃ§amento forÃ§ado de blocos para permitir a lista contÃ­nua
         container.classList.remove('space-y-3');
 
         const agrupado = {};
@@ -4396,7 +4396,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
                         </div>
                         <div class="flex items-center gap-1.5 mt-1 text-[11px] text-gray-500 leading-none">
                             <span class="font-medium text-gray-400">Dia ${dia}</span>
-                            <span>•</span>
+                            <span>â€¢</span>
                             <span>${item.qtd} cotas</span>
                         </div>
                     </div>
@@ -4521,34 +4521,34 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
 
         window.location.hash = 'modal-proventos';
 
-        // 2. Renderiza ou atualiza o gráfico
+        // 2. Renderiza ou atualiza o grÃ¡fico
         requestAnimationFrame(() => {
             setTimeout(() => {
                 if (historicoChartInstance) {
-                    // Força o Chart.js a reler o tamanho do container pai
+                    // ForÃ§a o Chart.js a reler o tamanho do container pai
                     historicoChartInstance.resize();
-                    historicoChartInstance.update('none'); // Update sem animação para ser rápido
+                    historicoChartInstance.update('none'); // Update sem animaÃ§Ã£o para ser rÃ¡pido
                 } else {
-                    // Se o gráfico ainda não existia (primeira vez), cria ele
+                    // Se o grÃ¡fico ainda nÃ£o existia (primeira vez), cria ele
                     renderizarGraficoHistorico();
                 }
-            }, 50); // 50ms é suficiente
+            }, 50); // 50ms Ã© suficiente
         });
     }
 
     function closeProventosModal() {
         if (!proventosPageContent) return;
 
-        // 1. Remove qualquer transformação manual feita pelo dedo (reset)
+        // 1. Remove qualquer transformaÃ§Ã£o manual feita pelo dedo (reset)
         proventosPageContent.style.transform = '';
 
-        // 2. Adiciona a classe que faz a animação de descer (definida no CSS)
+        // 2. Adiciona a classe que faz a animaÃ§Ã£o de descer (definida no CSS)
         proventosPageContent.classList.add('closing');
 
         // 3. Remove a visibilidade do fundo escuro
         proventosPageModal.classList.remove('visible');
 
-        // 4. Libera o scroll da página principal
+        // 4. Libera o scroll da pÃ¡gina principal
         document.body.style.overflow = '';
         deactivateModalFocusTrap();
     }
@@ -4564,7 +4564,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
 
         window.location.hash = 'modal-alocacao';
 
-        // Redimensiona o gráfico de Rosca
+        // Redimensiona o grÃ¡fico de Rosca
         requestAnimationFrame(() => {
             setTimeout(() => {
                 if (alocacaoChartInstance) {
@@ -4587,13 +4587,13 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
         deactivateModalFocusTrap();
     }
 
-    // ═══════════════════════════════════════════════════════════════════
-    // PATRIMÔNIO HISTÓRICO — Yahoo Finance v8 (Cálculo On-The-Fly)
-    // ═══════════════════════════════════════════════════════════════════
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    // PATRIMÃ”NIO HISTÃ“RICO â€” Yahoo Finance v8 (CÃ¡lculo On-The-Fly)
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
     // Mapea range do UI para range do Yahoo Finance
     const PATRIMONIO_RANGE_MAP = {
-        '7D': '1M',   // busca 1 mês, filtra últimos 7 dias no frontend
+        '7D': '1M',   // busca 1 mÃªs, filtra Ãºltimos 7 dias no frontend
         '1M': '1M',
         '6M': '6M',
         '1Y': '1A',
@@ -4604,7 +4604,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
     const CACHE_HIST_FECHADO = 1000 * 60 * 60 * 6;   // 6 horas
 
     /**
-     * Busca preços históricos diários de todos os ativos da carteira via Yahoo Finance v8.
+     * Busca preÃ§os histÃ³ricos diÃ¡rios de todos os ativos da carteira via Yahoo Finance v8.
      * Retorna Map<symbol, [{date: 'YYYY-MM-DD', close: number}]>
      */
     async function buscarHistoricoPrecosCarteira(yahooRange) {
@@ -4644,7 +4644,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
                     }
                 }
             } catch (err) {
-                console.warn(`[Patrimônio] Erro ao buscar histórico de ${symbol}:`, err.message);
+                console.warn(`[PatrimÃ´nio] Erro ao buscar histÃ³rico de ${symbol}:`, err.message);
             }
         }
 
@@ -4652,14 +4652,14 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
     }
 
     /**
-     * Calcula o patrimônio líquido para cada dia útil nos dados históricos.
-     * Para cada dia, soma: (quantidadeNaData × preço de fechamento) + proventos acumulados.
+     * Calcula o patrimÃ´nio lÃ­quido para cada dia Ãºtil nos dados histÃ³ricos.
+     * Para cada dia, soma: (quantidadeNaData Ã— preÃ§o de fechamento) + proventos acumulados.
      * Retorna [{date: 'YYYY-MM-DD', value: number}]
      */
     function calcularPatrimonioHistorico(historicoPrecosMap) {
         if (historicoPrecosMap.size === 0) return [];
 
-        // Coleta todas as datas únicas de todos os ativos
+        // Coleta todas as datas Ãºnicas de todos os ativos
         const allDates = new Set();
         for (const [, prices] of historicoPrecosMap) {
             for (const p of prices) {
@@ -4670,7 +4670,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
         // Ordena cronologicamente
         const sortedDates = [...allDates].sort();
 
-        // Para cada ativo, cria um Map rápido de date → close
+        // Para cada ativo, cria um Map rÃ¡pido de date â†’ close
         const pricesBySymbol = new Map();
         for (const [symbol, prices] of historicoPrecosMap) {
             const map = new Map();
@@ -4680,7 +4680,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
             pricesBySymbol.set(symbol, map);
         }
 
-        // ── Pré-calcula proventos pagos ordenados por paymentDate ──
+        // â”€â”€ PrÃ©-calcula proventos pagos ordenados por paymentDate â”€â”€
         const proventosPagos = proventosConhecidos
             .filter(p => p.paymentDate && p.value > 0)
             .map(p => ({
@@ -4691,9 +4691,9 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
             }))
             .sort((a, b) => a.paymentDate.localeCompare(b.paymentDate));
 
-        // Calcula patrimônio por dia
+        // Calcula patrimÃ´nio por dia
         const resultado = [];
-        // Seed com precoMedio como fallback para ativos sem dados no início do range
+        // Seed com precoMedio como fallback para ativos sem dados no inÃ­cio do range
         const lastKnownPrice = new Map();
         for (const ativo of carteiraCalculada) {
             const pm = parseFloat(ativo.precoMedio || ativo.averagePrice || 0);
@@ -4703,7 +4703,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
         let provIdx = 0; // Ponteiro para percorrer proventos em O(n)
 
         for (const date of sortedDates) {
-            // ── Acumula proventos recebidos até esta data ──
+            // â”€â”€ Acumula proventos recebidos atÃ© esta data â”€â”€
             while (provIdx < proventosPagos.length && proventosPagos[provIdx].paymentDate <= date) {
                 const prov = proventosPagos[provIdx];
                 const qtdElegivel = getQuantidadeNaData(prov.symbol, prov.dataRef);
@@ -4713,7 +4713,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
                 provIdx++;
             }
 
-            // ── Valor da carteira neste dia ──
+            // â”€â”€ Valor da carteira neste dia â”€â”€
             let totalDia = 0;
 
             for (const [symbol, priceMap] of pricesBySymbol) {
@@ -4730,7 +4730,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
                 }
             }
 
-            // Patrimônio = valorização + proventos recebidos
+            // PatrimÃ´nio = valorizaÃ§Ã£o + proventos recebidos
             const patrimonioTotal = totalDia + proventosAcumulados;
 
             if (patrimonioTotal > 0) {
@@ -4741,7 +4741,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
         return resultado;
     }
 
-    // Flag para evitar chamadas simultâneas
+    // Flag para evitar chamadas simultÃ¢neas
     let _patrimonioLoading = false;
     let _evolSelectedBarIdx = -1; // -1 = nenhum selecionado
 
@@ -4750,7 +4750,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
         if (!canvas) return;
         if (!vestoDB.db) return;
 
-        // ── Busca dados históricos via Yahoo Finance (sempre ALL) ──
+        // â”€â”€ Busca dados histÃ³ricos via Yahoo Finance (sempre ALL) â”€â”€
         if (_patrimonioLoading) return;
 
         const calcCacheKey = `patrimonio_calc_ALL`;
@@ -4773,7 +4773,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
                     try { await setCache(calcCacheKey, dadosPatrimonio, ttl); } catch (_) { }
                 }
             } catch (err) {
-                console.error('[Patrimônio] Erro ao calcular histórico:', err);
+                console.error('[PatrimÃ´nio] Erro ao calcular histÃ³rico:', err);
                 dadosPatrimonio = [];
             } finally {
                 _patrimonioLoading = false;
@@ -4785,7 +4785,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
         window.cachedPatrimonioHistorico = dadosPatrimonio;
         if (!dadosPatrimonio || dadosPatrimonio.length === 0) return;
 
-        // ── Filtra por período selecionado ──
+        // â”€â”€ Filtra por perÃ­odo selecionado â”€â”€
         const hoje = new Date();
         hoje.setHours(23, 59, 59, 999);
         let dataCorte;
@@ -4810,7 +4810,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
             })
             .sort((a, b) => a.date.localeCompare(b.date));
 
-        // ── Agrupa por mês (YYYY-MM → último valor do mês) ──
+        // â”€â”€ Agrupa por mÃªs (YYYY-MM â†’ Ãºltimo valor do mÃªs) â”€â”€
         const gruposMes = {};
         dadosFiltrados.forEach(p => {
             const chaveMes = p.date.substring(0, 7);
@@ -4822,7 +4822,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
 
         if (dadosMensais.length === 0) return;
 
-        // ── Helpers ──
+        // â”€â”€ Helpers â”€â”€
         const fmtBRL = (v) => _fmtBRL.format(Math.abs(v));
         const MESES_PT = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
 
@@ -4841,7 +4841,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
             }
         });
 
-        // ── Calcula movimentações no período ──
+        // â”€â”€ Calcula movimentaÃ§Ãµes no perÃ­odo â”€â”€
         function calcMovimentacoesPeriodo(inicio, fim) {
             let totalMov = 0;
             transacoes.forEach(tx => {
@@ -4854,7 +4854,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
             return totalMov;
         }
 
-        // ── Calcula proventos recebidos no período ──
+        // â”€â”€ Calcula proventos recebidos no perÃ­odo â”€â”€
         function calcProventosPeriodo(inicio, fim) {
             let total = 0;
             if (typeof proventosConhecidos !== 'undefined') {
@@ -4869,17 +4869,17 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
             return total;
         }
 
-        // ── Função para atualizar stats grid ──
+        // â”€â”€ FunÃ§Ã£o para atualizar stats grid â”€â”€
         function atualizarStatsGrid(patInicial, patFinal, dataInicio, dataFim) {
             const varReais = patFinal - patInicial;
             const varPct = patInicial > 0 ? ((patFinal - patInicial) / patInicial) * 100 : 0;
             const movimentacoes = calcMovimentacoesPeriodo(dataInicio, dataFim);
             const proventosRecebidos = calcProventosPeriodo(dataInicio, dataFim);
 
-            const sinalVar = varReais >= 0 ? '+ ' : '— ';
+            const sinalVar = varReais >= 0 ? '+ ' : 'â€” ';
             const corVar = varReais >= 0 ? 'text-green-400' : 'text-red-400';
-            const sinalPct = varPct > 0 ? '▲ ' : (varPct < 0 ? '▼ ' : '— ');
-            const sinalMov = movimentacoes >= 0 ? '▲ ' : '▼ ';
+            const sinalPct = varPct > 0 ? 'â–² ' : (varPct < 0 ? 'â–¼ ' : 'â€” ');
+            const sinalMov = movimentacoes >= 0 ? 'â–² ' : 'â–¼ ';
             const corMov = movimentacoes >= 0 ? 'text-green-400' : 'text-red-400';
 
             const el = (id) => document.getElementById(id);
@@ -4904,16 +4904,16 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
             }
         }
 
-        // ── Período texto (baseado na primeira transação) ──
+        // â”€â”€ PerÃ­odo texto (baseado na primeira transaÃ§Ã£o) â”€â”€
         function formatarPeriodoTexto(inicio, fim) {
             const fmtData = (d) => {
                 const parts = d.split('-');
                 return `${MESES_PT[parseInt(parts[1]) - 1]}/${parts[0].slice(-2)}`;
             };
-            return inicio === fim ? `Período de ${fmtData(inicio)}` : `Período de ${fmtData(inicio)} até ${fmtData(fim)}`;
+            return inicio === fim ? `PerÃ­odo de ${fmtData(inicio)}` : `PerÃ­odo de ${fmtData(inicio)} atÃ© ${fmtData(fim)}`;
         }
 
-        // Encontra a data da primeira transação de compra
+        // Encontra a data da primeira transaÃ§Ã£o de compra
         let primeiraCompra = dadosMensais[0].date;
         if (transacoes.length > 0) {
             const sorted = [...transacoes].filter(t => t.type === 'buy').sort((a, b) => a.date.localeCompare(b.date));
@@ -4921,9 +4921,9 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
         }
         const hojeStr = `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}-${String(hoje.getDate()).padStart(2, '0')}`;
 
-        // Stats do período inteiro (default)
+        // Stats do perÃ­odo inteiro (default)
         const periodoInicio = dadosMensais[0].date;
-        const periodoFim = hojeStr; // usa hoje para capturar todas as transações
+        const periodoFim = hojeStr; // usa hoje para capturar todas as transaÃ§Ãµes
         const patInicial = dadosMensais.length > 1 ? dataValues[0] : 0;
         const patFinal = dataValues[dataValues.length - 1];
 
@@ -4941,19 +4941,19 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
             }
         }
 
-        // ── Drawdown Máximo ──
+        // â”€â”€ Drawdown MÃ¡ximo â”€â”€
         function calcularDrawdownMaximo(dataInicio = null, dataFim = null) {
             let peak = 0;
             let maxDrawdown = 0;
             let maxDrawdownReais = 0;
 
-            // Filtra os dados se um período foi fornecido
+            // Filtra os dados se um perÃ­odo foi fornecido
             let dadosAlvo = dadosFiltrados;
             if (dataInicio && dataFim) {
                 dadosAlvo = dadosFiltrados.filter(p => p.date >= dataInicio && p.date <= dataFim);
             }
 
-            // Usa dados DIÁRIOS para capturar quedas intra-mês
+            // Usa dados DIÃRIOS para capturar quedas intra-mÃªs
             for (let i = 0; i < dadosAlvo.length; i++) {
                 const val = dadosAlvo[i].value;
                 if (val > peak) peak = val;
@@ -4980,7 +4980,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
             }
             if (elReais) {
                 if (maxDrawdown < 0) {
-                    elReais.textContent = `— ${fmtBRL(Math.abs(maxDrawdownReais))}`;
+                    elReais.textContent = `â€” ${fmtBRL(Math.abs(maxDrawdownReais))}`;
                     elReais.className = 'text-sm font-bold mt-0.5 text-red-500';
                 } else {
                     elReais.textContent = 'R$ 0,00';
@@ -4993,7 +4993,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
         mostrarStatsCompleto();
         calcularDrawdownMaximo();
 
-        // ── Bar Chart ──
+        // â”€â”€ Bar Chart â”€â”€
         const ctx = canvas.getContext('2d');
 
         const barColors = dataValues.map((_, idx) => {
@@ -5006,7 +5006,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
             patrimonioChartInstance = null;
         }
 
-        // Year annotation plugin — year labels
+        // Year annotation plugin â€” year labels
         const yearAnnotationPlugin = {
             id: 'yearAnnotation',
             afterDraw: (chart) => {
@@ -5046,10 +5046,10 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
         const patrimonioCrosshairPlugin = {
             id: 'patrimonioCrosshair',
             afterDatasetsDraw: (chart) => {
-                // Desenha a linha-guia caso tenha uma barra selecionada via clique (ao invés de hover)
+                // Desenha a linha-guia caso tenha uma barra selecionada via clique (ao invÃ©s de hover)
                 let activeIdx = _evolSelectedBarIdx;
                 
-                // Mas também mostra a linha no hover para melhorar o feedback tátil antes de clicar!
+                // Mas tambÃ©m mostra a linha no hover para melhorar o feedback tÃ¡til antes de clicar!
                 if (chart.tooltip?._active?.length) {
                     activeIdx = chart.tooltip._active[0].index;
                 }
@@ -5127,7 +5127,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
                     if (elements.length > 0) {
                         const idx = elements[0].index;
 
-                        // Toggle: se clicar na barra já selecionada, desmarca
+                        // Toggle: se clicar na barra jÃ¡ selecionada, desmarca
                         if (_evolSelectedBarIdx === idx) {
                             mostrarStatsCompleto();
                             return;
@@ -5145,9 +5145,9 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
 
                         const mesKey = mesData.date.substring(0, 7);
                         const mesInicio = mesKey + '-01';
-                        // Usa o último dia DO MÊS (não o último dia com dado de preço)
+                        // Usa o Ãºltimo dia DO MÃŠS (nÃ£o o Ãºltimo dia com dado de preÃ§o)
                         const [yy, mm] = mesKey.split('-').map(Number);
-                        const ultimoDia = new Date(yy, mm, 0).getDate(); // dia 0 do próximo mês = último do atual
+                        const ultimoDia = new Date(yy, mm, 0).getDate(); // dia 0 do prÃ³ximo mÃªs = Ãºltimo do atual
                         const mesFim = `${mesKey}-${String(ultimoDia).padStart(2, '0')}`;
 
                         atualizarStatsGrid(patIni, mesData.value, mesInicio, mesFim);
@@ -5161,13 +5161,13 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
             plugins: [yearAnnotationPlugin, patrimonioCrosshairPlugin]
         });
 
-        // ── Bottom Sheet Events ──
+        // â”€â”€ Bottom Sheet Events â”€â”€
         const periodoBtn = document.getElementById('evolucao-periodo-btn');
         const periodoSheet = document.getElementById('evolucao-periodo-sheet');
         const periodoPanel = document.getElementById('evolucao-periodo-panel');
         const periodoBackdrop = document.getElementById('evolucao-periodo-backdrop');
         const periodoLabel = document.getElementById('evolucao-periodo-label');
-        const PERIODO_LABELS = { '1M': 'Mês atual', '3M': 'Últ. 3 meses', '6M': 'Últ. 6 meses', '1Y': 'Último ano', 'ALL': 'Máximo' };
+        const PERIODO_LABELS = { '1M': 'MÃªs atual', '3M': 'Ãšlt. 3 meses', '6M': 'Ãšlt. 6 meses', '1Y': 'Ãšltimo ano', 'ALL': 'MÃ¡ximo' };
 
         function openPeriodoSheet() {
             if (!periodoSheet) return;
@@ -5187,7 +5187,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
             }, 300);
         }
 
-        // Remove listeners antigos para evitar duplicação
+        // Remove listeners antigos para evitar duplicaÃ§Ã£o
         if (periodoBtn && !periodoBtn._evolBound) {
             periodoBtn.addEventListener('click', openPeriodoSheet);
             periodoBtn._evolBound = true;
@@ -5205,7 +5205,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
                 _evolSelectedBarIdx = -1;
                 if (periodoLabel) periodoLabel.textContent = PERIODO_LABELS[range] || range;
 
-                // Atualiza visual dos botões
+                // Atualiza visual dos botÃµes
                 document.querySelectorAll('.evol-period-opt').forEach(b => {
                     b.classList.remove('bg-[#3a3a3c]', 'text-white');
                     b.classList.add('text-gray-400');
@@ -5221,7 +5221,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
 
         // Atualiza label do Risco
         const riscoLabel = document.getElementById('risco-periodo-label');
-        if (riscoLabel) riscoLabel.textContent = PERIODO_LABELS[currentPatrimonioRange] || 'Máximo';
+        if (riscoLabel) riscoLabel.textContent = PERIODO_LABELS[currentPatrimonioRange] || 'MÃ¡ximo';
 
         // Sharpe tooltip toggle
         const sharpeTooltipBtn = document.getElementById('sharpe-tooltip-btn');
@@ -5240,16 +5240,16 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
             riscoPeriodoBtn._evolBound = true;
         }
 
-        // ── Risco / Sharpe ──
+        // â”€â”€ Risco / Sharpe â”€â”€
         calcularERenderizarRisco(dadosMensais);
 
-        // ── DY Anualizado ──
+        // â”€â”€ DY Anualizado â”€â”€
         calcularERenderizarDY();
     }
 
-    // ═══════════════════════════════════════════════════════════
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     // RISCO / SHARPE GAUGE
-    // ═══════════════════════════════════════════════════════════
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     function calcularERenderizarRisco(dadosMensais) {
         if (!dadosMensais || dadosMensais.length < 2) return;
 
@@ -5283,9 +5283,9 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
         desenharGauge('sharpe-gauge', sharpe, -2, 2);
     }
 
-    // ═══════════════════════════════════════════════════════════
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     // DY ANUALIZADO
-    // ═══════════════════════════════════════════════════════════
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     async function calcularERenderizarDY() {
         try {
             const dados = await calcularDyCarteiraTeorico();
@@ -5298,7 +5298,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
             let textoAvaliacao = '';
             let corAvaliacao = '';
             if (dyVal < 6) {
-                textoAvaliacao = 'Abaixo da Inflação';
+                textoAvaliacao = 'Abaixo da InflaÃ§Ã£o';
                 corAvaliacao = 'text-red-400';
             } else if (dyVal < 10) {
                 textoAvaliacao = 'Bom Retorno';
@@ -5324,9 +5324,9 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
         }
     }
 
-    // ═══════════════════════════════════════════════════════════
-    // GAUGE UNIVERSAL (semicírculo vermelho→amarelo→verde)
-    // ═══════════════════════════════════════════════════════════
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    // GAUGE UNIVERSAL (semicÃ­rculo vermelhoâ†’amareloâ†’verde)
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     function desenharGauge(canvasId, value, minVal, maxVal) {
         const canvas = document.getElementById(canvasId);
         if (!canvas) return;
@@ -5340,7 +5340,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
 
         ctx.clearRect(0, 0, w, h);
 
-        // Gradient arc (vermelho → amarelo → verde)
+        // Gradient arc (vermelho â†’ amarelo â†’ verde)
         const startAngle = Math.PI;
         const endAngle = 2 * Math.PI;
         const segments = 100;
@@ -5419,7 +5419,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
             `;
         };
 
-        // Verificações iniciais
+        // VerificaÃ§Ãµes iniciais
         if (!proventosAtuais || proventosAtuais.length === 0) {
             mostrarEstadoVazio();
             return;
@@ -5438,7 +5438,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
             // Ignora passados
             if (dataPag < hoje) return false;
 
-            // Verifica se o usuário tem direito (Data Com ou Data Pag)
+            // Verifica se o usuÃ¡rio tem direito (Data Com ou Data Pag)
             const dataRef = p.dataCom || p.paymentDate;
             const qtd = getQuantidadeNaData(p.symbol, dataRef);
             return qtd > 0;
@@ -5452,7 +5452,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
         // Esconde o skeleton e mostra os dados reais
         if (timelineSkeleton) timelineSkeleton.classList.add('hidden');
 
-        // Configura container para Carousel Horizontal (só ativa scroll se tiver > 2 itens para liberar o gesto de aba)
+        // Configura container para Carousel Horizontal (sÃ³ ativa scroll se tiver > 2 itens para liberar o gesto de aba)
         const isScrollable = pagamentosReais.length > 2;
         lista.className = `flex ${isScrollable ? 'overflow-x-auto snap-x' : ''} gap-3 hide-scrollbar px-1 mt-0`;
         lista.style = isScrollable ? '-webkit-overflow-scrolling: touch;' : '';
@@ -5469,7 +5469,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
             const dia = parts[2];
             const mes = dataObj.toLocaleString('pt-BR', { month: 'short' }).replace('.', '').toUpperCase();
 
-            // Cálculos
+            // CÃ¡lculos
             const dataReferencia = prov.dataCom || prov.paymentDate;
             const qtd = getQuantidadeNaData(prov.symbol, dataReferencia);
             const totalReceber = prov.value * qtd;
@@ -5484,7 +5484,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
 
             const valorFormatado = _fmtBRL.format(totalReceber);
 
-            // Seleciona SVG dependendo se é FII ou Ação
+            // Seleciona SVG dependendo se Ã© FII ou AÃ§Ã£o
             const isFundo = typeof isFII === 'function' ? isFII(prov.symbol) : prov.symbol.endsWith('11');
 
             const iconSvg = isFundo
@@ -5493,7 +5493,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
                    </svg>`
                 : `<svg class="w-6 h-6 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
                      <path stroke-linecap="round" stroke-linejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-4-6l3-3m0 0l3 3m-3-3v8" />
-                   </svg>`; // Casa com seta pra cima ou ícone de ação
+                   </svg>`; // Casa com seta pra cima ou Ã­cone de aÃ§Ã£o
 
             item.innerHTML = `
                 <div>
@@ -5510,7 +5510,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
             fragment.appendChild(item);
         });
 
-        lista.appendChild(fragment); // único reflow — insere tudo de uma vez no DOM real
+        lista.appendChild(fragment); // Ãºnico reflow â€” insere tudo de uma vez no DOM real
         container.classList.remove('hidden');
     }
 
@@ -5528,20 +5528,20 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
     }
 
     function renderizarCarteiraSkeletons(show) {
-        // Se a lista estiver vazia (primeiro load), usamos o skeleton genérico
+        // Se a lista estiver vazia (primeiro load), usamos o skeleton genÃ©rico
         if (listaCarteira.children.length === 0 && show) {
             skeletonListaCarteira.classList.remove('hidden');
             return;
         }
 
-        // Se já tem cards, aplicamos o efeito neles
-        skeletonListaCarteira.classList.add('hidden'); // Garante que o genérico suma
-        listaCarteira.classList.remove('hidden');      // Garante que a lista real apareça
+        // Se jÃ¡ tem cards, aplicamos o efeito neles
+        skeletonListaCarteira.classList.add('hidden'); // Garante que o genÃ©rico suma
+        listaCarteira.classList.remove('hidden');      // Garante que a lista real apareÃ§a
 
         const cards = listaCarteira.querySelectorAll('.wallet-card');
 
         cards.forEach(card => {
-            // Selecionamos apenas os elementos que vão mudar de valor
+            // Selecionamos apenas os elementos que vÃ£o mudar de valor
             const camposDinamicos = card.querySelectorAll(`
                 [data-field="preco-valor"], 
                 [data-field="variacao-valor"], 
@@ -5564,11 +5564,11 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
         });
     }
 
-    // Cache de memoização para getQuantidadeNaData.
-    // Chave: `${symbol}_${dataLimiteStr}`. Evita O(N*M) iterações em loops de proventos.
-    // Deve ser zerado sempre que o array de transações sofrer qualquer mutação.
+    // Cache de memoizaÃ§Ã£o para getQuantidadeNaData.
+    // Chave: `${symbol}_${dataLimiteStr}`. Evita O(N*M) iteraÃ§Ãµes em loops de proventos.
+    // Deve ser zerado sempre que o array de transaÃ§Ãµes sofrer qualquer mutaÃ§Ã£o.
     let _cacheQtdNaData = {};
-    // OTIMIZAÇÃO: Índice pré-agrupado symbol → transações (reconstruído ao invalidar)
+    // OTIMIZAÃ‡ÃƒO: Ãndice prÃ©-agrupado symbol â†’ transaÃ§Ãµes (reconstruÃ­do ao invalidar)
     let _txBySymbol = {};
 
     function _rebuiltTxIndex() {
@@ -5581,7 +5581,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
     function invalidarCacheQtdNaData() {
         _cacheQtdNaData = {};
         _rebuiltTxIndex();
-        // Limpa caches de cálculo do patrimônio histórico (força recálculo)
+        // Limpa caches de cÃ¡lculo do patrimÃ´nio histÃ³rico (forÃ§a recÃ¡lculo)
         ['7D', '1M', '6M', '1Y', 'ALL'].forEach(r => {
             try { vestoDB.delete('apiCache', `patrimonio_calc_${r}`); } catch (_) { }
         });
@@ -5597,7 +5597,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
 
         const dataLimite = new Date(dataLimiteStr + 'T23:59:59');
 
-        // Usa índice pré-agrupado — itera apenas transações do symbol (~15x menos)
+        // Usa Ã­ndice prÃ©-agrupado â€” itera apenas transaÃ§Ãµes do symbol (~15x menos)
         const resultado = (_txBySymbol[symbol] || []).reduce((total, t) => {
             const dataTransacao = new Date(t.date);
             if (dataTransacao <= dataLimite) {
@@ -5611,14 +5611,14 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
         return resultado;
     }
 
-    // ── Estado de ordenação da carteira ──
+    // â”€â”€ Estado de ordenaÃ§Ã£o da carteira â”€â”€
     let carteiraSortMode = localStorage.getItem('vesto_carteira_sort') || 'alpha';
 
     async function renderizarCarteira() {
         // Esconde os skeletons de carregamento
         renderizarCarteiraSkeletons(false);
 
-        // Cria Mapas para acesso rápido a preços
+        // Cria Mapas para acesso rÃ¡pido a preÃ§os
         const precosMap = new Map(precosAtuais.map(p => [p.symbol, p]));
 
         // Cria Mapa de Proventos (Agrupados em Lista)
@@ -5672,9 +5672,9 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
             totalValorCarteira += (precoAtual * quantidade);
             totalCustoCarteira += (precoMedio * quantidade);
             
-            // Variação do dia: calcula a partir do % APENAS se houver cotação real de mercado
+            // VariaÃ§Ã£o do dia: calcula a partir do % APENAS se houver cotaÃ§Ã£o real de mercado
             if (dadoPreco && precoMercado > 0 && quantidade > 0) {
-                // Prioriza variação absoluta quando disponível (mais precisa que reconstruir por %).
+                // Prioriza variaÃ§Ã£o absoluta quando disponÃ­vel (mais precisa que reconstruir por %).
                 const variacaoAbsoluta = Number(dadoPreco.regularMarketChange);
                 if (Number.isFinite(variacaoAbsoluta)) {
                     totalVariacaoDia += (variacaoAbsoluta * quantidade);
@@ -5684,7 +5684,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
                 const prevCloseRaw = Number(dadoPreco.regularMarketPreviousClose);
                 let precoAnterior = prevCloseRaw > 0 ? prevCloseRaw : 0;
 
-                // Fallback para ativos sem previousClose explícito.
+                // Fallback para ativos sem previousClose explÃ­cito.
                 if (!(precoAnterior > 0)) {
                     const varPercent = Number(dadoPreco.regularMarketChangePercent ?? 0);
                     const divisor = 1 + (varPercent / 100);
@@ -5699,7 +5699,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
             }
         });
 
-        // Verifica se a carteira está vazia
+        // Verifica se a carteira estÃ¡ vazia
         if (carteiraOrdenada.length === 0) {
             listaCarteira.innerHTML = '';
             carteiraStatus.classList.remove('hidden');
@@ -5720,7 +5720,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
                 totalCarteiraPL.className = `text-lg font-semibold text-gray-500`;
             }
 
-            dashboardMensagem.textContent = 'A sua carteira está vazia. Adicione ativos na aba "Carteira" para começar.';
+            dashboardMensagem.textContent = 'A sua carteira estÃ¡ vazia. Adicione ativos na aba "Carteira" para comeÃ§ar.';
             dashboardLoading.classList.add('hidden');
             dashboardStatus.classList.remove('hidden');
             return;
@@ -5739,12 +5739,12 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
             }
         });
 
-        // Define HOJE (zerando horas para comparação correta)
+        // Define HOJE (zerando horas para comparaÃ§Ã£o correta)
         const hoje = new Date();
         hoje.setHours(0, 0, 0, 0);
 
-        // OTIMIZAÇÃO: Monta um Map symbol → HTMLElement UMA vez antes do loop
-        // para eliminar o querySelector repetido a cada iteração (O(n²) → O(1))
+        // OTIMIZAÃ‡ÃƒO: Monta um Map symbol â†’ HTMLElement UMA vez antes do loop
+        // para eliminar o querySelector repetido a cada iteraÃ§Ã£o (O(nÂ²) â†’ O(1))
         const existingCards = new Map();
         listaCarteira.querySelectorAll('[data-symbol]').forEach(el => {
             existingCards.set(el.dataset.symbol, el);
@@ -5757,7 +5757,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
             // 1. Pega TODOS os proventos (passados e futuros) desse ativo
             const listaTodosProventos = proventosMap.get(ativo.symbol) || [];
 
-            // 2. FILTRO: Mantém APENAS os futuros (Data >= Hoje) para exibição na carteira
+            // 2. FILTRO: MantÃ©m APENAS os futuros (Data >= Hoje) para exibiÃ§Ã£o na carteira
             const listaProventosFuturos = listaTodosProventos.filter(p => {
                 if (!p.paymentDate) return false;
                 const parts = p.paymentDate.split('-');
@@ -5778,14 +5778,14 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
                 variacaoFormatada = formatPercent(variacao);
                 corVariacao = variacao > 0 ? 'text-green-500' : (variacao < 0 ? 'text-red-500' : 'text-gray-500');
             } else {
-                // Fallback para o preço médio se não houver cotação real (Renda Fixa, IPs customizados)
+                // Fallback para o preÃ§o mÃ©dio se nÃ£o houver cotaÃ§Ã£o real (Renda Fixa, IPs customizados)
                 precoAtual = ativo.precoMedio || 0;
                 precoFormatado = formatBRL(precoAtual);
                 variacaoFormatada = '0.00%';
                 corVariacao = 'text-gray-500';
             }
 
-            // Cálculos Financeiros
+            // CÃ¡lculos Financeiros
             const totalPosicao = precoAtual * ativo.quantity;
             const custoTotal = ativo.precoMedio * ativo.quantity;
             const lucroPrejuizo = totalPosicao - custoTotal;
@@ -5814,7 +5814,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
                 totalPosicao, custoTotal, lucroPrejuizo, lucroPrejuizoPercent,
                 corPL,
                 dadoProvento,
-                listaProventos: proventosElegiveis, // Passa APENAS os futuros e elegíveis para o renderizador do card
+                listaProventos: proventosElegiveis, // Passa APENAS os futuros e elegÃ­veis para o renderizador do card
                 proventoReceber,
                 percentWallet
             };
@@ -5848,7 +5848,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
 
         });
 
-        // Atualiza Resumo Rápido da Carteira
+        // Atualiza Resumo RÃ¡pido da Carteira
         const carteiraResumo = document.getElementById('carteira-resumo');
         if (carteiraResumo && carteiraOrdenada.length > 0) {
             carteiraResumo.classList.remove('hidden');
@@ -5873,7 +5873,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
         if (carteiraOrdenada.length > 0) {
             const patrimonioTotalAtivos = totalValorCarteira;
             
-            // FINTECH MODE: Patrimônio Total = Ativos + Caixa
+            // FINTECH MODE: PatrimÃ´nio Total = Ativos + Caixa
             const patrimonioTotalGeral = patrimonioTotalAtivos + saldoCaixa;
             
             // Rentabilidade agora sobre o Total Geral
@@ -5900,7 +5900,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
                 totalCarteiraPL.className = `text-sm font-semibold ${corPLClass}`;
             }
 
-            // Variação do dia
+            // VariaÃ§Ã£o do dia
             if (totalCarteiraDia) {
                 const prevTotal = totalValorCarteira - totalVariacaoDia;
                 const varDiaPercent = prevTotal > 0 ? (totalVariacaoDia / prevTotal) * 100 : 0;
@@ -5914,7 +5914,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
                 totalCarteiraDia.innerHTML = `Hoje: <span class="${cor}">${sinalValor}${formatBRL(valorAbs)} (${sinalPercent}${pctAbs}%)</span>`;
                 totalCarteiraDia.classList.remove('hidden');
 
-                // Exporta estado exato do dashboard para o gráfico intradiário sincronizar o cabeçalho
+                // Exporta estado exato do dashboard para o grÃ¡fico intradiÃ¡rio sincronizar o cabeÃ§alho
                 window.dashboardIntradayState = {
                     currentValue: totalValorCarteira,
                     variation: totalVariacaoDia,
@@ -5922,7 +5922,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
                 };
             }
 
-            // Remove os skeletons somente após os valores já estarem no DOM.
+            // Remove os skeletons somente apÃ³s os valores jÃ¡ estarem no DOM.
             renderizarDashboardSkeletons(false);
 
 
@@ -5930,7 +5930,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
 
 
 
-            renderizarTimelinePagamentos(); // Mantido pois é a timeline visual no dashboard, não o gráfico pesado
+            renderizarTimelinePagamentos(); // Mantido pois Ã© a timeline visual no dashboard, nÃ£o o grÃ¡fico pesado
         }
 
 
@@ -5973,7 +5973,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
     window.renderizarProventosGlobal = renderizarProventos;
 
     // =============================================
-    // GRÁFICO INTRADIÁRIO DA CARTEIRA
+    // GRÃFICO INTRADIÃRIO DA CARTEIRA
     // =============================================
     let intradayPortfolioChartInstance = null;
     const CACHE_INTRADAY_OPEN = 5 * 60 * 1000; // 5 minutos
@@ -6045,7 +6045,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
         if (skeleton) skeleton.classList.remove('hidden');
         if (chartWrapper) chartWrapper.classList.add('hidden');
 
-        // Cada ativo guarda sua série de preços separadamente
+        // Cada ativo guarda sua sÃ©rie de preÃ§os separadamente
         const assetSeries = [];
         const allTimestamps = new Set();
         const intradayPrecosMap = new Map(precosAtuais.map(p => [p.symbol, p]));
@@ -6131,7 +6131,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
         const sortedTimestamps = [...allTimestamps].sort((a, b) => a - b);
 
         // Para cada timestamp, calcula o valor total da carteira
-        // usando o último preço conhecido de cada ativo (forward-fill)
+        // usando o Ãºltimo preÃ§o conhecido de cada ativo (forward-fill)
         const dataPoints = [];
         const lastKnownPrice = new Map();
 
@@ -6191,11 +6191,11 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
         const labels = dataPoints.map(p => new Date(p.date));
         const values = dataPoints.map(p => p.value);
 
-        // Pega estado do dashboard (valores exatos consolidados) ou caso não exista, usa o fallback do gráfico
+        // Pega estado do dashboard (valores exatos consolidados) ou caso nÃ£o exista, usa o fallback do grÃ¡fico
         const dashState = window.dashboardIntradayState || {};
         const isDashboardDataAvailable = dashState.currentValue !== undefined;
         
-        // Base de cálculo para variação percentual (prevTotal do dashboard)
+        // Base de cÃ¡lculo para variaÃ§Ã£o percentual (prevTotal do dashboard)
         const baseStartValue = isDashboardDataAvailable ? dashState.prevTotal : values[0];
         const defaultEndValue = isDashboardDataAvailable ? dashState.currentValue : values[values.length - 1];
         
@@ -6225,7 +6225,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
 
         if (elTime) {
             const lastDate = new Date(dataPoints[dataPoints.length - 1].date);
-            elTime.textContent = `Hoje • ${lastDate.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`;
+            elTime.textContent = `Hoje â€¢ ${lastDate.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`;
         }
 
         // Cores e gradiente
@@ -6246,7 +6246,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
                         updateIntradayHeader(defaultEndValue);
                         if (elTime) {
                             const lastDate = new Date(dataPoints[dataPoints.length - 1].date);
-                            elTime.textContent = `Hoje • ${lastDate.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`;
+                            elTime.textContent = `Hoje â€¢ ${lastDate.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`;
                         }
                         chart._lastIntradayUpdate = 'end';
                     }
@@ -6262,7 +6262,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
                 if (chart._lastIntradayIdx !== idx) {
                     updateIntradayHeader(focusedValue);
                     if (elTime) {
-                        elTime.textContent = `${focusedDate.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })} • ${focusedDate.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`;
+                        elTime.textContent = `${focusedDate.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })} â€¢ ${focusedDate.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`;
                     }
                     chart._lastIntradayIdx = idx;
                     chart._lastIntradayUpdate = 'active';
@@ -6357,7 +6357,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
             }
         }
 
-        // Reseta signature para forçar re-render ao mudar de categoria
+        // Reseta signature para forÃ§ar re-render ao mudar de categoria
         lastNewsSignature = '';
 
         fiiNewsSkeleton.classList.remove('hidden');
@@ -6375,9 +6375,9 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
             window.noticiasCache = articles;
             renderizarNoticias(articles);
         } catch (e) {
-            console.error("Erro ao buscar notícias (função separada):", e);
+            console.error("Erro ao buscar notÃ­cias (funÃ§Ã£o separada):", e);
             fiiNewsSkeleton.classList.add('hidden');
-            fiiNewsMensagem.textContent = 'Erro ao carregar notícias. Tente novamente.';
+            fiiNewsMensagem.textContent = 'Erro ao carregar notÃ­cias. Tente novamente.';
             fiiNewsMensagem.classList.remove('hidden');
         } finally {
             refreshIcon.classList.remove('spin-animation');
@@ -6401,7 +6401,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
             }
             return articles;
         } catch (error) {
-            console.error("Erro ao buscar notícias (BFF):", error);
+            console.error("Erro ao buscar notÃ­cias (BFF):", error);
             throw error;
         }
     }
@@ -6437,7 +6437,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
 
         const ultimo = pontos[pontos.length - 1];
 
-        // Prioriza meta.regularMarketPrice (real-time do Yahoo), senão último ponto do gráfico
+        // Prioriza meta.regularMarketPrice (real-time do Yahoo), senÃ£o Ãºltimo ponto do grÃ¡fico
         const metaPrice = Number(meta.regularMarketPrice);
         const precoAtual = Number.isFinite(metaPrice) && metaPrice > 0
             ? metaPrice
@@ -6445,12 +6445,12 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
 
         if (!Number.isFinite(precoAtual) || precoAtual <= 0) return null;
 
-        // CORREÇÃO: previousClose = fechamento de ONTEM (variação diária correta).
-        // chartPreviousClose = fechamento anterior ao início do range do chart (5D),
-        // ou seja, ~6 dias úteis atrás — NÃO serve para variação do dia.
+        // CORREÃ‡ÃƒO: previousClose = fechamento de ONTEM (variaÃ§Ã£o diÃ¡ria correta).
+        // chartPreviousClose = fechamento anterior ao inÃ­cio do range do chart (5D),
+        // ou seja, ~6 dias Ãºteis atrÃ¡s â€” NÃƒO serve para variaÃ§Ã£o do dia.
         const metaPrevClose = Number(meta.previousClose);
         const chartPrevClose = Number(meta.chartPreviousClose);
-        // Fallback: penúltimo ponto do histórico 5D (se existir)
+        // Fallback: penÃºltimo ponto do histÃ³rico 5D (se existir)
         const penultimo = pontos.length > 1 ? pontos[pontos.length - 2] : null;
         const penultimoPrice = Number(penultimo?.price);
 
@@ -6462,13 +6462,13 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
         } else if (Number.isFinite(penultimoPrice) && penultimoPrice > 0) {
             precoAnterior = penultimoPrice;
         } else {
-            precoAnterior = precoAtual; // sem referência, variação = 0
+            precoAnterior = precoAtual; // sem referÃªncia, variaÃ§Ã£o = 0
         }
 
         const variacao = precoAtual - precoAnterior;
         const variacaoPct = precoAnterior > 0 ? (variacao / precoAnterior) * 100 : 0;
 
-        // Open / High / Low: prioriza meta quando disponível
+        // Open / High / Low: prioriza meta quando disponÃ­vel
         const metaOpen = Number(meta.regularMarketOpen);
         const metaHigh = Number(meta.regularMarketDayHigh);
         const metaLow = Number(meta.regularMarketDayLow);
@@ -6524,7 +6524,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
                         resultados.push(quote);
                     }
                 } catch (err) {
-                    console.error(`Erro ao buscar preço para ${ativo.symbol}:`, err);
+                    console.error(`Erro ao buscar preÃ§o para ${ativo.symbol}:`, err);
                 }
             }
         }
@@ -6538,7 +6538,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
         const mercadoAberto = isB3Open();
         const duracaoCachePreco = mercadoAberto ? CACHE_PRECO_MERCADO_ABERTO : CACHE_PRECO_MERCADO_FECHADO;
 
-        // SWR: coleta dados stale para exibição imediata
+        // SWR: coleta dados stale para exibiÃ§Ã£o imediata
         let staleResults = [];
         let needsFetch = [];
 
@@ -6547,16 +6547,16 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
                 const cacheKey = `preco_${ativo.symbol}`;
                 const { data, isStale } = await getCacheSWR(cacheKey);
                 if (data && !isStale) {
-                    staleResults.push(data); // fresh — não precisa refetch
+                    staleResults.push(data); // fresh â€” nÃ£o precisa refetch
                 } else if (data && isStale) {
-                    staleResults.push(data); // stale — exibe mas marca para refetch
+                    staleResults.push(data); // stale â€” exibe mas marca para refetch
                     needsFetch.push(ativo);
                 } else {
                     needsFetch.push(ativo); // sem cache
                 }
             }
 
-            // Se todos os dados estão frescos, retorna direto
+            // Se todos os dados estÃ£o frescos, retorna direto
             if (needsFetch.length === 0) return staleResults;
 
             // Se temos dados stale, renderiza imediato e refetch em background
@@ -6565,14 +6565,14 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
                 precosAtuais = staleResults;
                 renderizarCarteiraDebounced();
 
-                // Refetch em background por lotes de 5, sem Promise.all para cotações
+                // Refetch em background por lotes de 5, sem Promise.all para cotaÃ§Ãµes
                 (async () => {
                     const freshResults = await buscarCotacoesEmLotes(needsFetch, duracaoCachePreco);
                     const freshMap = new Map();
                     freshResults.filter(Boolean).forEach(r => freshMap.set(r.symbol, r));
                     if (freshMap.size > 0) {
                         precosAtuais = precosAtuais.map(p => freshMap.get(p.symbol) || p);
-                        // Sincroniza dashboard e gráfico intradiário na mesma base de preços.
+                        // Sincroniza dashboard e grÃ¡fico intradiÃ¡rio na mesma base de preÃ§os.
                         await renderizarCarteira();
                         atualizarGraficoIntradiario();
                     }
@@ -6601,7 +6601,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
         dataLimitePassado.setHours(0, 0, 0, 0);
 
         const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
-        // OTIMIZAÇÃO: Map para lookup O(1) em vez de .find() O(n) no loop
+        // OTIMIZAÃ‡ÃƒO: Map para lookup O(1) em vez de .find() O(n) no loop
         const carteiraMap = new Map(carteiraCalculada.map(a => [a.symbol, a]));
 
         return proventosScraper
@@ -6622,22 +6622,22 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
     }
 
     function calcularLimiteMeses(symbol) {
-        // Encontra a primeira transação (compra ou venda) deste ativo
+        // Encontra a primeira transaÃ§Ã£o (compra ou venda) deste ativo
         const txsDoAtivo = transacoes
             .filter(t => t.symbol === symbol)
             .sort((a, b) => new Date(a.date) - new Date(b.date));
 
-        // Se não achar transação (ex: acabou de adicionar), busca 12 meses por segurança
+        // Se nÃ£o achar transaÃ§Ã£o (ex: acabou de adicionar), busca 12 meses por seguranÃ§a
         if (txsDoAtivo.length === 0) return 12;
 
         const dataPrimeiraCompra = new Date(txsDoAtivo[0].date);
         const hoje = new Date();
 
-        // Cálculo da diferença em meses
+        // CÃ¡lculo da diferenÃ§a em meses
         const anosDiff = hoje.getFullYear() - dataPrimeiraCompra.getFullYear();
         const mesesDiff = (anosDiff * 12) + (hoje.getMonth() - dataPrimeiraCompra.getMonth());
 
-        // Retorna a quantidade exata + 2 meses de margem (com mínimo de 3)
+        // Retorna a quantidade exata + 2 meses de margem (com mÃ­nimo de 3)
         return Math.max(3, mesesDiff + 2);
     }
 
@@ -6657,7 +6657,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
             }
 
             const proventoCache = await getCache(cacheKey);
-            // CORREÇÃO: Verifica se é Array (versão nova) ou Objeto (versão antiga bugada)
+            // CORREÃ‡ÃƒO: Verifica se Ã© Array (versÃ£o nova) ou Objeto (versÃ£o antiga bugada)
             if (proventoCache && !force) {
                 if (Array.isArray(proventoCache)) {
                     proventosPool.push(...proventoCache); // Adiciona todos os itens do array
@@ -6678,10 +6678,10 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
 
                 if (novosProventos && Array.isArray(novosProventos)) {
 
-                    // --- NOVA LÓGICA DE CACHE: Agrupar por Ticker ---
+                    // --- NOVA LÃ“GICA DE CACHE: Agrupar por Ticker ---
                     const proventosPorTicker = {};
 
-                    // Filtra inválidos e agrupa
+                    // Filtra invÃ¡lidos e agrupa
                     const proventosValidos = novosProventos.filter(p => p && p.symbol && dateRegex.test(p.paymentDate));
 
                     proventosValidos.forEach(p => {
@@ -6710,7 +6710,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
                         // Gera ID base
                         let idUnico = `${provento.symbol}_${provento.paymentDate}_${safeType}_${safeValue}`;
 
-                        // Se esse ID já foi gerado neste loop (colisão), adiciona sufixo
+                        // Se esse ID jÃ¡ foi gerado neste loop (colisÃ£o), adiciona sufixo
                         let contador = 2;
                         while (idsNesteLote.has(idUnico)) {
                             idUnico = `${provento.symbol}_${provento.paymentDate}_${safeType}_${safeValue}_v${contador}`;
@@ -6718,7 +6718,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
                         }
                         idsNesteLote.add(idUnico);
 
-                        // Verifica se já temos esse ID salvo na memória global
+                        // Verifica se jÃ¡ temos esse ID salvo na memÃ³ria global
                         if (!idsConhecidos.has(idUnico)) {
                             const novoProvento = {
                                 ...provento,
@@ -6765,10 +6765,10 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
     }
 
     async function callScraperFundamentosAPI(ticker) {
-        // CORREÇÃO: cache local para fundamentos (antes não tinha cache nenhum).
+        // CORREÃ‡ÃƒO: cache local para fundamentos (antes nÃ£o tinha cache nenhum).
         // Sem isso, fechar e reabrir o modal requeria um fetch completo ao scraper,
         // e como a Promise demora segundos, a guarda currentDetalhesSymbol abortava
-        // a renderização se o modal fosse fechado antes da resposta.
+        // a renderizaÃ§Ã£o se o modal fosse fechado antes da resposta.
         const cacheKey = `fundamentos_${ticker.toUpperCase()}`;
         const cached = await getCache(cacheKey);
         if (cached) return cached;
@@ -6790,7 +6790,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
         return result;
     }
 
-    // ── Rankings: Variação do Dia (Altas + Baixas) ──
+    // â”€â”€ Rankings: VariaÃ§Ã£o do Dia (Altas + Baixas) â”€â”€
     async function carregarRankings(force = false) {
         const container = document.getElementById('rankings-container');
         if (!container) return;
@@ -6806,7 +6806,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
             const containerAltas = document.getElementById('rankings-altas');
             const containerBaixas = document.getElementById('rankings-baixas');
 
-            // Exibe Skeletons antes de carregar se for force ou não tiver cache
+            // Exibe Skeletons antes de carregar se for force ou nÃ£o tiver cache
             const renderSkeletonRankings = (el) => {
                 if (!el) return;
                 let skeletonHtml = '';
@@ -6853,7 +6853,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
             const renderLista = (containerId, items, tipo) => {
                 const el = document.getElementById(containerId);
                 if (!el || !items || items.length === 0) {
-                    if (el) el.innerHTML = '<p class="text-[10px] text-gray-500 font-medium text-center py-6">Sem dados disponíveis</p>';
+                    if (el) el.innerHTML = '<p class="text-[10px] text-gray-500 font-medium text-center py-6">Sem dados disponÃ­veis</p>';
                     return;
                 }
 
@@ -6919,7 +6919,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
         }
     }
 
-    // ── Market Indices ──
+    // â”€â”€ Market Indices â”€â”€
     async function carregarMarketIndices(force = false) {
         const container = document.getElementById('market-indices-container');
         const list = document.getElementById('market-indices-list');
@@ -7005,13 +7005,13 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
             list.innerHTML = pillsHtml + pillsHtml;
 
         } catch (e) {
-            console.error('Erro ao carregar índices de mercado:', e);
+            console.error('Erro ao carregar Ã­ndices de mercado:', e);
             container.classList.add('hidden');
         }
     }
 
     async function buscarHistoricoProventosAgregado(force = false) {
-        // ALTERAÇÃO: Remove o filtro exclusivo de FIIs
+        // ALTERAÃ‡ÃƒO: Remove o filtro exclusivo de FIIs
         const ativosCarteira = carteiraCalculada.map(a => a.symbol);
 
         if (ativosCarteira.length === 0) return { labels: [], data: [] };
@@ -7031,7 +7031,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
                     await setCache(cacheKey, rawDividends, CACHE_IA_HISTORICO);
                 }
             } catch (e) {
-                console.error("Erro ao buscar histórico agregado:", e);
+                console.error("Erro ao buscar histÃ³rico agregado:", e);
                 return { labels: [], data: [] };
             }
         }
@@ -7076,7 +7076,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
         const list = document.getElementById('notifications-list');
         const btnClear = document.getElementById('btn-clear-notifications');
 
-        // Setup do botão limpar
+        // Setup do botÃ£o limpar
         if (btnClear && !btnClear.dataset.hasListener) {
             btnClear.addEventListener('click', limparTodasNotificacoes);
             btnClear.dataset.hasListener = 'true';
@@ -7084,7 +7084,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
 
         list.innerHTML = '';
         let count = 0;
-        // Usa o Set em RAM — sem I/O de localStorage dentro desta função
+        // Usa o Set em RAM â€” sem I/O de localStorage dentro desta funÃ§Ã£o
         const dismissed = dismissedNotifsSet;
 
         const hoje = new Date();
@@ -7098,7 +7098,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
             return `${parts[2]}/${parts[1]}`;
         };
 
-        // Helper CreateCard (Seu código original mantido)
+        // Helper CreateCard (Seu cÃ³digo original mantido)
         const createCard = (id, type, title, htmlMsg, iconSvg, linkUrl = null) => {
             const div = document.createElement('div');
             div.className = `notif-item notif-type-${type} notif-animate-enter group cursor-default`;
@@ -7122,7 +7122,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
             <div class="flex-1 min-w-0 pt-0.5">
                 <div class="notif-title flex justify-between">
                     <span>${safeTitle}</span>
-                    ${safeLink ? `<span class="opacity-0 group-hover:opacity-100 transition-opacity text-[9px] text-gray-500">Externo ↗</span>` : ''}
+                    ${safeLink ? `<span class="opacity-0 group-hover:opacity-100 transition-opacity text-[9px] text-gray-500">Externo â†—</span>` : ''}
                 </div>
                 <div class="notif-msg text-[11px] leading-relaxed text-gray-300">
                     ${htmlMsg} ${linkHtml}
@@ -7175,12 +7175,12 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
 
             const props = getProps(p);
             count++;
-            const msg = `Data Com de <strong class="text-white">${escapeHtml(p.symbol)}</strong> hoje (${fmtDia(hojeLocal)}).<br>Valor: <strong class="text-white">${formatBRL(p.value)}</strong> • Paga em: ${fmtDia(props.paymentDate)}`;
+            const msg = `Data Com de <strong class="text-white">${escapeHtml(p.symbol)}</strong> hoje (${fmtDia(hojeLocal)}).<br>Valor: <strong class="text-white">${formatBRL(p.value)}</strong> â€¢ Paga em: ${fmtDia(props.paymentDate)}`;
             const icon = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>`;
             list.appendChild(createCard(notifId, 'datacom', 'Data de Corte', msg, icon));
         });
 
-        // 3. NOVOS ANÚNCIOS
+        // 3. NOVOS ANÃšNCIOS
         const novosAnuncios = proventosConhecidos.filter(p => {
             const props = getProps(p);
             const dataCriacao = props.createdAt.split('T')[0];
@@ -7195,12 +7195,12 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
             if (dismissed.has(notifId)) return;
             const props = getProps(p);
             count++;
-            const msg = `<strong class="text-white">${escapeHtml(p.symbol)}</strong> anunciou <strong class="text-white">${formatBRL(p.value)}</strong>.<br>Com: ${fmtDia(props.dataCom)} • Pag: ${fmtDia(props.paymentDate)}`;
+            const msg = `<strong class="text-white">${escapeHtml(p.symbol)}</strong> anunciou <strong class="text-white">${formatBRL(p.value)}</strong>.<br>Com: ${fmtDia(props.dataCom)} â€¢ Pag: ${fmtDia(props.paymentDate)}`;
             const icon = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>`;
-            list.appendChild(createCard(notifId, 'news', 'Novo Anúncio', msg, icon));
+            list.appendChild(createCard(notifId, 'news', 'Novo AnÃºncio', msg, icon));
         });
 
-        // 4. NOTÍCIAS DE MERCADO (CORRIGIDO: USA carteiraCalculada)
+        // 4. NOTÃCIAS DE MERCADO (CORRIGIDO: USA carteiraCalculada)
         if (window.noticiasCache && window.noticiasCache.length > 0 && carteiraCalculada.length > 0) {
 
             const meusTickers = [...new Set(carteiraCalculada.map(item => item.symbol.toUpperCase()))];
@@ -7219,13 +7219,13 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
                     let dataPub = '';
                     if (noticia.pubDate) {
                         const d = new Date(noticia.pubDate);
-                        dataPub = !isNaN(d) ? ` • ${d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : '';
+                        dataPub = !isNaN(d) ? ` â€¢ ${d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : '';
                     }
 
-                    const msg = `Notícia sobre <strong class="text-white">${escapeHtml(tickerEncontrado)}</strong> saiu no mercado.${dataPub}<br><span class="text-gray-400 italic">"${escapeHtml(rawTitle.slice(0, 50))}..."</span>`;
+                    const msg = `NotÃ­cia sobre <strong class="text-white">${escapeHtml(tickerEncontrado)}</strong> saiu no mercado.${dataPub}<br><span class="text-gray-400 italic">"${escapeHtml(rawTitle.slice(0, 50))}..."</span>`;
                     const icon = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z" /></svg>`;
 
-                    list.appendChild(createCard(safeId, 'news', 'Radar de Notícias', msg, icon, noticia.link));
+                    list.appendChild(createCard(safeId, 'news', 'Radar de NotÃ­cias', msg, icon, noticia.link));
                 }
             });
         }
@@ -7233,8 +7233,8 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
         checkEmptyState();
     }
 
-    // OTIMIZAÇÃO: Debounce genérico — agrupa chamadas que chegam em sequência
-    // e executa apenas a última após `delay` ms de silêncio.
+    // OTIMIZAÃ‡ÃƒO: Debounce genÃ©rico â€” agrupa chamadas que chegam em sequÃªncia
+    // e executa apenas a Ãºltima apÃ³s `delay` ms de silÃªncio.
     function debounce(fn, delay) {
         let timer = null;
         return function (...args) {
@@ -7252,9 +7252,9 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
         }
     }
 
-    // Versão debounced de renderizarCarteira (100 ms).
-    // Garante que, se preços e proventos resolverem quase ao mesmo tempo,
-    // a re-renderização visual ocorra apenas UMA vez com os dados consolidados.
+    // VersÃ£o debounced de renderizarCarteira (100 ms).
+    // Garante que, se preÃ§os e proventos resolverem quase ao mesmo tempo,
+    // a re-renderizaÃ§Ã£o visual ocorra apenas UMA vez com os dados consolidados.
     const renderizarCarteiraDebounced = debounce(renderizarCarteira, 100);
     window.renderizarCarteiraGlobal = renderizarCarteiraDebounced;
 
@@ -7267,7 +7267,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
         try {
 
             if (force) {
-                // 1. Feedback Tátil (Vibração leve em Android — requer gesto do usuário)
+                // 1. Feedback TÃ¡til (VibraÃ§Ã£o leve em Android â€” requer gesto do usuÃ¡rio)
                 try { navigator.vibrate?.(50); } catch (_) { /* Chrome bloqueia sem gesto */ }
 
                 // 2. Feedback Visual (Mostra os esqueletos de carregamento)
@@ -7286,11 +7286,11 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
                 dashboardStatus.classList.add('hidden');
             }
 
-        // Calcula a carteira sempre (necessário para saber quais ativos buscar)
+        // Calcula a carteira sempre (necessÃ¡rio para saber quais ativos buscar)
         calcularCarteira();
 
         if (force) {
-            // No load inicial, re-ativa skeletons SINCRONAMENTE após calcular,
+            // No load inicial, re-ativa skeletons SINCRONAMENTE apÃ³s calcular,
             // ANTES de qualquer await que possa ceder controle ao browser e permitir
             // um paint frame com valores zerados.
             renderizarDashboardSkeletons(true);
@@ -7303,24 +7303,24 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
             renderizarHistorico();
         }
 
-        // O gráfico de patrimônio pode renderizar com dados em cache
+        // O grÃ¡fico de patrimÃ´nio pode renderizar com dados em cache
         if (!force) {
             renderizarGraficoPatrimonio();
         }
 
-        // Mostra loading se tiver carteira e não for um refresh forçado (que já tratou acima)
+        // Mostra loading se tiver carteira e nÃ£o for um refresh forÃ§ado (que jÃ¡ tratou acima)
         if (carteiraCalculada.length > 0 && !force) {
             dashboardStatus.classList.remove('hidden');
             dashboardLoading.classList.remove('hidden');
         }
 
-        // Animação do ícone de refresh
+        // AnimaÃ§Ã£o do Ã­cone de refresh
         const refreshIcon = refreshButton.querySelector('svg');
         if (force) {
             refreshIcon.classList.add('spin-animation');
         }
 
-        // Se não for forçado, tenta usar cache de proventos primeiro para agilizar
+        // Se nÃ£o for forÃ§ado, tenta usar cache de proventos primeiro para agilizar
         if (!force) {
             const proventosFuturosCache = processarProventosScraper(proventosConhecidos);
             if (proventosFuturosCache.length > 0) {
@@ -7340,29 +7340,29 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
             return;
         }
 
-        // Iniciamos todas as requisições ao mesmo tempo para ganhar tempo
+        // Iniciamos todas as requisiÃ§Ãµes ao mesmo tempo para ganhar tempo
         const promessaPrecos = buscarPrecosCarteira(force);
         const promessaProventos = buscarProventosFuturos(force);
         const promessaHistorico = buscarHistoricoProventosAgregado(force);
 
         // Tratamento individual das promessas para renderizar assim que chegarem.
-        // OTIMIZAÇÃO: usamos renderizarCarteiraDebounced (100 ms) em vez de chamar
-        // renderizarCarteira() diretamente. Se preços e proventos resolverem quase
-        // ao mesmo tempo, o debounce garante que a renderização visual ocorra apenas
-        // UMA vez com os dados já consolidados, evitando o "double render".
+        // OTIMIZAÃ‡ÃƒO: usamos renderizarCarteiraDebounced (100 ms) em vez de chamar
+        // renderizarCarteira() diretamente. Se preÃ§os e proventos resolverem quase
+        // ao mesmo tempo, o debounce garante que a renderizaÃ§Ã£o visual ocorra apenas
+        // UMA vez com os dados jÃ¡ consolidados, evitando o "double render".
         promessaPrecos.then(async precos => {
             if (precos.length > 0) {
                 precosAtuais = precos;
-                // Renderiza imediatamente para gravar dashboardIntradayState antes do gráfico.
+                // Renderiza imediatamente para gravar dashboardIntradayState antes do grÃ¡fico.
                 await renderizarCarteira();
-                // Atualiza o gráfico intradiário usando a mesma base consolidada do dashboard.
+                // Atualiza o grÃ¡fico intradiÃ¡rio usando a mesma base consolidada do dashboard.
                 atualizarGraficoIntradiario(force);
             } else if (precosAtuais.length === 0) {
                 await renderizarCarteira();
             }
         }).catch(async err => {
-            console.error("Erro ao buscar preços (BFF):", err);
-            showToast("Erro ao buscar preços.");
+            console.error("Erro ao buscar preÃ§os (BFF):", err);
+            showToast("Erro ao buscar preÃ§os.");
             if (precosAtuais.length === 0) { await renderizarCarteira(); }
         });
 
@@ -7370,19 +7370,19 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
             // Atualiza a lista com o que veio da API
             proventosAtuais = processarProventosScraper(proventosConhecidos);
 
-            // Força o recálculo do saldo "Recebidos" agora que temos dados novos da nuvem
+            // ForÃ§a o recÃ¡lculo do saldo "Recebidos" agora que temos dados novos da nuvem
             await processarDividendosPagos();
 
             renderizarProventos(); // Atualiza o widget de proventos
 
             // Re-renderiza a carteira para atualizar as tags de "Data Com" nos cards.
-            // Também via debounce — se preços já resolveram, esta chamada será "absorvida"
-            // pelo mesmo timer e a renderização final acontece uma única vez.
+            // TambÃ©m via debounce â€” se preÃ§os jÃ¡ resolveram, esta chamada serÃ¡ "absorvida"
+            // pelo mesmo timer e a renderizaÃ§Ã£o final acontece uma Ãºnica vez.
             if (precosAtuais.length > 0) {
                 renderizarCarteiraDebounced();
             }
 
-            // Atualiza gráfico histórico se houver dados novos
+            // Atualiza grÃ¡fico histÃ³rico se houver dados novos
             if (typeof renderizarHistoricoProventos === 'function') {
                 renderizarHistoricoProventos();
             }
@@ -7399,9 +7399,9 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
         });
 
         promessaHistorico.then(({ labels, data }) => {
-            renderizarGraficoHistorico({ labels, data }); // Atualiza o gráfico de barras
+            renderizarGraficoHistorico({ labels, data }); // Atualiza o grÃ¡fico de barras
         }).catch(err => {
-            console.error("Erro ao buscar histórico agregado (BFF):", err);
+            console.error("Erro ao buscar histÃ³rico agregado (BFF):", err);
             renderizarGraficoHistorico({ labels: [], data: [] });
         });
 
@@ -7414,21 +7414,21 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
             dashboardLoading.classList.add('hidden');
 
             // Quando force=true (refresh manual), os skeletons foram ativados aqui dentro,
-            // então é seguro desativá-los — os cards já têm valores anteriores no DOM.
-            // Quando force=false (carga inicial), NÃO desativamos aqui: renderizarCarteira()
-            // já chama renderizarDashboardSkeletons(false) APÓS gravar os valores nos
+            // entÃ£o Ã© seguro desativÃ¡-los â€” os cards jÃ¡ tÃªm valores anteriores no DOM.
+            // Quando force=false (carga inicial), NÃƒO desativamos aqui: renderizarCarteira()
+            // jÃ¡ chama renderizarDashboardSkeletons(false) APÃ“S gravar os valores nos
             // elementos, evitando o flash de "R$ 0,00" causado pelo debounce de 100 ms.
             if (force) {
                 renderizarDashboardSkeletons(false);
                 renderizarCarteiraSkeletons(false);
             }
 
-            // Atualiza as notificações
+            // Atualiza as notificaÃ§Ãµes
             if (typeof verificarNotificacoesFinanceiras === 'function') {
                 verificarNotificacoesFinanceiras();
             }
 
-            // Radar de notícias — só roda aqui porque depende de carteiraCalculada
+            // Radar de notÃ­cias â€” sÃ³ roda aqui porque depende de carteiraCalculada
             carregarRadarNoticias();
         }
         } finally {
@@ -7472,7 +7472,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
 
         let precoTexto = document.querySelector('#detalhes-preco h2')?.textContent || '';
 
-        // Usa fundamentos armazenados ao invés de scraping do DOM
+        // Usa fundamentos armazenados ao invÃ©s de scraping do DOM
         const f = currentDetalhesFundamentos || {};
         const dyTexto = f.dy || 'N/A';
         const pvpTexto = f.pvp || 'N/A';
@@ -7486,13 +7486,13 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
 
         const ehFiiShare = isFII(symbolSafe);
 
-        let linhas = [`Confira ${symbolSafe} no Vesto!`, `Preço: ${precoTexto}`];
+        let linhas = [`Confira ${symbolSafe} no Vesto!`, `PreÃ§o: ${precoTexto}`];
         linhas.push(`DY (12m): ${dyTexto}`);
         linhas.push(`P/VP: ${pvpTexto}`);
         linhas.push(`Liquidez: ${liquidezTexto}`);
-        if (ehFiiShare) linhas.push(`Vacância: ${vacanciaTexto}`);
+        if (ehFiiShare) linhas.push(`VacÃ¢ncia: ${vacanciaTexto}`);
         linhas.push(`VP/Cota: ${vpCotaTexto}`);
-        linhas.push(`Variação 12M: ${variacao12mTexto}`);
+        linhas.push(`VariaÃ§Ã£o 12M: ${variacao12mTexto}`);
 
         const textoBase = linhas.join('\n');
         const textoCompleto = `${textoBase}\n\nVer detalhes: ${deepLink}`;
@@ -7516,7 +7516,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
 
     function copiarParaClipboard(texto) {
         navigator.clipboard.writeText(texto).then(() => {
-            showToast('Link copiado para a área de transferência!', 'success');
+            showToast('Link copiado para a Ã¡rea de transferÃªncia!', 'success');
         }).catch(err => {
             console.error('Erro ao copiar', err);
             showToast('Erro ao copiar link.');
@@ -7530,11 +7530,11 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
         let dataTransacao = dateInput.value;
         let transacaoID = transacaoIdInput.value;
 
-        // Captura o valor do botão de rádio selecionado (buy ou sell)
+        // Captura o valor do botÃ£o de rÃ¡dio selecionado (buy ou sell)
         const tipoOperacao = document.getElementById('tipo-operacao-input').value;
 
         if (!ticker) {
-            showToast("Ticker inválido. Use o formato da B3 (ex.: PETR4, HGLG11).");
+            showToast("Ticker invÃ¡lido. Use o formato da B3 (ex.: PETR4, HGLG11).");
             tickerInput.classList.add('border-red-500');
             setTimeout(() => tickerInput.classList.remove('border-red-500'), 2000);
             return;
@@ -7573,12 +7573,12 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
                     const quoteData = await fetchQuoteWithYahooFallback(ticker);
                     const precoValidacao = Number(quoteData?.regularMarketPrice);
                     if (!quoteData || !Number.isFinite(precoValidacao) || precoValidacao <= 0) {
-                        throw new Error('Ativo não encontrado');
+                        throw new Error('Ativo nÃ£o encontrado');
                     }
                 } catch (error) {
-                    showToast("Ativo não encontrado.");
+                    showToast("Ativo nÃ£o encontrado.");
                     tickerInput.value = '';
-                    tickerInput.placeholder = "Ativo não encontrado";
+                    tickerInput.placeholder = "Ativo nÃ£o encontrado";
                     tickerInput.classList.add('border-red-500');
                     setTimeout(() => {
                         tickerInput.placeholder = "Pesquisar ativo";
@@ -7609,7 +7609,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
             if (index > -1) {
                 transacoes[index] = { ...transacoes[index], ...transacaoAtualizada };
             }
-            showToast("Transação atualizada!", 'success');
+            showToast("TransaÃ§Ã£o atualizada!", 'success');
 
         } else {
             const novaTransacao = {
@@ -7644,7 +7644,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
     function handleRemoverAtivo(symbol) {
         showModal(
             'Remover Ativo',
-            `Tem certeza? Isso removerá ${symbol} e TODO o seu histórico de compras deste ativo.`,
+            `Tem certeza? Isso removerÃ¡ ${symbol} e TODO o seu histÃ³rico de compras deste ativo.`,
             async () => {
                 transacoes = transacoes.filter(t => t.symbol !== symbol);
                 invalidarCacheQtdNaData();
@@ -7670,7 +7670,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
 
     function handleAbrirModalEdicao(id) {
         const tx = transacoes.find(t => t.id === id);
-        if (!tx) { showToast("Erro: Transação não encontrada."); return; }
+        if (!tx) { showToast("Erro: TransaÃ§Ã£o nÃ£o encontrada."); return; }
 
         transacaoEmEdicao = tx;
         addModalTitle.textContent = tx.type === 'sell' ? 'Editar Venda' : 'Editar Compra';
@@ -7686,14 +7686,14 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
         const totalPreview = document.getElementById('total-transacao-preview');
         if (totalPreview) totalPreview.textContent = formatBRL(tx.quantity * tx.price);
 
-        // ALTERAÇÃO: Aciona o botão correto para animar o toggle
+        // ALTERAÃ‡ÃƒO: Aciona o botÃ£o correto para animar o toggle
         if (tx.type === 'sell') {
             document.getElementById('btn-opt-venda').click();
         } else {
             document.getElementById('btn-opt-compra').click();
         }
 
-        // Mostra botão de excluir no modo edição
+        // Mostra botÃ£o de excluir no modo ediÃ§Ã£o
         const btnExcluir = document.getElementById('btn-excluir-transacao');
         if (btnExcluir) {
             btnExcluir.classList.remove('hidden');
@@ -7707,14 +7707,14 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
     function handleExcluirTransacao(id, symbol) {
         const tx = transacoes.find(t => t.id === id);
         if (!tx) {
-            showToast("Erro: Transação não encontrada.");
+            showToast("Erro: TransaÃ§Ã£o nÃ£o encontrada.");
             return;
         }
 
-        const msg = `Excluir esta compra?\n\nAtivo: ${tx.symbol}\nData: ${formatDate(tx.date)}\nQtd: ${tx.quantity}\nPreço: ${formatBRL(tx.price)}`;
+        const msg = `Excluir esta compra?\n\nAtivo: ${tx.symbol}\nData: ${formatDate(tx.date)}\nQtd: ${tx.quantity}\nPreÃ§o: ${formatBRL(tx.price)}`;
 
         showModal(
-            'Excluir Transação',
+            'Excluir TransaÃ§Ã£o',
             msg,
             async () => {
                 await supabaseDB.deleteTransacao(id);
@@ -7738,7 +7738,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
                         setTimeout(() => {
                             showModal(
                                 'Manter nos Favoritos?',
-                                `${symbol} não está mais na sua carteira. Deseja mantê-lo na sua lista de favoritos?`,
+                                `${symbol} nÃ£o estÃ¡ mais na sua carteira. Deseja mantÃª-lo na sua lista de favoritos?`,
                                 () => { }
                             );
                         }, 300);
@@ -7746,7 +7746,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
                 }
 
                 await atualizarTodosDados(true);
-                showToast("Transação excluída.", 'success');
+                showToast("TransaÃ§Ã£o excluÃ­da.", 'success');
             }
         );
     }
@@ -7759,12 +7759,12 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
         const confirmPassword = changeConfirmPasswordInput.value;
 
         if (newPassword.length < 6) {
-            showToast("A nova senha deve ter no mínimo 6 caracteres.");
+            showToast("A nova senha deve ter no mÃ­nimo 6 caracteres.");
             return;
         }
 
         if (newPassword !== confirmPassword) {
-            showToast("As senhas não coincidem.");
+            showToast("As senhas nÃ£o coincidem.");
             return;
         }
 
@@ -7774,7 +7774,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
         try {
             const session = await supabaseDB.initialize();
             if (!session || !session.user || !session.user.email) {
-                throw new Error("Erro de sessão. Faça login novamente.");
+                throw new Error("Erro de sessÃ£o. FaÃ§a login novamente.");
             }
             const userEmail = session.user.email;
 
@@ -7822,7 +7822,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
         detalhesHistoricoContainer.classList.add('hidden');
         detalhesAiProvento.innerHTML = '';
 
-        // Limpa painéis das tabs
+        // Limpa painÃ©is das tabs
         const elGrid = document.getElementById('detalhes-grid-topo');
         if (elGrid) elGrid.innerHTML = '';
         const elProvento = document.getElementById('detalhes-provento-placeholder');
@@ -7840,7 +7840,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
 
         // Reseta tab nav para Resumo
         switchDetalhesTab('resumo');
-        // Garante que o slider resete imediatamente (sem animação)
+        // Garante que o slider resete imediatamente (sem animaÃ§Ã£o)
         const tabSlider = document.getElementById('detalhes-tab-slider');
         if (tabSlider) { tabSlider.style.transition = 'none'; tabSlider.style.left = '0'; tabSlider.style.width = '0'; }
         if (detalhesTabPortfolioBtn) detalhesTabPortfolioBtn.classList.add('hidden');
@@ -7855,14 +7855,14 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
 
     }
 
-    //  LÓGICA DO GRÁFICO DE COTAÇÃO (VISUAL MELHORADO & SEM CACHE PERSISTENTE)
+    //  LÃ“GICA DO GRÃFICO DE COTAÃ‡ÃƒO (VISUAL MELHORADO & SEM CACHE PERSISTENTE)
 
     let cotacaoChartInstance = null;
     // Token de cancelamento: incrementado em limparDetalhes para invalidar fetches em voo
     let currentChartFetchId = 0;
     // Cache agora usa chave composta: "PETR4_1D", "VALE3_5A"
     window.tempChartCache = {};
-    // Tipo de gráfico de preço: 'line' | 'candlestick'
+    // Tipo de grÃ¡fico de preÃ§o: 'line' | 'candlestick'
     let currentPriceChartType = 'line';
     // Listener de eventos do canvas de candlestick (para cleanup)
     let candlestickEventCleanup = null;
@@ -7906,7 +7906,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
         <div class="flex flex-col mb-2 px-1">
             
             <div class="flex items-center justify-between gap-1 mb-3 pl-1 w-full">
-                <h4 class="text-[10px] font-bold ${isLight ? 'text-gray-600' : 'text-gray-300'} uppercase tracking-widest truncate">Cotação - ${symbol}</h4>
+                <h4 class="text-[10px] font-bold ${isLight ? 'text-gray-600' : 'text-gray-300'} uppercase tracking-widest truncate">CotaÃ§Ã£o - ${symbol}</h4>
                 
                 <div class="flex items-center gap-1.5 text-[9px] ${bgKpiColors} px-2 py-0.5 rounded-md shadow-sm whitespace-nowrap flex-shrink-0">
                     <span class="text-gray-500 font-medium">A:<span id="stat-open" class="${txtKpiValues} ml-0.5">--</span></span>
@@ -7936,14 +7936,14 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
                         <div id="chart-type-slider" class="absolute top-1 bottom-1 bg-[#2C2C2E] rounded-lg shadow-sm transition-all duration-300 ease-out pointer-events-none z-0" style="width: 0px;"></div>
                         <button id="btn-type-line" onclick="window.mudarTipoGrafico('line', '${symbol}')"
                             class="chart-type-btn px-2.5 py-1.5 rounded-lg text-[10px] font-bold uppercase transition-colors duration-200 select-none relative z-10 text-white"
-                            title="Gráfico de Linha">
+                            title="GrÃ¡fico de Linha">
                             <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
                                 <polyline points="1,11 4,7 7,9 10,4 13,3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
                             </svg>
                         </button>
                         <button id="btn-type-candlestick" onclick="window.mudarTipoGrafico('candlestick', '${symbol}')"
                             class="chart-type-btn px-2.5 py-1.5 rounded-lg text-[10px] font-bold uppercase transition-colors duration-200 select-none relative z-10 text-gray-500"
-                            title="Gráfico de Velas">
+                            title="GrÃ¡fico de Velas">
                             <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
                                 <line x1="2.5" y1="1" x2="2.5" y2="3" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
                                 <rect x="1" y="3" width="3" height="5" rx="0.5" fill="currentColor" opacity="0.9"/>
@@ -8007,18 +8007,18 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
     </button>`;
     };
 
-    // Função orquestradora de dados (Cache vs API)
+    // FunÃ§Ã£o orquestradora de dados (Cache vs API)
     window.carregarDadosGrafico = carregarDadosGrafico;
     async function carregarDadosGrafico(range, symbol) {
         const cacheKey = `${symbol}_${range}`;
-        // FIX: Captura o token atual — se mudar antes da resposta, o modal foi fechado
+        // FIX: Captura o token atual â€” se mudar antes da resposta, o modal foi fechado
         const fetchId = currentChartFetchId;
 
         try {
             let data = window.tempChartCache[cacheKey];
 
             if (!data) {
-                // UI Loading state se necessário (opcional aqui pois já iniciou com skeleton)
+                // UI Loading state se necessÃ¡rio (opcional aqui pois jÃ¡ iniciou com skeleton)
                 const wrapper = document.getElementById('chart-area-wrapper');
                 if (wrapper && !wrapper.querySelector('.animate-pulse')) {
                     wrapper.innerHTML = `<div class="flex flex-col items-center justify-center h-full animate-pulse"><span class="text-[10px] text-gray-600">CARREGANDO...</span></div>`;
@@ -8032,24 +8032,24 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
 
                 if (response && response.points && response.points.length > 0) {
                     data = response.points;
-                    window.tempChartCache[cacheKey] = data; // Salva no cache específico
+                    window.tempChartCache[cacheKey] = data; // Salva no cache especÃ­fico
                 } else {
                     throw new Error("Dados vazios");
                 }
             }
 
-            // FIX: Verificação final antes de renderizar (pode já estar em cache mas modal fechou)
+            // FIX: VerificaÃ§Ã£o final antes de renderizar (pode jÃ¡ estar em cache mas modal fechou)
             if (fetchId !== currentChartFetchId) return;
 
             renderPriceChart(data, range);
 
         } catch (e) {
             if (fetchId !== currentChartFetchId) return; // FIX: Ignora erros de fetches cancelados
-            console.error("Erro gráfico:", e);
+            console.error("Erro grÃ¡fico:", e);
             const wrapper = document.getElementById('chart-area-wrapper');
             if (wrapper) wrapper.innerHTML = `
             <div class="flex flex-col items-center justify-center h-full text-gray-500">
-                <span class="text-xs">Indisponível para ${range}</span>
+                <span class="text-xs">IndisponÃ­vel para ${range}</span>
                 <button onclick="carregarDadosGrafico('${range}', '${symbol}')" class="mt-2 text-[10px] text-blue-500">Tentar novamente</button>
             </div>`;
         }
@@ -8081,7 +8081,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
             }
         }
 
-        // Re-renderiza com os dados já cacheados (sem nova chamada de API)
+        // Re-renderiza com os dados jÃ¡ cacheados (sem nova chamada de API)
         const activeRangeBtn = document.querySelector('#chart-filters .chart-filter-btn.text-white');
         const range = activeRangeBtn?.dataset?.range || '1D';
         const cacheKey = `${symbol}_${range}`;
@@ -8107,11 +8107,11 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
         const slider = document.getElementById('cotacao-slider');
 
         if (activeBtn) {
-            // 2. Acende o texto do botão clicado
+            // 2. Acende o texto do botÃ£o clicado
             activeBtn.classList.remove('text-gray-500', txtHover);
             activeBtn.classList.add(txtActive);
 
-            // 3. Move o slider (animação mágica)
+            // 3. Move o slider (animaÃ§Ã£o mÃ¡gica)
             if (slider) {
                 slider.style.width = `${activeBtn.offsetWidth}px`;
                 slider.style.transform = `translateX(${activeBtn.offsetLeft}px)`;
@@ -8148,7 +8148,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
         const startPrice = dataPoints[0].open || values[0];
         const endPrice = values[values.length - 1];
 
-        // ATUALIZAÇÃO DOS VALORES A/V/F (Interativo com o Dedo)
+        // ATUALIZAÃ‡ÃƒO DOS VALORES A/V/F (Interativo com o Dedo)
         const updateHeaderStats = (currentPrice) => {
             const elOpen = document.getElementById('stat-open');
             const elClose = document.getElementById('stat-close');
@@ -8385,7 +8385,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
                                 return date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit' });
                             },
                             label: function (context) {
-                                // TOOLTIP LIMPO: APENAS O PREÇO SEM "Fechamento:"
+                                // TOOLTIP LIMPO: APENAS O PREÃ‡O SEM "Fechamento:"
                                 return _fmtBRL.format(context.parsed.y);
                             }
                         }
@@ -8424,7 +8424,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
 
         // Layout
         const NAV_H = 28;   // altura do navegador inferior
-        const NAV_GAP = 6;    // espaço entre gráfico e nav
+        const NAV_GAP = 6;    // espaÃ§o entre grÃ¡fico e nav
         const PAD = { top: 10, right: 52, bottom: 22 + NAV_GAP + NAV_H, left: 4 };
         const chartW = W - PAD.left - PAD.right;
         const chartH = H - PAD.top - PAD.bottom;
@@ -8443,22 +8443,22 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
         }));
         const N = candles.length;
 
-        // ─── ESTADO DE VISTA (zoom/pan) ────────────────────────────────────────────
-        // viewStart / viewEnd: índices dos candles visíveis no gráfico principal
+        // â”€â”€â”€ ESTADO DE VISTA (zoom/pan) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        // viewStart / viewEnd: Ã­ndices dos candles visÃ­veis no grÃ¡fico principal
         const MIN_VISIBLE = Math.max(5, Math.round(N * 0.02));
         const MAX_VISIBLE = N;
 
-        // Zoom inicial: para ranges grandes, começa mostrando os últimos ~80 candles
+        // Zoom inicial: para ranges grandes, comeÃ§a mostrando os Ãºltimos ~80 candles
         const DEFAULT_VISIBLE = { '1D': N, '5D': N, '1M': N, '6M': N, 'YTD': N, '1A': N, '5A': 80, 'Tudo': 80 };
         let visibleCount = Math.min(N, DEFAULT_VISIBLE[range] ?? N);
         let viewStart = Math.max(0, N - visibleCount);
         let viewEnd = N - 1;
 
-        // Preço de referência global (para variação % no header)
+        // PreÃ§o de referÃªncia global (para variaÃ§Ã£o % no header)
         const refPrice = candles[0].close;
         const endPrice = candles[N - 1].close;
 
-        // ─── HEADER STATS ──────────────────────────────────────────────────────────
+        // â”€â”€â”€ HEADER STATS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         const updateHeaderStats = (open, close) => {
             const elOpen = document.getElementById('stat-open');
             const elClose = document.getElementById('stat-close');
@@ -8474,14 +8474,14 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
             elClose.style.color = ''; // Limpa a cor que ficava verde/vermelha no fechamento
 
             elVar.textContent = `${isPos ? '+' : ''}${varPct.toFixed(2).replace('.', ',')}%`;
-            // CORREÇÃO: Usando o mesmo estilo compacto e sem o text-xs gigante
+            // CORREÃ‡ÃƒO: Usando o mesmo estilo compacto e sem o text-xs gigante
             elVar.className = isPos ? 'text-[#00C805] font-bold ml-0.5' : 'text-[#FF3B30] font-bold ml-0.5';
         };
 
-        // Inicializa com a abertura do primeiro candle visível e o fechamento do último visível
+        // Inicializa com a abertura do primeiro candle visÃ­vel e o fechamento do Ãºltimo visÃ­vel
         updateHeaderStats(candles[viewStart].open, candles[viewEnd].close);
 
-        // ─── ESCALAS DINÂMICAS (apenas para candles visíveis) ──────────────────────
+        // â”€â”€â”€ ESCALAS DINÃ‚MICAS (apenas para candles visÃ­veis) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         function getVisibleScale() {
             const visible = candles.slice(viewStart, viewEnd + 1);
             const vHigh = Math.max(...visible.map(c => c.high));
@@ -8501,19 +8501,19 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
             return PAD.top + chartH - ((p - minP) / (maxP - minP)) * chartH;
         }
 
-        // Converte posição X do canvas → índice global do candle
+        // Converte posiÃ§Ã£o X do canvas â†’ Ã­ndice global do candle
         function xToGlobalIdx(pixX) {
             const visCount = viewEnd - viewStart + 1;
             const localIdx = Math.round((pixX - PAD.left) / (chartW / visCount) - 0.5);
             return Math.max(viewStart, Math.min(viewEnd, viewStart + localIdx));
         }
 
-        // Converte índice global → posição X no navegador
+        // Converte Ã­ndice global â†’ posiÃ§Ã£o X no navegador
         function globalIdxToNavX(idx) {
             return NAV_X + (idx / (N - 1)) * NAV_W;
         }
 
-        // ─── ESTADO HOVER ──────────────────────────────────────────────────────────
+        // â”€â”€â”€ ESTADO HOVER â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         let hoverIdx = null;
         let rafId = null;
 
@@ -8522,7 +8522,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
             rafId = requestAnimationFrame(draw);
         }
 
-        // ─── DRAW PRINCIPAL ────────────────────────────────────────────────────────
+        // â”€â”€â”€ DRAW PRINCIPAL â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         function draw() {
             rafId = null;
             ctx.clearRect(0, 0, W, H);
@@ -8533,7 +8533,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
             const candleW = Math.max(1, Math.min(14, slotW * 0.65));
             const visCandles = candles.slice(viewStart, viewEnd + 1);
 
-            // ── Linhas de grade Y (preço) ──
+            // â”€â”€ Linhas de grade Y (preÃ§o) â”€â”€
             const priceRange = maxP - minP;
             const rawStep = priceRange / 4;
             const mag = Math.pow(10, Math.floor(Math.log10(rawStep)));
@@ -8554,7 +8554,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
                 ctx.lineTo(W - PAD.right, gy);
                 ctx.stroke();
 
-                // Label preço
+                // Label preÃ§o
                 ctx.fillStyle = 'rgba(150,150,150,0.7)';
                 ctx.font = '8px sans-serif';
                 ctx.textAlign = 'left';
@@ -8566,7 +8566,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
             }
             ctx.restore();
 
-            // ── Labels datas no eixo X ──
+            // â”€â”€ Labels datas no eixo X â”€â”€
             const maxLabels = Math.floor(chartW / 55);
             const labelStep = Math.max(1, Math.floor(visCount / maxLabels));
             ctx.save();
@@ -8590,7 +8590,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
             });
             ctx.restore();
 
-            // ── Candles ──
+            // â”€â”€ Candles â”€â”€
             ctx.save();
             ctx.beginPath();
             ctx.rect(PAD.left, PAD.top, chartW, chartH);
@@ -8632,7 +8632,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
             ctx.globalAlpha = 1;
             ctx.restore();
 
-            // ── Linha do último preço visível (tracejada) ──
+            // â”€â”€ Linha do Ãºltimo preÃ§o visÃ­vel (tracejada) â”€â”€
             const lastVisClose = candles[viewEnd].close;
             const firstVisClose = candles[viewStart].close;
             const lastColor = lastVisClose >= firstVisClose ? '#00C805' : '#FF3B30';
@@ -8648,7 +8648,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
                 ctx.stroke();
                 ctx.setLineDash([]);
 
-                // Badge preço
+                // Badge preÃ§o
                 const badgeTxt = lastVisClose.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
                 ctx.font = 'bold 9px sans-serif';
                 const tw = ctx.measureText(badgeTxt).width;
@@ -8666,7 +8666,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
                 ctx.fillText(badgeTxt, bX + bPX, bY + bH / 2 + 1);
             }
 
-            // ── Crosshair + Tooltip hover ──
+            // â”€â”€ Crosshair + Tooltip hover â”€â”€
             if (hoverIdx !== null && hoverIdx >= viewStart && hoverIdx <= viewEnd) {
                 const x = toX(hoverIdx);
                 const c = candles[hoverIdx];
@@ -8713,7 +8713,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
                 ctx.fillStyle = '#fff'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
                 ctx.fillText(dateText, dX + dW / 2, dY + dH / 2 + 1);
 
-                // Badge preço (eixo Y)
+                // Badge preÃ§o (eixo Y)
                 const priceTxt = c.close.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
                 ctx.font = 'bold 9px sans-serif';
                 const pW = ctx.measureText(priceTxt).width + 8;
@@ -8754,11 +8754,11 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
                 });
             }
 
-            // ── NAVEGADOR (barra inferior) ──
+            // â”€â”€ NAVEGADOR (barra inferior) â”€â”€
             drawNavigator(minP, maxP);
         }
 
-        // ─── NAVEGADOR ─────────────────────────────────────────────────────────────
+        // â”€â”€â”€ NAVEGADOR â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         function drawNavigator(mainMinP, mainMaxP) {
             const nY = NAV_Y;
             const nH = NAV_H;
@@ -8788,24 +8788,24 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
             ctx.stroke();
             ctx.restore();
 
-            // Janela de seleção
+            // Janela de seleÃ§Ã£o
             const selX1 = toNavX(viewStart);
             const selX2 = toNavX(viewEnd);
             const selW = selX2 - selX1;
 
-            // Sombra fora da seleção
+            // Sombra fora da seleÃ§Ã£o
             ctx.fillStyle = 'rgba(0,0,0,0.4)';
             ctx.fillRect(NAV_X, nY, selX1 - NAV_X, nH);
             ctx.fillRect(selX2, nY, NAV_X + NAV_W - selX2, nH);
 
-            // Borda da seleção
+            // Borda da seleÃ§Ã£o
             ctx.strokeStyle = 'rgba(255,255,255,0.35)';
             ctx.lineWidth = 1.5;
             ctx.beginPath();
             ctx.roundRect(selX1, nY + 1, selW, nH - 2, 3);
             ctx.stroke();
 
-            // Alças laterais (handles)
+            // AlÃ§as laterais (handles)
             for (const hX of [selX1, selX2]) {
                 ctx.fillStyle = 'rgba(255,255,255,0.7)';
                 ctx.beginPath();
@@ -8819,13 +8819,13 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
                 ctx.font = '7px sans-serif';
                 ctx.textAlign = 'right';
                 ctx.textBaseline = 'bottom';
-                ctx.fillText('2× reset', NAV_X + NAV_W - 2, nY + nH - 1);
+                ctx.fillText('2Ã— reset', NAV_X + NAV_W - 2, nY + nH - 1);
             }
         }
 
         requestDraw();
 
-        // ─── ZOOM / PAN ────────────────────────────────────────────────────────────
+        // â”€â”€â”€ ZOOM / PAN â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         function clampView() {
             viewStart = Math.max(0, viewStart);
             viewEnd = Math.min(N - 1, viewEnd);
@@ -8842,7 +8842,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
         }
 
         function zoomAroundFrac(frac, factor) {
-            // frac: 0..1 posição dentro da área visível onde o zoom acontece
+            // frac: 0..1 posiÃ§Ã£o dentro da Ã¡rea visÃ­vel onde o zoom acontece
             const count = viewEnd - viewStart + 1;
             const pivot = viewStart + frac * count;
             const newCount = Math.max(MIN_VISIBLE, Math.min(MAX_VISIBLE, Math.round(count * factor)));
@@ -8851,7 +8851,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
             clampView();
         }
 
-        // ── Mouse wheel (zoom) ──
+        // â”€â”€ Mouse wheel (zoom) â”€â”€
         const onWheel = (e) => {
             e.preventDefault();
             const r = canvas.getBoundingClientRect();
@@ -8862,7 +8862,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
             requestDraw();
         };
 
-        // ── Drag to pan (mouse) ──
+        // â”€â”€ Drag to pan (mouse) â”€â”€
         let isDragging = false;
         let dragStartX = 0;
         let dragStartVS = 0;
@@ -8873,7 +8873,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
         let dragNavStartVS = 0;
         let dragNavStartVE = 0;
 
-        const HANDLE_HIT = 10; // px de tolerância para os handles do nav
+        const HANDLE_HIT = 10; // px de tolerÃ¢ncia para os handles do nav
 
         function inNavArea(y) { return y >= NAV_Y && y <= NAV_Y + NAV_H; }
 
@@ -8898,7 +8898,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
                 else if (Math.abs(x - selX2) <= HANDLE_HIT) dragNavHandle = 'right';
                 else if (x >= selX1 && x <= selX2) dragNavHandle = 'body';
                 else {
-                    // Clique fora → teleporta janela para aqui
+                    // Clique fora â†’ teleporta janela para aqui
                     const clickIdx = Math.round((x - NAV_X) / NAV_W * (N - 1));
                     const half = Math.floor((dragNavStartVE - dragNavStartVS) / 2);
                     viewStart = Math.max(0, clickIdx - half);
@@ -8908,7 +8908,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
                     isDraggingNav = false;
                 }
             } else if (x >= PAD.left && x <= W - PAD.right && y >= PAD.top && y <= PAD.top + chartH) {
-                // Clique no gráfico → drag pan
+                // Clique no grÃ¡fico â†’ drag pan
                 isDragging = true;
                 dragStartX = x;
                 dragStartVS = viewStart;
@@ -9004,7 +9004,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
             isDraggingNav = false;
         };
 
-        // ── Double-click → reset zoom ──
+        // â”€â”€ Double-click â†’ reset zoom â”€â”€
         let lastClick = 0;
         const onDblClick = () => {
             const now = Date.now();
@@ -9017,7 +9017,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
             lastClick = now;
         };
 
-        // ── Touch: pan + pinch-zoom ──
+        // â”€â”€ Touch: pan + pinch-zoom â”€â”€
         let lastTouchDist = null;
         let lastTouchCenterX = null;
         let touchStartVS = 0;
@@ -9083,7 +9083,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
             dragStartX = 0;
         };
 
-        // ─── REGISTRO DE EVENTOS ────────────────────────────────────────────────────
+        // â”€â”€â”€ REGISTRO DE EVENTOS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         canvas.addEventListener('wheel', onWheel, { passive: false });
         canvas.addEventListener('mousedown', onMouseDown);
         canvas.addEventListener('mousemove', onMouseMove);
@@ -9094,7 +9094,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
         canvas.addEventListener('touchmove', onTouchMove, { passive: false });
         canvas.addEventListener('touchend', onTouchEnd);
 
-        // Também ouve mouseup no document para soltar drag fora do canvas
+        // TambÃ©m ouve mouseup no document para soltar drag fora do canvas
         const onDocMouseUp = () => { isDragging = false; isDraggingNav = false; };
         document.addEventListener('mouseup', onDocMouseUp);
 
@@ -9148,15 +9148,15 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
         currentDetalhesMeses = 3;
         currentDetalhesHistoricoJSON = null;
 
-        // CORREÇÃO: Token de sessão que identifica ESTA abertura específica do modal.
-        // Impede que callbacks assíncronos de aberturas anteriores (que compartilham
-        // a mesma closure de `symbol`) escribam dados na sessão errada.
+        // CORREÃ‡ÃƒO: Token de sessÃ£o que identifica ESTA abertura especÃ­fica do modal.
+        // Impede que callbacks assÃ­ncronos de aberturas anteriores (que compartilham
+        // a mesma closure de `symbol`) escribam dados na sessÃ£o errada.
         const sessionToken = ++_detalhesSessionId;
 
         const cacheKeyPreco = `detalhe_preco_${symbol}`;
 
-        // ─── LANÇAR TODAS AS PROMISES EM PARALELO ────────────────────────────────────
-        // Não usar await aqui — lançar tudo ao mesmo tempo para que rodem concorrentemente
+        // â”€â”€â”€ LANÃ‡AR TODAS AS PROMISES EM PARALELO â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        // NÃ£o usar await aqui â€” lanÃ§ar tudo ao mesmo tempo para que rodem concorrentemente
         const promisePreco = getCache(cacheKeyPreco).then(async cached => {
             if (cached) return cached;
             const result = await fetchQuoteWithYahooFallback(symbol);
@@ -9164,7 +9164,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
                 await setCache(cacheKeyPreco, result, isB3Open() ? CACHE_PRECO_MERCADO_ABERTO : CACHE_PRECO_MERCADO_FECHADO);
                 return result;
             }
-            throw new Error('Ativo não encontrado');
+            throw new Error('Ativo nÃ£o encontrado');
         });
 
         const promiseFundamentos = callScraperFundamentosAPI(symbol).catch(err => {
@@ -9173,26 +9173,26 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
         });
         const promiseProvento = callScraperProximoProventoAPI(symbol).catch(() => null);
 
-        // Disparo de gráficos sem bloquear o fluxo principal
+        // Disparo de grÃ¡ficos sem bloquear o fluxo principal
         fetchHistoricoScraper(symbol);
         fetchCotacaoHistorica(symbol);
 
-        // ─── FASE 1: Renderiza o modal assim que o PREÇO chegar ─────────────────────
-        // (pode ser instantâneo se vier do cache)
+        // â”€â”€â”€ FASE 1: Renderiza o modal assim que o PREÃ‡O chegar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        // (pode ser instantÃ¢neo se vier do cache)
         let precoData = null;
         try {
             precoData = await promisePreco;
         } catch (e) {
-            showToast("Erro ao buscar preço.");
+            showToast("Erro ao buscar preÃ§o.");
         }
 
-        // Guarda para saber se o modal ainda é desse símbolo / sessão
+        // Guarda para saber se o modal ainda Ã© desse sÃ­mbolo / sessÃ£o
         if (currentDetalhesSymbol !== symbol || _detalhesSessionId !== sessionToken) return;
 
         detalhesLoading.classList.add('hidden');
 
         if (precoData) {
-            detalhesNomeLongo.textContent = precoData.longName || 'Nome não disponível';
+            detalhesNomeLongo.textContent = precoData.longName || 'Nome nÃ£o disponÃ­vel';
 
             /* 
             if (!ehFii && precoData.logourl) {
@@ -9205,9 +9205,9 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
 
             const varPercent = precoData.regularMarketChangePercent || 0;
             const variacaoCor = varPercent > 0 ? 'text-green-400 bg-green-500/10' : (varPercent < 0 ? 'text-red-400 bg-red-500/10' : 'text-[#888] bg-white/5');
-            const variacaoIcone = varPercent > 0 ? '▲' : (varPercent < 0 ? '▼' : '');
+            const variacaoIcone = varPercent > 0 ? 'â–²' : (varPercent < 0 ? 'â–¼' : '');
 
-            // ── Preço + Variação no cabeçalho fixo ──
+            // â”€â”€ PreÃ§o + VariaÃ§Ã£o no cabeÃ§alho fixo â”€â”€
             detalhesPreco.innerHTML = `
             <div class="flex items-baseline gap-3 flex-wrap">
                 <h2 class="text-3xl font-bold text-white tracking-tighter leading-none">${formatBRL(precoData.regularMarketPrice)}</h2>
@@ -9221,7 +9221,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
 
             detalhesMensagem.classList.add('hidden');
 
-            // ── Skeleton KPIs no tab Resumo ──
+            // â”€â”€ Skeleton KPIs no tab Resumo â”€â”€
             const skeletonGrid = Array(6).fill(0).map(() => `
             <div class="vesto-card bg-[#151515] rounded-xl p-3 flex flex-col items-center justify-center shadow-sm">
                 <div class="h-2 skeleton rounded w-16 mb-2"></div>
@@ -9231,7 +9231,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
             const elGridNow = document.getElementById('detalhes-grid-topo');
             if (elGridNow) elGridNow.innerHTML = skeletonGrid;
 
-            // ── Skeleton Fundamentos no tab Indicadores ──
+            // â”€â”€ Skeleton Fundamentos no tab Indicadores â”€â”€
             const elListasNow = document.getElementById('detalhes-listas-fundamentos');
             if (elListasNow) elListasNow.innerHTML = `
             <div class="space-y-2 mb-6">
@@ -9241,7 +9241,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
                 <div class="skeleton rounded-xl h-20"></div>
             </div>`;
 
-            // ── Skeleton Análise ──
+            // â”€â”€ Skeleton AnÃ¡lise â”€â”€
             const elSobreNow = document.getElementById('detalhes-sobre-comparacao');
             if (elSobreNow) elSobreNow.innerHTML = `
             <div class="space-y-2 mb-6">
@@ -9250,19 +9250,19 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
             </div>`;
 
         } else {
-            detalhesPreco.innerHTML = '<p class="text-sm text-red-500 font-bold">Erro ao buscar preço.</p>';
+            detalhesPreco.innerHTML = '<p class="text-sm text-red-500 font-bold">Erro ao buscar preÃ§o.</p>';
         }
 
-        // ─── FASE 2: Preenche fundamentos assim que chegarem ─────────────────────────
+        // â”€â”€â”€ FASE 2: Preenche fundamentos assim que chegarem â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         // Roda em background, sem bloquear mais nada
         Promise.all([promiseFundamentos, promiseProvento]).then(([fundData, provData]) => {
-            // Garante que o modal ainda é desse símbolo
+            // Garante que o modal ainda Ã© desse sÃ­mbolo
             if (currentDetalhesSymbol !== symbol || !precoData || _detalhesSessionId !== sessionToken) return;
 
             const fundamentos = fundData || {};
             const nextProventoData = provData;
 
-            // Override tipo_ativo do scraper — corrige Units (KLBN11, TAEE11) que terminam em 11 mas são Ações
+            // Override tipo_ativo do scraper â€” corrige Units (KLBN11, TAEE11) que terminam em 11 mas sÃ£o AÃ§Ãµes
             if (fundamentos.tipo_ativo) {
                 ehFii = fundamentos.tipo_ativo === 'fii';
                 ehAcao = fundamentos.tipo_ativo === 'acao';
@@ -9270,7 +9270,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
 
             const varPercent = precoData.regularMarketChangePercent || 0;
             const variacaoCor = varPercent > 0 ? 'text-green-400 bg-green-500/10' : (varPercent < 0 ? 'text-red-400 bg-red-500/10' : 'text-[#888] bg-white/5');
-            const variacaoIcone = varPercent > 0 ? '▲' : (varPercent < 0 ? '▼' : '');
+            const variacaoIcone = varPercent > 0 ? 'â–²' : (varPercent < 0 ? 'â–¼' : '');
 
             const dados = {
                 pvp: fundamentos.pvp || '-', dy: fundamentos.dy || '-', val_mercado: fundamentos.val_mercado || '-',
@@ -9303,7 +9303,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
                 badge12m.innerHTML = `12M: <span class="${corVariacaoTextAno}">${dados.variacao_12m}</span>`;
             }
 
-            // Desativado: Forçando uso da API mqteuss/logos_b3 definida na inicialização
+            // Desativado: ForÃ§ando uso da API mqteuss/logos_b3 definida na inicializaÃ§Ã£o
             /* 
             if (!ehFii && dados.logo_url) {
                 const iconContainer = document.getElementById('detalhes-icone-container');
@@ -9336,8 +9336,8 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
                         valuationHtml += `
                         <div class="vesto-card bg-[#151515] rounded-xl p-3 flex justify-between items-center shadow-sm">
                             <div>
-                                <span class="text-[10px] text-blue-400 font-bold uppercase tracking-widest block mb-0.5">Fórmula de Graham</span>
-                                <span class="text-xs text-gray-500 font-medium block">Preço Justo Estimado</span>
+                                <span class="text-[10px] text-blue-400 font-bold uppercase tracking-widest block mb-0.5">FÃ³rmula de Graham</span>
+                                <span class="text-xs text-gray-500 font-medium block">PreÃ§o Justo Estimado</span>
                             </div>
                             <div class="text-right">
                                 <span class="text-lg font-bold text-white tracking-tight block">${formatBRL(vi)}</span>
@@ -9358,8 +9358,8 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
                         valuationHtml += `
                         <div class="vesto-card bg-[#151515] rounded-xl p-3 flex justify-between items-center shadow-sm">
                             <div>
-                                <span class="text-[10px] text-yellow-500 font-bold uppercase tracking-widest block mb-0.5">Método de Bazin</span>
-                                <span class="text-xs text-gray-500 font-medium block">Preço Teto (Mín. 6% DY)</span>
+                                <span class="text-[10px] text-yellow-500 font-bold uppercase tracking-widest block mb-0.5">MÃ©todo de Bazin</span>
+                                <span class="text-xs text-gray-500 font-medium block">PreÃ§o Teto (MÃ­n. 6% DY)</span>
                             </div>
                             <div class="text-right">
                                 <span class="text-lg font-bold text-white tracking-tight block">${formatBRL(bazinPrice)}</span>
@@ -9414,8 +9414,8 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
             <div class="mt-2 mb-6">
                 <h4 class="text-[10px] font-bold text-gray-300 uppercase tracking-widest mb-3 pl-1">Dividendos</h4>
                 <div class="flex gap-2 w-full">
-                    ${formatarCardProvento("Último Rendimento", pData.ultimoPago, false)}
-                    ${formatarCardProvento("Próximo a Receber", pData.proximo, true)}
+                    ${formatarCardProvento("Ãšltimo Rendimento", pData.ultimoPago, false)}
+                    ${formatarCardProvento("PrÃ³ximo a Receber", pData.proximo, true)}
                 </div>
             </div>` : '';
 
@@ -9484,7 +9484,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
                 }).join('');
 
                 return `
-                <h4 class="text-[10px] font-bold text-gray-300 uppercase tracking-widest mt-4 mb-2 pl-1">Histórico de Indicadores Fundamentalistas</h4>
+                <h4 class="text-[10px] font-bold text-gray-300 uppercase tracking-widest mt-4 mb-2 pl-1">HistÃ³rico de Indicadores Fundamentalistas</h4>
                 <div class="vesto-card bg-[#151515] rounded-xl shadow-sm mb-4 border border-white/5 overflow-hidden">
                     <div class="overflow-x-auto custom-scroll">
                         <table class="w-full min-w-[680px] border-collapse">
@@ -9554,13 +9554,13 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
                     renderKpi('DY', dados.dy),
                     renderKpi('ROE', dados.roe),
                     renderKpi('Marg. Liq.', dados.margem_liquida),
-                    renderKpi('Dív./EBITDA', dados.divida_liquida_ebitda),
+                    renderKpi('DÃ­v./EBITDA', dados.divida_liquida_ebitda),
                 ].join('');
 
                 listasHtml = `
                 <h4 class="text-[10px] font-bold text-gray-300 uppercase tracking-widest mt-2 mb-2 pl-1">Rentabilidade</h4>
                 <div class="vesto-card bg-[#151515] rounded-xl px-3 shadow-sm mb-4">
-                    ${renderRow('Marg. Líquida', dados.margem_liquida)}
+                    ${renderRow('Marg. LÃ­quida', dados.margem_liquida)}
                     ${renderRow('Marg. Bruta', dados.margem_bruta)}
                     ${renderRow('Marg. EBIT', dados.margem_ebit)}
                     ${renderRow('ROE', dados.roe)}
@@ -9568,8 +9568,8 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
                 </div>
                 <h4 class="text-[10px] font-bold text-gray-300 uppercase tracking-widest mt-4 mb-2 pl-1">Endividamento</h4>
                 <div class="vesto-card bg-[#151515] rounded-xl px-3 shadow-sm mb-4">
-                    ${renderRow('Dív. Líq./EBITDA', dados.divida_liquida_ebitda)}
-                    ${renderRow('Díd. Líq./PL', dados.divida_liquida_pl)}
+                    ${renderRow('DÃ­v. LÃ­q./EBITDA', dados.divida_liquida_ebitda)}
+                    ${renderRow('DÃ­d. LÃ­q./PL', dados.divida_liquida_pl)}
                     ${renderRow('EV/EBITDA', dados.ev_ebitda)}
                 </div>
                 <h4 class="text-[10px] font-bold text-gray-300 uppercase tracking-widest mt-4 mb-2 pl-1">Crescimento (5A)</h4>
@@ -9582,16 +9582,16 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
                 <div class="vesto-card bg-[#151515] rounded-xl px-3 shadow-sm mb-4">
                     ${renderRow('Valor de Mercado', dados.val_mercado)}
                     ${renderRow('Liquidez', dados.liquidez)}
-                    ${renderRow('VP por Ação', dados.vp_cota)}
+                    ${renderRow('VP por AÃ§Ã£o', dados.vp_cota)}
                 </div>
                 ${valuationHtml}`;
             } else {
-                // É FII
+                // Ã‰ FII
                 gridTopo = [
                     renderKpi('DY', dados.dy),
                     renderKpi('P/VP', dados.pvp),
                     renderKpi('Liquidez', dados.liquidez),
-                    renderKpi('Vacância', dados.vacancia),
+                    renderKpi('VacÃ¢ncia', dados.vacancia),
                     renderKpi('VP/Cota', dados.vp_cota),
                     renderKpi('12M', dados.variacao_12m),
                 ].join('');
@@ -9601,25 +9601,25 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
                 <div class="vesto-card bg-[#151515] rounded-xl px-3 shadow-sm mb-4">
                     ${renderRow('DY', dados.dy)}
                     ${renderRow('P/VP', dados.pvp)}
-                    ${renderRow('Vacância', dados.vacancia)}
-                    ${renderRow('Último Rend.', dados.ultimo_rendimento)}
+                    ${renderRow('VacÃ¢ncia', dados.vacancia)}
+                    ${renderRow('Ãšltimo Rend.', dados.ultimo_rendimento)}
                 </div>
-                <h4 class="text-[10px] font-bold text-gray-300 uppercase tracking-widest mt-4 mb-2 pl-1">Patrimônio & Mercado</h4>
+                <h4 class="text-[10px] font-bold text-gray-300 uppercase tracking-widest mt-4 mb-2 pl-1">PatrimÃ´nio & Mercado</h4>
                 <div class="vesto-card bg-[#151515] rounded-xl px-3 shadow-sm mb-4">
-                    ${renderRow('Patrimônio Líq.', dados.patrimonio_liquido)}
+                    ${renderRow('PatrimÃ´nio LÃ­q.', dados.patrimonio_liquido)}
                     ${renderRow('VP por Cota', dados.vp_cota)}
                     ${renderRow('Valor de Mercado', dados.val_mercado)}
-                    ${renderRow('Nº de Cotistas', dados.num_cotistas)}
+                    ${renderRow('NÂº de Cotistas', dados.num_cotistas)}
                     ${renderRow('Cotas Emitidas', dados.cotas_emitidas)}
                 </div>
                 <h4 class="text-[10px] font-bold text-gray-300 uppercase tracking-widest mt-4 mb-2 pl-1">Sobre o Fundo</h4>
                 <div class="vesto-card bg-[#151515] rounded-xl px-3 shadow-sm mb-4">
                     ${renderRow('Segmento', dados.segmento)}
                     ${renderRow('Tipo', dados.tipo_fundo)}
-                    ${renderRow('Público Alvo', dados.publico_alvo)}
-                    ${renderRow('Gestão', dados.tipo_gestao)}
+                    ${renderRow('PÃºblico Alvo', dados.publico_alvo)}
+                    ${renderRow('GestÃ£o', dados.tipo_gestao)}
                 </div>
-                <h4 class="text-[10px] font-bold text-gray-300 uppercase tracking-widest mt-4 mb-2 pl-1">Taxas & Informações</h4>
+                <h4 class="text-[10px] font-bold text-gray-300 uppercase tracking-widest mt-4 mb-2 pl-1">Taxas & InformaÃ§Ãµes</h4>
                 <div class="vesto-card bg-[#151515] rounded-xl px-3 shadow-sm mb-4">
                     ${renderRow('Taxa Adm.', dados.taxa_adm)}
                     ${renderRow('CNPJ', `<span class="font-mono text-xs opacity-80">${dados.cnpj}</span>`)}
@@ -9629,7 +9629,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
             }
 
             // =========================================================
-            // LÓGICA: SOBRE O ATIVO (Texto)
+            // LÃ“GICA: SOBRE O ATIVO (Texto)
             // =========================================================
             let sobreHtml = '';
             if (dados.sobre && dados.sobre.length > 10) {
@@ -9644,8 +9644,8 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
             }
 
             // =========================================================
-            // NOVA LÓGICA: COMPARAÇÃO (Tabela Horizontal Vesto)
-            // Detecta se é Ação (pl/roe/val_mercado) ou FII (patrimonio/tipo/segmento)
+            // NOVA LÃ“GICA: COMPARAÃ‡ÃƒO (Tabela Horizontal Vesto)
+            // Detecta se Ã© AÃ§Ã£o (pl/roe/val_mercado) ou FII (patrimonio/tipo/segmento)
             // =========================================================
             let comparacaoHtml = '';
             if (dados.comparacao && dados.comparacao.length > 0) {
@@ -9671,7 +9671,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
                 let thead, tbody;
 
                 if (isStock) {
-                    // ── AÇÕES: P/L, P/VP, ROE, DY, Val. Mercado, Marg. Líquida ──
+                    // â”€â”€ AÃ‡Ã•ES: P/L, P/VP, ROE, DY, Val. Mercado, Marg. LÃ­quida â”€â”€
                     let validPl = dados.comparacao.map(i => parseNumberStr(i.pl)).filter(v => v !== null && v > 0);
                     let validPvp = dados.comparacao.map(i => parseNumberStr(i.pvp)).filter(v => v !== null && v > 0);
                     let validRoe = dados.comparacao.map(i => parseNumberStr(i.roe)).filter(v => v !== null);
@@ -9693,7 +9693,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
                         <th class="text-[9px] uppercase tracking-widest text-gray-500/80 font-bold px-4 py-4 whitespace-nowrap text-right">ROE</th>
                         <th class="text-[9px] uppercase tracking-widest text-gray-500/80 font-bold px-4 py-4 whitespace-nowrap text-right">DY</th>
                         <th class="text-[9px] uppercase tracking-widest text-gray-500/80 font-bold px-4 py-4 whitespace-nowrap text-right">Val. Mercado</th>
-                        <th class="text-[9px] uppercase tracking-widest text-gray-500/80 font-bold px-4 py-4 whitespace-nowrap text-right">Marg. Líq.</th>`;
+                        <th class="text-[9px] uppercase tracking-widest text-gray-500/80 font-bold px-4 py-4 whitespace-nowrap text-right">Marg. LÃ­q.</th>`;
 
                     tbody = dados.comparacao.map(item => {
                         const vPl = parseNumberStr(item.pl), vPvp = parseNumberStr(item.pvp);
@@ -9721,7 +9721,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
                         </tr>`;
                     }).join('');
                 } else {
-                    // ── FIIs: DY, P/VP, Patrimônio, Tipo, Segmento ──
+                    // â”€â”€ FIIs: DY, P/VP, PatrimÃ´nio, Tipo, Segmento â”€â”€
                     let validDy = dados.comparacao.map(i => parseNumberStr(i.dy)).filter(v => v !== null);
                     let validPvp = dados.comparacao.map(i => parseNumberStr(i.pvp)).filter(v => v !== null && v > 0);
                     let validPat = dados.comparacao.map(i => parseNumberStr(i.patrimonio)).filter(v => v !== null);
@@ -9733,7 +9733,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
                         <th class="sticky left-0 bg-[#151515] text-[9px] uppercase tracking-widest text-gray-500/80 font-bold px-4 py-4 whitespace-nowrap z-20" style="transform: translateZ(0); box-shadow: inset -10px 0 10px -10px rgba(0,0,0,0.5);">Ativo</th>
                         <th class="text-[9px] uppercase tracking-widest text-gray-500/80 font-bold px-4 py-4 whitespace-nowrap text-right">DY</th>
                         <th class="text-[9px] uppercase tracking-widest text-gray-500/80 font-bold px-4 py-4 whitespace-nowrap text-right">P/VP</th>
-                        <th class="text-[9px] uppercase tracking-widest text-gray-500/80 font-bold px-4 py-4 whitespace-nowrap text-right">Patrimônio</th>
+                        <th class="text-[9px] uppercase tracking-widest text-gray-500/80 font-bold px-4 py-4 whitespace-nowrap text-right">PatrimÃ´nio</th>
                         <th class="text-[9px] uppercase tracking-widest text-gray-500/80 font-bold px-4 py-4 whitespace-nowrap text-center">Tipo</th>
                         <th class="text-[9px] uppercase tracking-widest text-gray-500/80 font-bold px-4 py-4 whitespace-nowrap text-center">Segmento</th>`;
 
@@ -9755,7 +9755,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
                             </td>
                             <td class="p-4 whitespace-nowrap text-right min-w-[80px] align-middle">${badge(item.dy, vDy !== null && vDy === maxDy, 'Maior DY')}</td>
                             <td class="p-4 whitespace-nowrap text-right min-w-[80px] align-middle">${badge(item.pvp, vPvp !== null && vPvp === minPvp, 'Menor P/VP')}</td>
-                            <td class="p-4 whitespace-nowrap text-right min-w-[120px] align-middle">${badge(valPat, vPat !== null && vPat === maxPat, 'Maior Patrimônio')}</td>
+                            <td class="p-4 whitespace-nowrap text-right min-w-[120px] align-middle">${badge(valPat, vPat !== null && vPat === maxPat, 'Maior PatrimÃ´nio')}</td>
                             <td class="p-4 whitespace-nowrap text-center min-w-[120px] align-middle">
                                 <span class="text-[10px] uppercase tracking-widest text-gray-400 font-medium">${valTipo}</span>
                             </td>
@@ -9768,7 +9768,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
 
                 comparacaoHtml = `
                 <h4 class="text-[11px] font-bold text-gray-300 uppercase tracking-[0.2em] mt-8 mb-4 flex items-center gap-2">
-                    Comparando ${isStock ? 'Ações' : 'Ativos'}
+                    Comparando ${isStock ? 'AÃ§Ãµes' : 'Ativos'}
                     <span class="w-1 h-1 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.8)]"></span>
                 </h4>
                 <div class="bg-[#151515] rounded-3xl shadow-xl mb-4 border border-white/[0.04] relative overflow-hidden">
@@ -9788,7 +9788,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
             `;
             }
 
-            // ── Tab RESUMO: KPIs grid ──
+            // â”€â”€ Tab RESUMO: KPIs grid â”€â”€
             const elGrid = document.getElementById('detalhes-grid-topo');
             if (elGrid) {
                 elGrid.style.opacity = '0';
@@ -9799,7 +9799,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
                 });
             }
 
-            // ── Tab RESUMO: Cards de proventos ──
+            // â”€â”€ Tab RESUMO: Cards de proventos â”€â”€
             const elProvento = document.getElementById('detalhes-provento-placeholder');
             if (elProvento && proximoProventoHtml) {
                 elProvento.style.opacity = '0';
@@ -9810,7 +9810,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
                 });
             }
 
-            // ── Tab INDICADORES: Listas de fundamentos + Valuation ──
+            // â”€â”€ Tab INDICADORES: Listas de fundamentos + Valuation â”€â”€
             const elListas = document.getElementById('detalhes-listas-fundamentos');
             if (elListas) {
                 elListas.style.opacity = '0';
@@ -9821,7 +9821,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
                 });
             }
 
-            // ── Tab ANÁLISE: Sobre o Ativo + Tabela de Comparação ──
+            // â”€â”€ Tab ANÃLISE: Sobre o Ativo + Tabela de ComparaÃ§Ã£o â”€â”€
             const elSobre = document.getElementById('detalhes-sobre-comparacao');
             if (elSobre) {
                 const analiseConteudo = sobreHtml + comparacaoHtml;
@@ -9831,7 +9831,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
                     <div class="w-12 h-12 bg-[#151515] rounded-full flex items-center justify-center mb-3 border border-[#2C2C2E]">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" /></svg>
                     </div>
-                    <p class="text-xs text-gray-600 font-medium">Sem dados de análise disponíveis.</p>
+                    <p class="text-xs text-gray-600 font-medium">Sem dados de anÃ¡lise disponÃ­veis.</p>
                 </div>`;
                 requestAnimationFrame(() => {
                     elSobre.style.transition = 'opacity 0.3s ease';
@@ -9839,14 +9839,14 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
                 });
             }
 
-            // ── Renderiza Gráfico de Rentabilidade (Investidor10) ──
+            // â”€â”€ Renderiza GrÃ¡fico de Rentabilidade (Investidor10) â”€â”€
             const rentabilidadeContainer = document.getElementById('detalhes-rentabilidade-container');
             if (rentabilidadeContainer) {
                 if (fundamentos.rentabilidade_chart && fundamentos.rentabilidade_chart.profitabilities && fundamentos.rentabilidade_chart.profitabilities.length > 0) {
                     rentabilidadeContainer.classList.remove('hidden');
                     window.currentRentabilidadeDados = fundamentos.rentabilidade_chart;
 
-                    // Reset do botão para 2A — com delay para o container estar visível
+                    // Reset do botÃ£o para 2A â€” com delay para o container estar visÃ­vel
                     requestAnimationFrame(() => {
                         const rentSlider = document.getElementById('rentabilidade-range-slider');
                         if (rentSlider) rentSlider.style.transition = 'none';
@@ -9861,7 +9861,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
                 }
             }
 
-            // ── NOVO: Renderiza Grid de Indicadores Avançados (Apenas Ações) ──
+            // â”€â”€ NOVO: Renderiza Grid de Indicadores AvanÃ§ados (Apenas AÃ§Ãµes) â”€â”€
             const advMetricsEl = document.getElementById('detalhes-advanced-metrics');
             const advGridEl = document.getElementById('detalhes-advanced-grid');
             if (advMetricsEl && advGridEl) {
@@ -9870,17 +9870,17 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
                     const f = fundamentos;
                     const m = fundamentos.advanced_metrics || {};
 
-                    // Monta pares: indicador do ativo + média do setor
+                    // Monta pares: indicador do ativo + mÃ©dia do setor
                     const metricsToShow = [
                         { label: 'ROE', ativo: f.roe, setor: m.roe },
                         { label: 'P/L', ativo: f.pl, setor: m.p_l },
                         { label: 'P/VP', ativo: f.pvp, setor: m.p_vp },
                         { label: 'Marg. Bruta', ativo: f.margem_bruta, setor: m.gross_margin },
-                        { label: 'Marg. Líquida', ativo: f.margem_liquida, setor: m.net_margin },
+                        { label: 'Marg. LÃ­quida', ativo: f.margem_liquida, setor: m.net_margin },
                         { label: 'Marg. EBIT', ativo: f.margem_ebit, setor: m.ebit_margin },
                         { label: 'EV/EBITDA', ativo: f.ev_ebitda, setor: m.ev_ebitda },
-                        { label: 'Dív. Líq/EBITDA', ativo: f.divida_liquida_ebitda, setor: m.net_debt_ebitda },
-                        { label: 'Dív. Líq/PL', ativo: f.divida_liquida_pl, setor: m.net_debt_net_worth },
+                        { label: 'DÃ­v. LÃ­q/EBITDA', ativo: f.divida_liquida_ebitda, setor: m.net_debt_ebitda },
+                        { label: 'DÃ­v. LÃ­q/PL', ativo: f.divida_liquida_pl, setor: m.net_debt_net_worth },
                         { label: 'Payout', ativo: f.payout, setor: m.payout },
                         { label: 'CAGR Rec. 5A', ativo: f.cagr_receita_5a, setor: m.growth_net_revenue_last_5_years },
                         { label: 'CAGR Lucros 5A', ativo: f.cagr_lucros_5a, setor: m.growth_net_profit_last_5_years },
@@ -9923,7 +9923,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
                 }
             }
 
-            // ── NOVO: Renderiza Gráficos de Diversificação de Receita (Apenas Ações) ──
+            // â”€â”€ NOVO: Renderiza GrÃ¡ficos de DiversificaÃ§Ã£o de Receita (Apenas AÃ§Ãµes) â”€â”€
             const revenueChartsEl = document.getElementById('detalhes-revenue-charts');
             if (revenueChartsEl) {
                 const hasGeo = fundamentos.revenue_geography && !ehFii;
@@ -10016,7 +10016,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
                 }
             }
 
-            // ── NOVO: Gráficos Financeiros (Receitas, Lucro x Cotação, Patrimônio, Payout — Apenas Ações) ──
+            // â”€â”€ NOVO: GrÃ¡ficos Financeiros (Receitas, Lucro x CotaÃ§Ã£o, PatrimÃ´nio, Payout â€” Apenas AÃ§Ãµes) â”€â”€
             const chartsFinContainer = document.getElementById('detalhes-charts-financeiros');
             if (chartsFinContainer) {
                 if (!ehFii && fundamentos.charts_financeiros) {
@@ -10026,7 +10026,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
                     const gridColor = isLight ? 'rgba(0,0,0,0.05)' : 'rgba(255,255,255,0.05)';
                     const textColor = isLight ? '#6b7280' : '#9ca3af';
 
-                    // Helper: abbrevia números grandes
+                    // Helper: abbrevia nÃºmeros grandes
                     const abbrevNum = (v) => {
                         if (v === null || v === undefined) return '-';
                         const abs = Math.abs(v);
@@ -10070,8 +10070,8 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
                                 data: {
                                     labels,
                                     datasets: [
-                                        { label: 'Receita Líquida', data: cf.receitas_lucros.map(d => d.net_revenue), backgroundColor: 'rgba(59,130,246,0.6)', borderRadius: 3 },
-                                        { label: 'Lucro Líquido', data: cf.receitas_lucros.map(d => d.net_profit), backgroundColor: 'rgba(16,185,129,0.6)', borderRadius: 3 }
+                                        { label: 'Receita LÃ­quida', data: cf.receitas_lucros.map(d => d.net_revenue), backgroundColor: 'rgba(59,130,246,0.6)', borderRadius: 3 },
+                                        { label: 'Lucro LÃ­quido', data: cf.receitas_lucros.map(d => d.net_profit), backgroundColor: 'rgba(16,185,129,0.6)', borderRadius: 3 }
                                     ]
                                 },
                                 options: baseOpts()
@@ -10079,13 +10079,13 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
                         }
                     }
 
-                    // 2. Lucro x Cotação (dual axis)
+                    // 2. Lucro x CotaÃ§Ã£o (dual axis)
                     if (cf.lucro_cotacao && typeof cf.lucro_cotacao === 'object' && Object.keys(cf.lucro_cotacao).length > 0) {
                         const wrap = document.getElementById('chart-lucro-cotacao-wrap');
                         if (wrap) {
                             wrap.classList.remove('hidden');
                             const titleEl = document.getElementById('chart-lucro-cotacao-title');
-                            if (titleEl) titleEl.textContent = `Lucro x Cotação - ${symbol}`;
+                            if (titleEl) titleEl.textContent = `Lucro x CotaÃ§Ã£o - ${symbol}`;
                             destroyChart('lucro_cotacao');
                             const years = Object.keys(cf.lucro_cotacao).sort();
                             const opts = baseOpts();
@@ -10100,8 +10100,8 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
                                 data: {
                                     labels: years,
                                     datasets: [
-                                        { label: 'Lucro Líquido', data: years.map(y => cf.lucro_cotacao[y].net_profit), backgroundColor: 'rgba(16,185,129,0.6)', borderRadius: 3, yAxisID: 'y' },
-                                        { label: 'Cotação', data: years.map(y => cf.lucro_cotacao[y].quotation), type: 'line', borderColor: '#a855f7', borderWidth: 2, pointRadius: 2, pointHoverRadius: 4, tension: 0.4, yAxisID: 'y1', fill: false }
+                                        { label: 'Lucro LÃ­quido', data: years.map(y => cf.lucro_cotacao[y].net_profit), backgroundColor: 'rgba(16,185,129,0.6)', borderRadius: 3, yAxisID: 'y' },
+                                        { label: 'CotaÃ§Ã£o', data: years.map(y => cf.lucro_cotacao[y].quotation), type: 'line', borderColor: '#a855f7', borderWidth: 2, pointRadius: 2, pointHoverRadius: 4, tension: 0.4, yAxisID: 'y1', fill: false }
                                     ]
                                 },
                                 options: opts
@@ -10109,13 +10109,13 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
                         }
                     }
 
-                    // 3. Evolução do Patrimônio
+                    // 3. EvoluÃ§Ã£o do PatrimÃ´nio
                     if (cf.evolucao_patrimonio && Array.isArray(cf.evolucao_patrimonio) && cf.evolucao_patrimonio.length > 0) {
                         const wrap = document.getElementById('chart-evolucao-patrimonio-wrap');
                         if (wrap) {
                             wrap.classList.remove('hidden');
                             const titleEl = document.getElementById('chart-evolucao-patrimonio-title');
-                            if (titleEl) titleEl.textContent = `Evolução do Patrimônio - ${fundamentos.nome_longo || symbol}`;
+                            if (titleEl) titleEl.textContent = `EvoluÃ§Ã£o do PatrimÃ´nio - ${fundamentos.nome_longo || symbol}`;
                             destroyChart('evolucao_patrimonio');
                             const labels = cf.evolucao_patrimonio.map(d => String(d.year));
                             window._finCharts.evolucao_patrimonio = new Chart(document.getElementById('chart-evolucao-patrimonio').getContext('2d'), {
@@ -10123,9 +10123,9 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
                                 data: {
                                     labels,
                                     datasets: [
-                                        { label: 'Patrimônio', data: cf.evolucao_patrimonio.map(d => d.net_worth), backgroundColor: 'rgba(168,85,247,0.6)', borderRadius: 3 },
-                                        { label: 'Receita Líquida', data: cf.evolucao_patrimonio.map(d => d.net_revenue), backgroundColor: 'rgba(59,130,246,0.5)', borderRadius: 3 },
-                                        { label: 'Lucro Líquido', data: cf.evolucao_patrimonio.map(d => d.net_profit), backgroundColor: 'rgba(16,185,129,0.5)', borderRadius: 3 }
+                                        { label: 'PatrimÃ´nio', data: cf.evolucao_patrimonio.map(d => d.net_worth), backgroundColor: 'rgba(168,85,247,0.6)', borderRadius: 3 },
+                                        { label: 'Receita LÃ­quida', data: cf.evolucao_patrimonio.map(d => d.net_revenue), backgroundColor: 'rgba(59,130,246,0.5)', borderRadius: 3 },
+                                        { label: 'Lucro LÃ­quido', data: cf.evolucao_patrimonio.map(d => d.net_profit), backgroundColor: 'rgba(16,185,129,0.5)', borderRadius: 3 }
                                     ]
                                 },
                                 options: baseOpts()
@@ -10163,7 +10163,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
                 }
             }
 
-            // ── Tab PORTFÓLIO: Imóveis (apenas FIIs) ──
+            // â”€â”€ Tab PORTFÃ“LIO: ImÃ³veis (apenas FIIs) â”€â”€
             if (ehFii && fundamentos.imoveis && fundamentos.imoveis.length > 0) {
                 window.renderizarListaImoveis(fundamentos.imoveis);
                 if (detalhesTabPortfolioBtn) detalhesTabPortfolioBtn.classList.remove('hidden');
@@ -10221,7 +10221,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
             if (currentDetalhesSymbol !== symbolAlvo) return; // nao mostra erro se modal fechou
             showToast("Erro na consulta de dados.");
             detalhesAiProvento.innerHTML = `
-                <div class="p-4 text-center text-red-400 text-sm">Erro ao carregar gráfico</div>
+                <div class="p-4 text-center text-red-400 text-sm">Erro ao carregar grÃ¡fico</div>
             `;
         }
     }
@@ -10251,7 +10251,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
         if (!currentDetalhesHistoricoJSON) return;
 
         if (currentDetalhesHistoricoJSON.length === 0) {
-            detalhesAiProvento.innerHTML = `<p class="text-sm text-[#666] text-center py-8 font-medium">Sem histórico disponível.</p>`;
+            detalhesAiProvento.innerHTML = `<p class="text-sm text-[#666] text-center py-8 font-medium">Sem histÃ³rico disponÃ­vel.</p>`;
             if (detalhesChartInstance) {
                 detalhesChartInstance.destroy();
                 detalhesChartInstance = null;
@@ -10259,29 +10259,29 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
             return;
         }
 
-        // Chama a função principal que constrói tudo (Gráfico + Título + Botões)
+        // Chama a funÃ§Ã£o principal que constrÃ³i tudo (GrÃ¡fico + TÃ­tulo + BotÃµes)
         renderizarGraficoProventosDetalhes(currentDetalhesHistoricoJSON);
     }
 
-    // Funções globais para capturar eventos de filtro no novo layout
+    // FunÃ§Ãµes globais para capturar eventos de filtro no novo layout
     window.atualizarFiltroCustom = function () {
         const startEl = document.getElementById('custom-start');
         const endEl = document.getElementById('custom-end');
         if (startEl && endEl) {
             customRangeStart = startEl.value;
             customRangeEnd = endEl.value;
-            renderHistoricoIADetalhes(); // Re-renderiza o gráfico
+            renderHistoricoIADetalhes(); // Re-renderiza o grÃ¡fico
         }
     };
 
     window.mudarFiltroProventos = function (modo) {
         currentProventosFilter = modo;
-        renderHistoricoIADetalhes(); // Re-renderiza para atualizar classes dos botões e o gráfico
+        renderHistoricoIADetalhes(); // Re-renderiza para atualizar classes dos botÃµes e o grÃ¡fico
     };
 
     function renderizarGraficoProventosDetalhes(rawData) {
         const isLight = document.body.classList.contains('light-mode');
-        // Guarda os dados brutos na memória
+        // Guarda os dados brutos na memÃ³ria
         window.currentRawDataProventos = rawData;
 
         if (detalhesChartInstance) {
@@ -10373,7 +10373,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
         const dataMedia = uniqueMonths.map(() => mediaGeral);
 
         // ==============================================================
-        // HTML DO GRÁFICO DE PROVENTOS (ALINHADO COM COTAÇÃO)
+        // HTML DO GRÃFICO DE PROVENTOS (ALINHADO COM COTAÃ‡ÃƒO)
         // ==============================================================
         if (!document.getElementById('chart-wrapper-proventos')) {
             const isLight = document.body.classList.contains('light-mode');
@@ -10394,7 +10394,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
                     <h4 class="text-[10px] font-bold ${isLight ? 'text-gray-600' : 'text-gray-300'} uppercase tracking-widest truncate">Proventos - ${currentDetalhesSymbol || ''}</h4>
                     
                     <div class="flex items-center gap-1.5 text-[9px] ${bgKpiColors} border px-2 py-0.5 rounded-md shadow-sm whitespace-nowrap flex-shrink-0">
-                        <span class="text-gray-500 font-medium">MÉD:<span id="prov-stat-med" class="${txtKpiValues} ml-0.5">--</span></span>
+                        <span class="text-gray-500 font-medium">MÃ‰D:<span id="prov-stat-med" class="${txtKpiValues} ml-0.5">--</span></span>
                         <span class="${isLight ? 'text-gray-300' : 'text-white/10'}">|</span>
                         <span class="text-gray-500 font-medium">MAX:<span id="prov-stat-max" class="text-[#00C805] font-bold ml-0.5">--</span></span>
                         <span class="${isLight ? 'text-gray-300' : 'text-white/10'}">|</span>
@@ -10417,7 +10417,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
                     </div>
 
                     <div id="chart-empty-state" class="absolute inset-0 pt-16 flex items-center justify-center hidden z-10">
-                        <p class="text-xs text-gray-600 font-medium bg-[#0f0f0f]/80 px-4 py-2 rounded-lg">Sem dados no período.</p>
+                        <p class="text-xs text-gray-600 font-medium bg-[#0f0f0f]/80 px-4 py-2 rounded-lg">Sem dados no perÃ­odo.</p>
                     </div>
 
                     <div class="absolute top-[48px] bottom-0 left-0 right-0 pb-2 px-1 z-10" id="chart-canvas-container">
@@ -10458,7 +10458,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
                         <input type="month" id="custom-start" value="${customRangeStart}" class="w-full ${bgInput} text-xs h-9 border rounded-lg px-3 outline-none focus:border-[#555] transition-colors appearance-none" style="color-scheme: ${isLight ? 'light' : 'dark'};" onchange="window.atualizarFiltroCustom()">
                     </div>
                     <div class="relative group">
-                        <label class="absolute -top-1.5 left-2 ${bgLabel} px-1 text-[9px] font-bold">ATÉ</label>
+                        <label class="absolute -top-1.5 left-2 ${bgLabel} px-1 text-[9px] font-bold">ATÃ‰</label>
                         <input type="month" id="custom-end" value="${customRangeEnd}" class="w-full ${bgInput} text-xs h-9 border rounded-lg px-3 outline-none focus:border-[#555] transition-colors appearance-none" style="color-scheme: ${isLight ? 'light' : 'dark'};" onchange="window.atualizarFiltroCustom()">
                     </div>
                 </div>
@@ -10546,7 +10546,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
                         borderSkipped: false,
                     },
                     {
-                        label: 'Média',
+                        label: 'MÃ©dia',
                         data: dataMedia,
                         type: 'line',
                         borderColor: 'rgba(255,255,255,0.2)',
@@ -10606,10 +10606,10 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
                                 const info = customInfo[idx];
                                 if (!info) return context[0].label || '';
                                 const totalFmt = _fmtBRL.format(info.rawTotal);
-                                return `${info.label}  ·  ${totalFmt}`;
+                                return `${info.label}  Â·  ${totalFmt}`;
                             },
                             label(context) {
-                                if (context.dataset.label === 'Média') return null;
+                                if (context.dataset.label === 'MÃ©dia') return null;
                                 const val = context.parsed.y;
                                 if (!val || val < 0.001) return null;
                                 return `${context.dataset.label}: ${_fmtBRL.format(val)}`;
@@ -10624,15 +10624,23 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
 
     // Ordem exata das telas (deve bater com a ordem das divs no HTML)
     const tabOrder = ['tab-dashboard', 'tab-carteira', 'tab-noticias', 'tab-historico', 'tab-config'];
+    let currentTabIndex = 0;
 
-    function mudarAba(tabId) {
+    function mudarAba(tabId, options = {}) {
         const index = tabOrder.indexOf(tabId);
         if (index === -1) return;
 
         const slider = document.getElementById('tabs-slider');
         if (slider) {
+            if (options.instant) {
+                slider.style.transition = 'none';
+            } else {
+                // Volta para a transiÃ§Ã£o CSS padrÃ£o apÃ³s qualquer drag manual
+                slider.style.transition = '';
+            }
             slider.style.transform = `translateX(-${index * 100}%)`;
         }
+        currentTabIndex = index;
 
         tabContents.forEach(content => {
             if (content.id === tabId) {
@@ -10649,17 +10657,17 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
 
         if (showAddModalBtn) {
             if (tabId === 'tab-carteira') {
-                // Pequeno delay para esperar o slider começar a mover
+                // Pequeno delay para esperar o slider comeÃ§ar a mover
                 setTimeout(() => {
                     showAddModalBtn.classList.remove('hidden');
 
-                    // 1. Remove a classe de animação (reset)
+                    // 1. Remove a classe de animaÃ§Ã£o (reset)
                     showAddModalBtn.classList.remove('fab-animate');
 
-                    // 2. Força um 'Reflow' (reinicia o ciclo de renderização do CSS)
+                    // 2. ForÃ§a um 'Reflow' (reinicia o ciclo de renderizaÃ§Ã£o do CSS)
                     void showAddModalBtn.offsetWidth;
 
-                    // 3. Adiciona a classe novamente para tocar a animação
+                    // 3. Adiciona a classe novamente para tocar a animaÃ§Ã£o
                     showAddModalBtn.classList.add('fab-animate');
                 }, 150);
             } else {
@@ -10685,7 +10693,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
         refreshNoticiasButton.disabled = false;
     });
 
-    // ── Abas de Categoria (Notícias) ──
+    // â”€â”€ Abas de Categoria (NotÃ­cias) â”€â”€
     const newsTabIndicator = document.getElementById('news-tab-indicator');
     
     newsCatBtns.forEach((btn, index) => {
@@ -10709,7 +10717,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
         });
     });
 
-    // ── Busca de Notícias (Debounced) ──
+    // â”€â”€ Busca de NotÃ­cias (Debounced) â”€â”€
     if (newsSearchInput) {
         newsSearchInput.addEventListener('input', (e) => {
             clearTimeout(newsSearchDebounceTimer);
@@ -10723,7 +10731,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
         });
     }
 
-    // ── Status do Mercado (Atualização periódica) ──
+    // â”€â”€ Status do Mercado (AtualizaÃ§Ã£o periÃ³dica) â”€â”€
     atualizarStatusMercado();
     if (marketStatusIntervalId) clearInterval(marketStatusIntervalId);
     marketStatusIntervalId = setInterval(atualizarStatusMercado, MARKET_STATUS_INTERVAL);
@@ -10741,7 +10749,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
     });
 
     listaHistorico.addEventListener('click', (e) => {
-        // 1. Verifica se clicou no botão de EXCLUIR
+        // 1. Verifica se clicou no botÃ£o de EXCLUIR
         const deleteBtn = e.target.closest('[data-action="delete"]');
         if (deleteBtn) {
             e.stopPropagation(); // Impede que o clique propague para a linha (evita abrir o modal)
@@ -10751,7 +10759,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
             return;
         }
 
-        // 2. Verifica se clicou na LINHA da transação (para EDITAR)
+        // 2. Verifica se clicou na LINHA da transaÃ§Ã£o (para EDITAR)
         const itemRow = e.target.closest('[data-action="edit-row"]');
         if (itemRow) {
             const id = itemRow.dataset.id;
@@ -10767,20 +10775,20 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
             const toggleCard = e.target.closest('[data-toggle-drawer]');
 
             if (toggleCard) {
-                // Se clicou dentro do conteúdo expandido (ex: listas ou gráficos), NÃO fecha
+                // Se clicou dentro do conteÃºdo expandido (ex: listas ou grÃ¡ficos), NÃƒO fecha
                 if (e.target.closest('.drawer-content')) return;
 
                 const drawerId = toggleCard.dataset.toggleDrawer;
                 const drawer = document.getElementById(drawerId);
                 const icon = toggleCard.querySelector('.card-arrow-icon');
 
-                // Abre/Fecha com a animação
+                // Abre/Fecha com a animaÃ§Ã£o
                 drawer?.classList.toggle('open');
                 icon?.classList.toggle('open');
                 return;
             }
 
-            // (Opcional) Mantém compatibilidade com botões antigos que usam data-target-drawer
+            // (Opcional) MantÃ©m compatibilidade com botÃµes antigos que usam data-target-drawer
             const targetBtn = e.target.closest('button');
             if (targetBtn && targetBtn.dataset.targetDrawer) {
                 const drawerId = targetBtn.dataset.targetDrawer;
@@ -10861,7 +10869,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
             return;
         }
 
-        // 2. Verifica se clicou no botão de COMPARTILHAR
+        // 2. Verifica se clicou no botÃ£o de COMPARTILHAR
         const shareBtn = e.target.closest('[data-action="share-news"]');
         if (shareBtn) {
             e.stopPropagation();
@@ -10877,7 +10885,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
             } else {
                 // Fallback para desktop
                 navigator.clipboard.writeText(`${title} - ${link}`).then(() => {
-                    showToast('Link copiado para a área de transferência!', 'success');
+                    showToast('Link copiado para a Ã¡rea de transferÃªncia!', 'success');
                 });
             }
             return;
@@ -10889,14 +10897,14 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
             return;
         }
 
-        // 4. Verifica se clicou no CARD da notícia (para abrir o drawer)
+        // 4. Verifica se clicou no CARD da notÃ­cia (para abrir o drawer)
         // Agora procura por 'data-action="toggle-news"' OU a classe antiga 'news-card-interactive'
         const card = e.target.closest('[data-action="toggle-news"]') || e.target.closest('.news-card-interactive');
 
         if (card) {
             const targetId = card.dataset.target; // Pega o ID do drawer (ex: news-drawer-HOJE-0)
 
-            // Como mudamos o ID para ser dinâmico, usamos getElementById
+            // Como mudamos o ID para ser dinÃ¢mico, usamos getElementById
             const drawer = document.getElementById(targetId);
             const icon = card.querySelector('.card-arrow-icon');
 
@@ -10904,7 +10912,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
                 drawer.classList.toggle('open');
                 if (icon) icon.classList.toggle('open');
             } else {
-                console.error('Drawer não encontrado para o ID:', targetId);
+                console.error('Drawer nÃ£o encontrado para o ID:', targetId);
             }
         }
     });
@@ -10944,7 +10952,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
                 }
             }
 
-            // Mostra/esconde o botão limpar
+            // Mostra/esconde o botÃ£o limpar
             if (clearBtn) {
                 clearBtn.classList.toggle('visible', !!term);
             }
@@ -10955,7 +10963,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
             filterCards(term);
         });
 
-        // Botão limpar
+        // BotÃ£o limpar
         if (clearBtn) {
             clearBtn.addEventListener('click', () => {
                 carteiraSearchInput.value = '';
@@ -10995,7 +11003,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
         toggleBioBtn.addEventListener('click', () => {
             const isEnabled = localStorage.getItem('vesto_bio_enabled') === 'true';
             if (isEnabled) {
-                showModal("Desativar Biometria?", "Deseja remover o bloqueio por impressão digital?", () => {
+                showModal("Desativar Biometria?", "Deseja remover o bloqueio por impressÃ£o digital?", () => {
                     desativarBiometria();
                 });
             } else {
@@ -11004,7 +11012,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
                     ativarBiometria();
                     return;
                 }
-                showModal("Ativar Biometria?", "Isso usará o sensor do seu dispositivo para proteger o app.", () => {
+                showModal("Ativar Biometria?", "Isso usarÃ¡ o sensor do seu dispositivo para proteger o app.", () => {
                     ativarBiometria();
                 });
             }
@@ -11023,7 +11031,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
             if (privacyIcon) privacyIcon.innerHTML = '<use href="#ico-eye" />';
         }
 
-        // Force UI re-renders to apply the formatBRL R$ •••• masking
+        // Force UI re-renders to apply the formatBRL R$ â€¢â€¢â€¢â€¢ masking
         if (typeof window.renderizarCarteiraGlobal === 'function') window.renderizarCarteiraGlobal();
         if (typeof window.renderizarHistoricoGlobal === 'function') window.renderizarHistoricoGlobal();
         if (typeof window.renderizarHistoricoProventosGlobal === 'function') window.renderizarHistoricoProventosGlobal();
@@ -11058,13 +11066,13 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
             exportCsvBtn.disabled = true;
 
             try {
-                // 1. Baixa a biblioteca agora (se já não tiver baixado)
+                // 1. Baixa a biblioteca agora (se jÃ¡ nÃ£o tiver baixado)
                 await loadSheetJS();
 
                 // Feedback Visual 2: Gerando arquivo
                 labelEl.textContent = "Gerando Excel...";
 
-                // 2. Prepara os dados (Lógica original mantida)
+                // 2. Prepara os dados (LÃ³gica original mantida)
                 const dadosParaExportar = transacoes.map(t => {
                     let dataFormatada = '';
                     try {
@@ -11078,12 +11086,12 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
                     }
 
                     return {
-                        "Data do Negócio": dataFormatada,
-                        "Tipo de Movimentação": t.type === 'sell' ? 'Venda' : 'Compra',
-                        "Mercado": "Mercado à Vista",
-                        "Código de Negociação": t.symbol,
+                        "Data do NegÃ³cio": dataFormatada,
+                        "Tipo de MovimentaÃ§Ã£o": t.type === 'sell' ? 'Venda' : 'Compra',
+                        "Mercado": "Mercado Ã  Vista",
+                        "CÃ³digo de NegociaÃ§Ã£o": t.symbol,
                         "Quantidade": t.quantity,
-                        "Preço": t.price,
+                        "PreÃ§o": t.price,
                         "Valor": t.quantity * t.price
                     };
                 });
@@ -11091,7 +11099,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
                 // 3. Cria o arquivo usando a biblioteca que acabamos de carregar
                 const worksheet = XLSX.utils.json_to_sheet(dadosParaExportar);
                 const workbook = XLSX.utils.book_new();
-                XLSX.utils.book_append_sheet(workbook, worksheet, "Negociações");
+                XLSX.utils.book_append_sheet(workbook, worksheet, "NegociaÃ§Ãµes");
 
                 const dataHoje = new Date().toISOString().split('T')[0];
                 XLSX.writeFile(workbook, `vesto_backup_b3_${dataHoje}.xlsx`);
@@ -11102,15 +11110,15 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
                 console.error("Erro ao exportar Excel:", e);
                 showToast("Erro: " + e.message);
             } finally {
-                // Restaura o botão
+                // Restaura o botÃ£o
                 labelEl.textContent = textoOriginal;
                 exportCsvBtn.disabled = false;
             }
         });
     }
 
-    // ========== EXPORT VIA SHARE ICONS NOS HEADERS DE MÊS ==========
-    // Event delegation: captura cliques nos ícones de compartilhar dentro dos headers do VirtualScroller
+    // ========== EXPORT VIA SHARE ICONS NOS HEADERS DE MÃŠS ==========
+    // Event delegation: captura cliques nos Ã­cones de compartilhar dentro dos headers do VirtualScroller
     const listaHistoricoEl = document.getElementById('lista-historico');
     const listaProventosEl = document.getElementById('lista-historico-proventos');
 
@@ -11132,7 +11140,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
         listaProventosEl.addEventListener('click', (e) => handleShareMonthClick(e, 'proventos'));
     }
 
-    // Modal flutuante para escolher formato de exportação
+    // Modal flutuante para escolher formato de exportaÃ§Ã£o
     function showExportMonthModal(mes, tipo) {
         // Remove modal anterior se existir
         const old = document.getElementById('export-month-modal');
@@ -11176,7 +11184,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
         });
     }
 
-    // Exportação de um mês específico usando os dados já no VirtualScroller
+    // ExportaÃ§Ã£o de um mÃªs especÃ­fico usando os dados jÃ¡ no VirtualScroller
     async function handleExportMonth(formato, tipo, targetMonth) {
         const isProventos = tipo === 'proventos';
         const currentVirtualizer = isProventos ? proventosVirtualizer : historicoVirtualizer;
@@ -11189,7 +11197,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
             return;
         }
 
-        // Filtra apenas as posições que pertencem ao mês clicado
+        // Filtra apenas as posiÃ§Ãµes que pertencem ao mÃªs clicado
         let capturing = false;
         const monthPositions = [];
         for (const pos of currentVirtualizer.positions) {
@@ -11199,7 +11207,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
                     monthPositions.push(pos);
                     continue;
                 } else if (capturing) {
-                    // Chegou no próximo header, para de capturar
+                    // Chegou no prÃ³ximo header, para de capturar
                     break;
                 }
             } else if (capturing) {
@@ -11235,7 +11243,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
             // Removida a barra roxa superior
 
             // 1. Cabecalho Oficial (Comprovante)
-            const titleText = isProventos ? 'Comprovante de Rendimentos' : 'Relatório de Transações';
+            const titleText = isProventos ? 'Comprovante de Rendimentos' : 'RelatÃ³rio de TransaÃ§Ãµes';
             const dataHora = new Date().toLocaleString('pt-BR');
             let totalMes = 0;
 
@@ -11259,10 +11267,10 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
             listContainer.style.flexDirection = 'column';
             listContainer.style.gap = '12px';
 
-            // Popula com os itens filtrados daquele mês
+            // Popula com os itens filtrados daquele mÃªs
             monthPositions.forEach(pos => {
                 if (pos.item.type === 'header') {
-                    totalMes = pos.item.total; // Captura o total do mês
+                    totalMes = pos.item.total; // Captura o total do mÃªs
                     return; // Pula o header nativo
                 }
 
@@ -11301,7 +11309,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
                                     <span>${p.symbol}</span>
                                     <span style="font-size: 10px; color: #4ade80; display: inline-flex; align-items: center; height: 14px; margin-top: 1px;">PROVENTO</span>
                                 </div>
-                                <div style="font-size: 11px; color: #71717a; margin-top: 3px;">${qtd} cotas • ${formatBRL(valUni)}</div>
+                                <div style="font-size: 11px; color: #71717a; margin-top: 3px;">${qtd} cotas â€¢ ${formatBRL(valUni)}</div>
                             </div>
                         </div>
                     `;
@@ -11310,7 +11318,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
                     `;
 
                 } else {
-                    // Transações
+                    // TransaÃ§Ãµes
                     const t = data;
                     const totalT = t.quantity * t.price;
                     const isVenda = t.type === 'sell';
@@ -11332,7 +11340,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
                                     <span>${t.symbol}</span> 
                                     <span style="font-size: 10px; color: ${isVenda ? '#f87171' : '#4ade80'}; display: inline-flex; align-items: center; height: 14px; margin-top: 1px;">${isVenda ? 'VENDA' : 'COMPRA'}</span>
                                 </div>
-                                <div style="font-size: 11px; color: #71717a; margin-top: 3px;">${t.quantity} cotas • ${formatBRL(t.price)}</div>
+                                <div style="font-size: 11px; color: #71717a; margin-top: 3px;">${t.quantity} cotas â€¢ ${formatBRL(t.price)}</div>
                             </div>
                         </div>
                     `;
@@ -11357,7 +11365,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
                         <div>${dataHora}</div>
                     </div>
                     <div style="text-align: right;">
-                        <div style="font-size: 11px; color: #a1a1aa; text-transform: uppercase; font-weight: 700; letter-spacing: 1px; margin-bottom: 2px;">Total do Período</div>
+                        <div style="font-size: 11px; color: #a1a1aa; text-transform: uppercase; font-weight: 700; letter-spacing: 1px; margin-bottom: 2px;">Total do PerÃ­odo</div>
                         <div style="font-size: 18px; font-weight: 700; color: ${isProventos ? '#4ade80' : '#e5e5e5'}; font-family: monospace;">${formatBRL(totalMes)}</div>
                     </div>
                 </div>
@@ -11455,7 +11463,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
             const labelEl = importExcelBtn.querySelector('.settings-label');
             const textoOriginal = labelEl.textContent;
 
-            // Trava o botão
+            // Trava o botÃ£o
             importExcelBtn.disabled = true;
 
             try {
@@ -11467,26 +11475,26 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
                 labelEl.innerHTML = `<span class="loader-sm"></span> Lendo arquivo...`;
 
                 const data = await file.arrayBuffer();
-                // Agora é seguro chamar o XLSX
+                // Agora Ã© seguro chamar o XLSX
                 const workbook = XLSX.read(data, { type: 'array', cellDates: true, dateNF: 'dd/mm/yyyy' });
                 const firstSheetName = workbook.SheetNames[0];
                 const worksheet = workbook.Sheets[firstSheetName];
 
                 const jsonData = XLSX.utils.sheet_to_json(worksheet, { raw: false });
 
-                if (jsonData.length === 0) throw new Error("O arquivo está vazio.");
+                if (jsonData.length === 0) throw new Error("O arquivo estÃ¡ vazio.");
 
                 let importadosCount = 0;
                 let errosCount = 0;
                 const transacoesImportadas = [];
 
-                // Lógica original de processamento das linhas
+                // LÃ³gica original de processamento das linhas
                 for (const row of jsonData) {
-                    const dateRaw = row['Data do Negócio'] || row['Data'] || row['Date'];
-                    const tickerRaw = row['Código de Negociação'] || row['Ativo'] || row['Ticker'];
-                    const typeRaw = row['Tipo de Movimentação'] || row['Tipo'] || row['Type'];
+                    const dateRaw = row['Data do NegÃ³cio'] || row['Data'] || row['Date'];
+                    const tickerRaw = row['CÃ³digo de NegociaÃ§Ã£o'] || row['Ativo'] || row['Ticker'];
+                    const typeRaw = row['Tipo de MovimentaÃ§Ã£o'] || row['Tipo'] || row['Type'];
                     const qtdRaw = row['Quantidade'] || row['Qtd'];
-                    const priceRaw = row['Preço'] || row['Preco'] || row['Price'];
+                    const priceRaw = row['PreÃ§o'] || row['Preco'] || row['Price'];
 
                     if (tickerRaw && qtdRaw && priceRaw) {
                         try {
@@ -11511,7 +11519,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
                                 dataISO = new Date().toISOString();
                             }
 
-                            // Tratamento de Números
+                            // Tratamento de NÃºmeros
                             const cleanNumber = (val) => {
                                 if (typeof val === 'number') return val;
                                 if (typeof val === 'string') {
@@ -11554,7 +11562,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
 
                 if (importadosCount > 0) {
                     const sufixoErro = errosCount > 0 ? ` (${errosCount} linha(s) ignorada(s))` : '';
-                    showToast(`${importadosCount} negociações importadas!${sufixoErro}`, 'success');
+                    showToast(`${importadosCount} negociaÃ§Ãµes importadas!${sufixoErro}`, 'success');
                     // Atualiza tudo
                     saldoCaixa = 0;
                     await salvarCaixa();
@@ -11562,14 +11570,14 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
                     await salvarHistoricoProcessado();
                     await atualizarTodosDados(true);
                 } else {
-                    showToast("Nenhuma transação válida encontrada.", 'error');
+                    showToast("Nenhuma transaÃ§Ã£o vÃ¡lida encontrada.", 'error');
                 }
 
             } catch (e) {
-                console.error("Erro na importação:", e);
+                console.error("Erro na importaÃ§Ã£o:", e);
                 showToast("Erro ao ler arquivo: " + e.message);
             } finally {
-                // Restaura o botão
+                // Restaura o botÃ£o
                 labelEl.textContent = textoOriginal;
                 importExcelBtn.disabled = false;
                 importExcelInput.value = '';
@@ -11581,7 +11589,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
         clearCacheBtn.addEventListener('click', () => {
             showModal(
                 "Limpar Cache e Reparar?",
-                "Isso apagará dados temporários (preços, notícias) e baixará a versão mais recente do app. Suas configurações (Tema, Biometria) serão mantidas.",
+                "Isso apagarÃ¡ dados temporÃ¡rios (preÃ§os, notÃ­cias) e baixarÃ¡ a versÃ£o mais recente do app. Suas configuraÃ§Ãµes (Tema, Biometria) serÃ£o mantidas.",
                 async () => {
 
                     try {
@@ -11725,7 +11733,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
         signupSubmitBtn.classList.remove('hidden');
     }
 
-    // ── RADAR DE NOTÍCIAS (INÍCIO) ──
+    // â”€â”€ RADAR DE NOTÃCIAS (INÃCIO) â”€â”€
     async function carregarRadarNoticias() {
         const container = document.getElementById('news-feed-container');
         const list = document.getElementById('news-feed-list');
@@ -11733,19 +11741,19 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
         
         if (!container || !list || !skeleton) return;
 
-        // Revela a seção e o esqueleto
+        // Revela a seÃ§Ã£o e o esqueleto
         container.classList.remove('hidden');
         list.innerHTML = '';
         skeleton.classList.remove('hidden');
 
-        // Pega símbolos únicos e ATIVOS na carteira (quantidade > 0)
+        // Pega sÃ­mbolos Ãºnicos e ATIVOS na carteira (quantidade > 0)
         const symbols = [...new Set(
             carteiraCalculada
                 .filter(a => (a.quantity || 0) > 0)
                 .map(a => a.symbol)
         )].slice(0, 15);
         
-        // Se a carteira estiver vazia, mostra mensagem amigável
+        // Se a carteira estiver vazia, mostra mensagem amigÃ¡vel
         if (symbols.length === 0) {
             skeleton.classList.add('hidden');
             list.innerHTML = `
@@ -11755,12 +11763,12 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z" />
                     </svg>
                 </div>
-                <p class="text-[13px] text-gray-400 font-medium">Adicione ativos à carteira para ativar o radar de notícias.</p>
+                <p class="text-[13px] text-gray-400 font-medium">Adicione ativos Ã  carteira para ativar o radar de notÃ­cias.</p>
             </div>`;
             return;
         }
         
-        // Monta a restrição cirúrgica exata para a API (limitado a ~180 caracteres finais)
+        // Monta a restriÃ§Ã£o cirÃºrgica exata para a API (limitado a ~180 caracteres finais)
         let queryTerm = '';
         for (const symbol of symbols) {
             const part = `"${symbol}"`;
@@ -11769,11 +11777,11 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
             } else if ((queryTerm + ' OR ' + part).length <= 180) {
                 queryTerm += ' OR ' + part;
             } else {
-                break; // Atingiu limite de segurança da URL
+                break; // Atingiu limite de seguranÃ§a da URL
             }
         }
         
-        // Envolve em parênteses para garantir que o modificador when:30d do backend se aplique a todo o grupo
+        // Envolve em parÃªnteses para garantir que o modificador when:30d do backend se aplique a todo o grupo
         queryTerm = `(${queryTerm})`;
 
         try {
@@ -11787,7 +11795,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
             }
             
             if (articles.length > 0) {
-                // Separa entre 3 a 5 notícias baseadas na qualidade da imagem
+                // Separa entre 3 a 5 notÃ­cias baseadas na qualidade da imagem
                 const topArticles = articles.slice(0, 5);
                 
                 let html = '';
@@ -11807,9 +11815,9 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
                         tempoRelativo = `${diffD}d`;
                     }
 
-                    const rawSourceName = article.sourceName || 'Notícia';
+                    const rawSourceName = article.sourceName || 'NotÃ­cia';
                     const safeSourceName = escapeHtml(rawSourceName);
-                    const safeTitle = escapeHtml(article.title || 'Título indisponível');
+                    const safeTitle = escapeHtml(article.title || 'TÃ­tulo indisponÃ­vel');
                     const safeLink = sanitizeHttpUrl(article.link, '#');
                     const faviconFallback = `https://www.google.com/s2/favicons?domain=${article.sourceHostname || 'google.com'}&sz=64`;
                     const favicon = sanitizeHttpUrl(article.favicon, faviconFallback);
@@ -11846,7 +11854,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
                 
                 list.innerHTML = html;
             } else {
-                // Usuário pediu para Ocultar se não existir, mas agora vamos mostrar a mensagem elegante 
+                // UsuÃ¡rio pediu para Ocultar se nÃ£o existir, mas agora vamos mostrar a mensagem elegante 
                 container.classList.remove('hidden');
                 list.innerHTML = `
                 <div class="px-4 py-8 text-center flex flex-col items-center">
@@ -11855,7 +11863,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
                     </div>
-                    <p class="text-[13px] text-gray-400 font-medium">O radar não identificou notícias fresquinhas sobre seus ativos hoje.</p>
+                    <p class="text-[13px] text-gray-400 font-medium">O radar nÃ£o identificou notÃ­cias fresquinhas sobre seus ativos hoje.</p>
                 </div>`;
             }
         } catch (e) {
@@ -11868,7 +11876,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
                 </div>
-                <p class="text-[13px] text-gray-400 font-medium">O radar não identificou notícias fresquinhas sobre seus ativos hoje.</p>
+                <p class="text-[13px] text-gray-400 font-medium">O radar nÃ£o identificou notÃ­cias fresquinhas sobre seus ativos hoje.</p>
             </div>`;
         } finally {
             skeleton.classList.add('hidden');
@@ -11881,7 +11889,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
             renderizarDashboardSkeletons(true);
             renderizarCarteiraSkeletons(true);
 
-            // Dispara todas as requisições ao mesmo tempo
+            // Dispara todas as requisiÃ§Ãµes ao mesmo tempo
             await Promise.all([
                 carregarTransacoes(),
                 carregarCaixa(),
@@ -11890,7 +11898,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
                 carregarWatchlist()
             ]);
 
-            // Leitura única do localStorage — a partir daqui todo acesso usa o Set em RAM
+            // Leitura Ãºnica do localStorage â€” a partir daqui todo acesso usa o Set em RAM
             try {
                 const raw = localStorage.getItem('vesto_dismissed_notifs');
                 dismissedNotifsSet = new Set(raw ? JSON.parse(raw) : []);
@@ -11901,19 +11909,19 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
             // Renderiza a watchlist (leve)
             renderizarWatchlist();
 
-            // Carrega índices/rankings fora da trilha crítica do primeiro paint
+            // Carrega Ã­ndices/rankings fora da trilha crÃ­tica do primeiro paint
             runDeferred(() => {
                 carregarMarketIndices();
                 carregarRankings();
             }, 1800);
 
-            // Inicia cálculos pesados e chamadas externas
+            // Inicia cÃ¡lculos pesados e chamadas externas
             // Usa force=true no load inicial para ativar os skeletons de carregamento
             atualizarTodosDados(true);
             runDeferred(() => handleAtualizarNoticias(false), 1500);
 
-            // Refresh periódico inteligente:
-            // mercado aberto = 5 min, mercado fechado = 2h + wake-up próximo da abertura.
+            // Refresh periÃ³dico inteligente:
+            // mercado aberto = 5 min, mercado fechado = 2h + wake-up prÃ³ximo da abertura.
             setupAutoRefreshScheduler();
 
         } catch (e) {
@@ -11927,7 +11935,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
     }
 
 
-    // SUA CHAVE PÚBLICA (Preenchida com a que você enviou)
+    // SUA CHAVE PÃšBLICA (Preenchida com a que vocÃª enviou)
     const VAPID_PUBLIC_KEY = 'BHsn3oIOqeyV80WVlU7yw7528e9EPrJ3KI7mgaX_aMcAtrE0qrfRFuYbT1RL46X34tkxXB_MLCStRrmIYVh6tVY';
 
     function urlBase64ToUint8Array(base64String) {
@@ -11964,11 +11972,11 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
 
     async function verificarStatusPush() {
         if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
-            if (toggleNotifBtn) toggleNotifBtn.disabled = true; // Navegador não suporta
+            if (toggleNotifBtn) toggleNotifBtn.disabled = true; // Navegador nÃ£o suporta
             return;
         }
 
-        // Se já tem permissão e SW ativo, marca o botão como ligado
+        // Se jÃ¡ tem permissÃ£o e SW ativo, marca o botÃ£o como ligado
         const reg = await navigator.serviceWorker.ready;
         const sub = await reg.pushManager.getSubscription();
 
@@ -11987,10 +11995,10 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
         try {
             const registration = await navigator.serviceWorker.ready;
 
-            // Pede permissão
+            // Pede permissÃ£o
             const permission = await Notification.requestPermission();
             if (permission !== 'granted') {
-                showToast('Permissão negada. Ative nas configurações do navegador.');
+                showToast('PermissÃ£o negada. Ative nas configuraÃ§Ãµes do navegador.');
                 atualizarUINotificacao(false);
                 return;
             }
@@ -12003,12 +12011,12 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
 
             // Salva no banco
             await supabaseDB.salvarPushSubscription(subscription);
-            showToast('Notificações ativadas!', 'success');
+            showToast('NotificaÃ§Ãµes ativadas!', 'success');
             atualizarUINotificacao(true);
 
         } catch (e) {
             console.error('Erro ao assinar push:', e);
-            showToast('Erro ao ativar notificações.');
+            showToast('Erro ao ativar notificaÃ§Ãµes.');
             atualizarUINotificacao(false);
         }
     }
@@ -12022,16 +12030,16 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
                 // 1. Remove do Banco de Dados
                 await supabaseDB.removerPushSubscription(sub);
 
-                // 2. Cancela a inscrição no navegador
+                // 2. Cancela a inscriÃ§Ã£o no navegador
                 await sub.unsubscribe();
             }
 
             atualizarUINotificacao(false);
-            showToast("Notificações desativadas.");
+            showToast("NotificaÃ§Ãµes desativadas.");
 
         } catch (e) {
             console.error("Erro ao desativar:", e);
-            showToast("Erro ao desativar notificações.");
+            showToast("Erro ao desativar notificaÃ§Ãµes.");
         }
     }
 
@@ -12066,7 +12074,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
             });
         }
 
-        // Cálculo Automático
+        // CÃ¡lculo AutomÃ¡tico
         function calcularTotal() {
             const qtd = parseFloat(inputQtd.value) || 0;
             const preco = parseFloat(inputPreco.value) || 0;
@@ -12085,11 +12093,11 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
             await vestoDB.init();
         } catch (e) {
             console.error("[IDB Cache] Falha fatal ao inicializar o DB.", e);
-            showToast("Erro crítico: Banco de dados local não pôde ser carregado.");
+            showToast("Erro crÃ­tico: Banco de dados local nÃ£o pÃ´de ser carregado.");
             return;
         }
 
-        // Listeners de Formulários (Recuperação e Login)
+        // Listeners de FormulÃ¡rios (RecuperaÃ§Ã£o e Login)
         if (showRecoverBtn) {
             showRecoverBtn.addEventListener('click', () => {
                 loginForm.classList.add('hidden');
@@ -12130,7 +12138,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
             });
         }
 
-        // Verificação de Nova Senha via URL
+        // VerificaÃ§Ã£o de Nova Senha via URL
         if (window.location.hash && window.location.hash.includes('type=recovery')) {
             newPasswordModal.classList.add('visible');
             document.querySelector('#new-password-modal .modal-content').classList.remove('modal-out');
@@ -12141,7 +12149,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
                 e.preventDefault();
                 const newPass = newPasswordInput.value;
                 if (newPass.length < 6) {
-                    showToast("A senha deve ter no mínimo 6 caracteres.");
+                    showToast("A senha deve ter no mÃ­nimo 6 caracteres.");
                     return;
                 }
                 newPasswordBtn.innerHTML = '<span class="loader-sm"></span>';
@@ -12163,32 +12171,32 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
 
         showAuthLoading(true);
 
-        // Inicialização do Supabase
+        // InicializaÃ§Ã£o do Supabase
         let session;
         try {
             session = await supabaseDB.initialize();
         } catch (e) {
-            console.error("Erro na inicialização:", e);
+            console.error("Erro na inicializaÃ§Ã£o:", e);
             showAuthLoading(false);
             showLoginError("Erro ao conectar com o servidor. Tente novamente.");
             return;
         }
 
         const iniciarSessaoAutenticada = async (sessionAtual) => {
-            verificarStatusPush(); // Fire-and-forget — não bloqueia biometria
+            verificarStatusPush(); // Fire-and-forget â€” nÃ£o bloqueia biometria
             currentUserId = sessionAtual.user.id;
-            // A flag é usada só no ciclo de logout; ao iniciar nova sessão, remove.
+            // A flag Ã© usada sÃ³ no ciclo de logout; ao iniciar nova sessÃ£o, remove.
             sessionStorage.removeItem('vesto_just_logged_out');
             authContainer.classList.add('hidden');
             appWrapper.classList.remove('hidden');
 
-            // CRÍTICO: Ativa os skeletons IMEDIATAMENTE após o app ficar visível,
+            // CRÃTICO: Ativa os skeletons IMEDIATAMENTE apÃ³s o app ficar visÃ­vel,
             // ANTES de qualquer await, para que o primeiro frame pintado pelo browser
-            // já mostre skeletons em vez de valores zerados.
+            // jÃ¡ mostre skeletons em vez de valores zerados.
             renderizarDashboardSkeletons(true);
             renderizarCarteiraSkeletons(true);
 
-            // Timeline: mostra container com skeleton visível
+            // Timeline: mostra container com skeleton visÃ­vel
             const _tlContainer = document.getElementById('timeline-pagamentos-container');
             if (_tlContainer) _tlContainer.classList.remove('hidden');
 
@@ -12198,12 +12206,12 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
             }
 
             const continuarBootSessao = async () => {
-                // 1. Captura parâmetros da URL (Atalhos e Compartilhamento)
+                // 1. Captura parÃ¢metros da URL (Atalhos e Compartilhamento)
                 const urlParams = new URLSearchParams(window.location.search);
                 const tabParam = urlParams.get('tab');
                 const ativoShared = urlParams.get('ativo');
 
-                // 2. Lógica de Atalhos (App Shortcuts)
+                // 2. LÃ³gica de Atalhos (App Shortcuts)
                 if (tabParam && document.getElementById(tabParam)) {
                     mudarAba(tabParam);
                     window.history.replaceState({}, document.title, window.location.pathname);
@@ -12213,7 +12221,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
 
                 const carouselWrapper = document.getElementById('carousel-wrapper');
                 if (carouselWrapper) {
-                    // Impede que o evento de toque suba para o documento (onde está o listener do swipe de abas)
+                    // Impede que o evento de toque suba para o documento (onde estÃ¡ o listener do swipe de abas)
                     carouselWrapper.addEventListener('touchstart', (e) => e.stopPropagation(), { passive: true });
                     carouselWrapper.addEventListener('touchmove', (e) => e.stopPropagation(), { passive: true });
                     carouselWrapper.addEventListener('touchend', (e) => e.stopPropagation(), { passive: true });
@@ -12221,7 +12229,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
 
                 await carregarDadosIniciais();
 
-                // 3. Lógica de Ativo Compartilhado (Deep Link)
+                // 3. LÃ³gica de Ativo Compartilhado (Deep Link)
                 if (ativoShared) {
                     const newUrl = window.location.protocol + "//" + window.location.host + window.location.pathname;
                     window.history.replaceState({ path: newUrl }, '', newUrl);
@@ -12239,8 +12247,8 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
             if (!biometriaLiberada) {
                 window.addEventListener('vesto-bio-unlocked', () => {
                     continuarBootSessao().catch((err) => {
-                        console.error("Erro após desbloqueio biométrico:", err);
-                        showToast("Erro ao carregar dados após desbloqueio.");
+                        console.error("Erro apÃ³s desbloqueio biomÃ©trico:", err);
+                        showToast("Erro ao carregar dados apÃ³s desbloqueio.");
                     });
                 }, { once: true });
                 return;
@@ -12266,12 +12274,12 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
                 try {
                     const sessionAposLogin = await supabaseDB.initialize();
                     if (!sessionAposLogin) {
-                        showLoginError("Sessão iniciada, mas não foi possível carregar o app. Tente novamente.");
+                        showLoginError("SessÃ£o iniciada, mas nÃ£o foi possÃ­vel carregar o app. Tente novamente.");
                         return;
                     }
                     await iniciarSessaoAutenticada(sessionAposLogin);
                 } catch (bootError) {
-                    console.error("Erro ao iniciar sessão após login:", bootError);
+                    console.error("Erro ao iniciar sessÃ£o apÃ³s login:", bootError);
                     showLoginError("Login efetuado, mas falhou ao carregar o app. Tente novamente.");
                 }
             }
@@ -12287,11 +12295,11 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
             signupSuccess.classList.add('hidden');
 
             if (password !== confirmPassword) {
-                showSignupError("As senhas não coincidem.");
+                showSignupError("As senhas nÃ£o coincidem.");
                 return;
             }
             if (password.length < 6) {
-                showSignupError("A senha deve ter no mínimo 6 caracteres.");
+                showSignupError("A senha deve ter no mÃ­nimo 6 caracteres.");
                 return;
             }
 
@@ -12354,7 +12362,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
             });
         });
 
-        // LÓGICA DE SESSÃO E ROTEAMENTO
+        // LÃ“GICA DE SESSÃƒO E ROTEAMENTO
         if (session) {
             await iniciarSessaoAutenticada(session);
         } else {
@@ -12381,7 +12389,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
         }
         carteiraSearchInput.parentNode.appendChild(suggestionsContainer);
     } else {
-        console.error("Erro Vesto: Input de pesquisa não encontrado para anexar sugestões.");
+        console.error("Erro Vesto: Input de pesquisa nÃ£o encontrado para anexar sugestÃµes.");
     }
 
     function getSearchHistory() {
@@ -12445,7 +12453,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
 
             const deleteBtn = document.createElement('button');
             deleteBtn.className = 'p-4 text-gray-600 hover:text-red-400 active:text-red-400 transition-colors border-l border-[#2C2C2E]';
-            deleteBtn.title = "Remover do histórico";
+            deleteBtn.title = "Remover do histÃ³rico";
             deleteBtn.innerHTML = `
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
@@ -12508,83 +12516,153 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
             }
         });
     }
+    // SWIPE GLOBAL DE NAVEGACAO ENTRE ABAS (GESTO NATIVO: acompanha o dedo)
+    const tabsSliderEl = document.getElementById('tabs-slider');
+    const TAB_SWIPE_DISTANCE_RATIO = 0.22;
+    const TAB_SWIPE_VELOCITY = 0.42; // px/ms
+    const TAB_SWIPE_EDGE_DAMPING = 0.35;
 
-    // SWIPE GLOBAL DE NAVEGAÇÃO ENTRE ABAS (CORRIGIDO)
+    const tabSwipeState = {
+        tracking: false,
+        dragging: false,
+        startX: 0,
+        startY: 0,
+        lastDeltaX: 0,
+        baseIndex: 0,
+        baseOffsetPx: 0,
+        width: 0,
+        startTime: 0
+    };
 
-    let swipeStartX = 0;
-    let swipeStartY = 0;
-
-    document.addEventListener('touchstart', (e) => {
-        // 1. Bloqueia se houver qualquer modal aberto
-        if (document.querySelector('.custom-modal.visible') ||
+    function isBlockingTabSwipeModalOpen() {
+        return !!(
+            document.querySelector('.custom-modal.visible') ||
             document.querySelector('.page-modal.visible') ||
-            document.querySelector('#ai-modal.visible')) {
+            document.querySelector('#ai-modal.visible')
+        );
+    }
+
+    function shouldIgnoreTabSwipeTarget(target) {
+        return !!(
+            target.closest('.bottom-nav') ||
+            target.closest('.overflow-x-auto') ||
+            target.closest('.payment-carousel') ||
+            target.closest('#dashboard-favorites-list') ||
+            target.closest('canvas') ||
+            target.closest('input, textarea, select, [contenteditable="true"]') ||
+            target.closest('[data-no-tab-swipe]')
+        );
+    }
+
+    function resetTabSwipeState() {
+        tabSwipeState.tracking = false;
+        tabSwipeState.dragging = false;
+        tabSwipeState.startX = 0;
+        tabSwipeState.startY = 0;
+        tabSwipeState.lastDeltaX = 0;
+        tabSwipeState.baseOffsetPx = 0;
+        tabSwipeState.width = 0;
+        tabSwipeState.startTime = 0;
+    }
+
+    function finalizeTabSwipe() {
+        if (!tabSwipeState.tracking || !tabsSliderEl) {
+            resetTabSwipeState();
             return;
         }
 
-        // 2. TRAVA DE SEGURANÇA: Bloqueia o início do swipe em áreas de scroll horizontal ou gráficos
-        // Usamos apenas classes genéricas que já existem no seu HTML
-        if (e.target.closest('.overflow-x-auto') ||
-            e.target.closest('#dashboard-favorites-list') ||
-            e.target.closest('canvas')) {
+        if (!tabSwipeState.dragging) {
+            resetTabSwipeState();
             return;
         }
 
-        swipeStartX = e.changedTouches[0].screenX;
-        swipeStartY = e.changedTouches[0].screenY;
-    }, { passive: true });
+        const elapsed = Math.max(1, performance.now() - tabSwipeState.startTime);
+        const velocityX = tabSwipeState.lastDeltaX / elapsed;
+        const distanceX = tabSwipeState.lastDeltaX;
+        const swipeWidth = tabSwipeState.width || tabsSliderEl.getBoundingClientRect().width || window.innerWidth;
 
-    document.addEventListener('touchend', (e) => {
-        // Se swipeStartX for 0, o toque já foi ignorado no início
-        if (swipeStartX === 0 && swipeStartY === 0) return;
+        let targetIndex = tabSwipeState.baseIndex;
+        const crossedDistance = Math.abs(distanceX) > swipeWidth * TAB_SWIPE_DISTANCE_RATIO;
+        const crossedVelocity = Math.abs(velocityX) > TAB_SWIPE_VELOCITY;
 
-        // Verificação dupla de modais
-        if (document.querySelector('.custom-modal.visible') ||
-            document.querySelector('.page-modal.visible') ||
-            document.querySelector('#ai-modal.visible')) {
-            swipeStartX = 0; swipeStartY = 0;
-            return;
-        }
-
-        if (e.target.closest('.payment-carousel') ||
-            e.target.closest('.overflow-x-auto')) {
-            swipeStartX = 0; swipeStartY = 0;
-            return;
-        }
-
-        const swipeEndX = e.changedTouches[0].screenX;
-        const swipeEndY = e.changedTouches[0].screenY;
-
-        const diffX = swipeEndX - swipeStartX;
-        const diffY = swipeEndY - swipeStartY;
-
-        // Reseta as variáveis
-        swipeStartX = 0;
-        swipeStartY = 0;
-
-        // Lógica do Gesto:
-        // 1. Mais horizontal que vertical
-        // 2. Movimento mínimo de 50px
-        if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > 50) {
-            const currentTab = document.querySelector('.tab-content.active');
-            if (!currentTab) return;
-
-            const currentIndex = tabOrder.indexOf(currentTab.id);
-            if (currentIndex === -1) return;
-
-            if (diffX < 0) {
-                // Deslizou para ESQUERDA (<<) -> Próxima Aba
-                if (currentIndex < tabOrder.length - 1) {
-                    mudarAba(tabOrder[currentIndex + 1]);
-                }
-            } else {
-                // Deslizou para DIREITA (>>) -> Aba Anterior
-                if (currentIndex > 0) {
-                    mudarAba(tabOrder[currentIndex - 1]);
-                }
+        if (crossedDistance || crossedVelocity) {
+            if (distanceX < 0 && targetIndex < tabOrder.length - 1) {
+                targetIndex += 1;
+            } else if (distanceX > 0 && targetIndex > 0) {
+                targetIndex -= 1;
             }
         }
+
+        tabsSliderEl.style.transition = '';
+        mudarAba(tabOrder[targetIndex]);
+        resetTabSwipeState();
+    }
+
+    document.addEventListener('touchstart', (e) => {
+        if (!tabsSliderEl || isBlockingTabSwipeModalOpen()) return;
+        if (shouldIgnoreTabSwipeTarget(e.target)) return;
+
+        const activeTab = document.querySelector('.tab-content.active');
+        if (!activeTab || !activeTab.contains(e.target)) return;
+
+        const touch = e.touches[0];
+        let activeIndex = currentTabIndex;
+        if (activeIndex < 0 || tabOrder[activeIndex] !== activeTab.id) {
+            activeIndex = tabOrder.indexOf(activeTab.id);
+        }
+        if (activeIndex === -1) return;
+
+        tabSwipeState.tracking = true;
+        tabSwipeState.dragging = false;
+        tabSwipeState.startX = touch.clientX;
+        tabSwipeState.startY = touch.clientY;
+        tabSwipeState.lastDeltaX = 0;
+        tabSwipeState.baseIndex = activeIndex;
+        tabSwipeState.width = tabsSliderEl.getBoundingClientRect().width || window.innerWidth;
+        tabSwipeState.baseOffsetPx = -activeIndex * tabSwipeState.width;
+        tabSwipeState.startTime = performance.now();
     }, { passive: true });
+
+    document.addEventListener('touchmove', (e) => {
+        if (!tabSwipeState.tracking || !tabsSliderEl || isBlockingTabSwipeModalOpen()) return;
+
+        const touch = e.touches[0];
+        const deltaX = touch.clientX - tabSwipeState.startX;
+        const deltaY = touch.clientY - tabSwipeState.startY;
+
+        if (!tabSwipeState.dragging) {
+            if (Math.abs(deltaX) < 8 && Math.abs(deltaY) < 8) return;
+
+            // Se for mais vertical, preserva o scroll normal da aba
+            if (Math.abs(deltaY) > Math.abs(deltaX)) {
+                resetTabSwipeState();
+                return;
+            }
+
+            tabSwipeState.dragging = true;
+            tabsSliderEl.style.transition = 'none';
+        }
+
+        e.preventDefault();
+
+        const minOffset = -(tabOrder.length - 1) * tabSwipeState.width;
+        const maxOffset = 0;
+        let nextOffset = tabSwipeState.baseOffsetPx + deltaX;
+
+        // Efeito rubber-band suave nas extremidades
+        if (nextOffset > maxOffset) {
+            nextOffset = maxOffset + (nextOffset - maxOffset) * TAB_SWIPE_EDGE_DAMPING;
+        } else if (nextOffset < minOffset) {
+            nextOffset = minOffset + (nextOffset - minOffset) * TAB_SWIPE_EDGE_DAMPING;
+        }
+
+        tabsSliderEl.style.transform = `translateX(${nextOffset}px)`;
+        tabSwipeState.lastDeltaX = deltaX;
+    }, { passive: false });
+
+    document.addEventListener('touchend', finalizeTabSwipe, { passive: true });
+    document.addEventListener('touchcancel', finalizeTabSwipe, { passive: true });
+
 
 
     // 1. Abrir/Fechar ao clicar no Sininho
@@ -12599,7 +12677,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
         });
     }
 
-    // 2. Fechar ao clicar no botão "X" interno (NOVO)
+    // 2. Fechar ao clicar no botÃ£o "X" interno (NOVO)
     const closeNotifDrawerBtn = document.getElementById('close-notif-drawer-btn');
     if (closeNotifDrawerBtn) {
         closeNotifDrawerBtn.addEventListener('click', (e) => {
@@ -12608,7 +12686,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
         });
     }
 
-    // 3. Fechar a gaveta de notificações se clicar fora dela
+    // 3. Fechar a gaveta de notificaÃ§Ãµes se clicar fora dela
     document.addEventListener('click', (e) => {
         if (notificationsDrawer && notificationsDrawer.classList.contains('open') &&
             !notificationsDrawer.contains(e.target) &&
@@ -12619,20 +12697,20 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
 
     if (toggleNotifBtn) {
         toggleNotifBtn.addEventListener('click', () => {
-            // Verifica se visualmente está ligado (bg-purple-600)
+            // Verifica se visualmente estÃ¡ ligado (bg-purple-600)
             const estaAtivado = toggleNotifBtn.classList.contains('bg-purple-600');
 
             if (estaAtivado) {
-                // Lógica de DESATIVAR
+                // LÃ³gica de DESATIVAR
                 showModal(
-                    "Desativar Notificações?",
-                    "Você deixará de receber alertas sobre proventos e datas de corte.",
+                    "Desativar NotificaÃ§Ãµes?",
+                    "VocÃª deixarÃ¡ de receber alertas sobre proventos e datas de corte.",
                     () => {
                         desativarNotificacoesPush();
                     }
                 );
             } else {
-                // Lógica de ATIVAR
+                // LÃ³gica de ATIVAR
                 assinarNotificacoesPush();
             }
         });
@@ -12687,7 +12765,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
         }
     });
 
-    // ── Carteira Options Toggle (Menu Retrátil da Busca) ──
+    // â”€â”€ Carteira Options Toggle (Menu RetrÃ¡til da Busca) â”€â”€
     const btnCarteiraOptions = document.getElementById('btn-carteira-options');
     const carteiraOptionsContainer = document.getElementById('carteira-options-container');
 
@@ -12701,12 +12779,12 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
                 carteiraOptionsContainer.style.opacity = '0';
                 btnCarteiraOptions.classList.remove('rotate-90', 'scale-110');
             } else {
-                // Largura suficiente para abrigar os 3 botões (Refresh, Sort, Raio-X)
+                // Largura suficiente para abrigar os 3 botÃµes (Refresh, Sort, Raio-X)
                 carteiraOptionsContainer.style.maxWidth = '160px'; 
                 carteiraOptionsContainer.style.opacity = '1';
                 btnCarteiraOptions.classList.add('rotate-90', 'scale-110');
                 
-                // Esconde o menu de sort se estiver aberto para evitar sobreposição
+                // Esconde o menu de sort se estiver aberto para evitar sobreposiÃ§Ã£o
                 const carteiraSortMenu = document.getElementById('carteira-sort-menu');
                 if (carteiraSortMenu) carteiraSortMenu.classList.remove('visible');
             }
@@ -12724,7 +12802,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
         });
     }
 
-    // ── Carteira Sort Dropdown ──
+    // â”€â”€ Carteira Sort Dropdown â”€â”€
     const btnCarteiraSort = document.getElementById('btn-carteira-sort');
     const carteiraSortMenu = document.getElementById('carteira-sort-menu');
     const carteiraSortItems = document.querySelectorAll('.carteira-sort-item');
@@ -12768,7 +12846,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
                 item.querySelector('.check-icon').classList.remove('opacity-0');
                 item.querySelector('.check-icon').classList.add('opacity-100');
 
-                // Atualiza ordenação
+                // Atualiza ordenaÃ§Ã£o
                 carteiraSortMode = value;
                 localStorage.setItem('vesto_carteira_sort', value);
                 renderizarCarteira();
@@ -12786,7 +12864,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
         });
     }
 
-    // ── Batch Edit Mode ──
+    // â”€â”€ Batch Edit Mode â”€â”€
     let batchEditMode = false;
     const batchSelected = new Set();
     const batchToolbar = document.getElementById('batch-toolbar');
@@ -12830,7 +12908,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
         const card = e.target.closest('.wallet-card');
         if (!card) return;
         
-        // Se já está em batch mode, não faz nada no touchstart (deixa pro click)
+        // Se jÃ¡ estÃ¡ em batch mode, nÃ£o faz nada no touchstart (deixa pro click)
         if (batchEditMode) return;
         
         cancelClick = false;
@@ -12869,7 +12947,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
             return;
         }
 
-        // Se NÃO estamos em modo lote, o click normal flui para abrir/recolher a gaveta (tratado lá em cima)
+        // Se NÃƒO estamos em modo lote, o click normal flui para abrir/recolher a gaveta (tratado lÃ¡ em cima)
         if (!batchEditMode) return;
         
         const card = e.target.closest('.wallet-card');
@@ -12907,7 +12985,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
             const symbols = [...batchSelected];
             showModal(
                 'Excluir Ativos',
-                `Tem certeza? Isso removerá ${symbols.join(', ')} e TODO o histórico de compras desses ativos.`,
+                `Tem certeza? Isso removerÃ¡ ${symbols.join(', ')} e TODO o histÃ³rico de compras desses ativos.`,
                 async () => {
                     for (const symbol of symbols) {
                         transacoes = transacoes.filter(t => t.symbol !== symbol);
@@ -12945,12 +13023,12 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
         const deepLink = `${baseUrl}?ativo=${symbolSafe}`;
 
         const linhas = [
-            `📊 ${symbolSafe} — Vesto`,
-            `Preço: ${preco}`,
+            `ðŸ“Š ${symbolSafe} â€” Vesto`,
+            `PreÃ§o: ${preco}`,
         ];
         if (ativo) {
             linhas.push(`Cotas: ${ativo.quantity}`);
-            linhas.push(`Posição: ${posicao}`);
+            linhas.push(`PosiÃ§Ã£o: ${posicao}`);
         }
 
         const textoBase = linhas.join('\n');
@@ -12969,19 +13047,19 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
 
     setupTransactionModalLogic();
 
-    //  LÓGICA DE CÁLCULO DE DY DA CARTEIRA (NOVO RECURSO)
+    //  LÃ“GICA DE CÃLCULO DE DY DA CARTEIRA (NOVO RECURSO)
 
     /**
-     * Calcula o Dividend Yield (DY) Teórico da carteira atual.
-     * Lógica: Pega a quantidade de cotas que você tem HOJE e aplica
-     * aos proventos pagos por esses ativos nos últimos 12 meses.
+     * Calcula o Dividend Yield (DY) TeÃ³rico da carteira atual.
+     * LÃ³gica: Pega a quantidade de cotas que vocÃª tem HOJE e aplica
+     * aos proventos pagos por esses ativos nos Ãºltimos 12 meses.
      */
     async function calcularDyCarteiraTeorico() {
-        // 1. Verifica se a carteira já foi calculada e tem ativos
+        // 1. Verifica se a carteira jÃ¡ foi calculada e tem ativos
         if (!carteiraCalculada || carteiraCalculada.length === 0) return 0;
 
-        // 2. Calcula o valor total financeiro da carteira hoje (Cotação Atual * Qtd)
-        // Usamos 'precosAtuais' que já deve estar populado no app
+        // 2. Calcula o valor total financeiro da carteira hoje (CotaÃ§Ã£o Atual * Qtd)
+        // Usamos 'precosAtuais' que jÃ¡ deve estar populado no app
         const mapPrecos = new Map(precosAtuais.map(p => [p.symbol, p.regularMarketPrice]));
         let valorTotalCarteira = 0;
 
@@ -12990,17 +13068,17 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
             valorTotalCarteira += (preco * ativo.quantity);
         });
 
-        // Evita divisão por zero
+        // Evita divisÃ£o por zero
         if (valorTotalCarteira === 0) return 0;
 
         const cacheKey = `cache_grafico_historico_${currentUserId}`;
         let rawDividends = await getCache(cacheKey);
 
-        // Se não tiver no cache, força uma busca na API
+        // Se nÃ£o tiver no cache, forÃ§a uma busca na API
         if (!rawDividends) {
             const ativosCarteira = carteiraCalculada.map(a => a.symbol);
             try {
-                // Chama sua função existente que busca histórico no backend/scraper
+                // Chama sua funÃ§Ã£o existente que busca histÃ³rico no backend/scraper
                 rawDividends = await callScraperHistoricoPortfolioAPI(ativosCarteira);
 
                 // Salva no cache se der certo
@@ -13015,17 +13093,17 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
 
         if (!rawDividends || !Array.isArray(rawDividends)) return 0;
 
-        // 4. Define a janela de tempo (Últimos 12 meses a partir de hoje)
+        // 4. Define a janela de tempo (Ãšltimos 12 meses a partir de hoje)
         const hoje = new Date();
         const umAnoAtras = new Date();
         umAnoAtras.setFullYear(hoje.getFullYear() - 1);
 
         let totalDividendos12m = 0;
 
-        // Mapa rápido de quantidades: { 'MXRF11': 100, ... }
+        // Mapa rÃ¡pido de quantidades: { 'MXRF11': 100, ... }
         const mapQtd = new Map(carteiraCalculada.map(a => [a.symbol, a.quantity]));
 
-        // 5. Itera sobre cada provento do histórico
+        // 5. Itera sobre cada provento do histÃ³rico
         rawDividends.forEach(div => {
             // Usa paymentDate preferencialmente, ou dataCom como fallback
             const dataRefStr = div.paymentDate || div.dataCom;
@@ -13033,12 +13111,12 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
 
             const dataRef = new Date(dataRefStr);
 
-            // Verifica se o pagamento está dentro dos últimos 12 meses
+            // Verifica se o pagamento estÃ¡ dentro dos Ãºltimos 12 meses
             if (dataRef >= umAnoAtras && dataRef <= hoje) {
-                // Pega a quantidade que o usuário tem HOJE desse ativo
+                // Pega a quantidade que o usuÃ¡rio tem HOJE desse ativo
                 const qtdAtual = mapQtd.get(div.symbol) || 0;
 
-                // Simula: Se eu tivesse essa quantidade na época, quanto teria recebido?
+                // Simula: Se eu tivesse essa quantidade na Ã©poca, quanto teria recebido?
                 if (qtdAtual > 0) {
                     totalDividendos12m += (Number(div.value) * qtdAtual);
                 }
@@ -13075,7 +13153,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
 
             if (dyVal < 6) {
                 corTitulo = 'text-red-400';
-                textoAvaliacao = 'Abaixo da Inflação';
+                textoAvaliacao = 'Abaixo da InflaÃ§Ã£o';
                 badgeBg = 'bg-red-500/10 text-red-400 border-red-500/20';
             } else if (dyVal < 10) {
                 corTitulo = 'text-yellow-400';
@@ -13117,7 +13195,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
                     <div class="flex justify-between items-center">
                         <span class="flex items-center gap-2 text-xs font-medium" style="color: #9ca3af;">
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 opacity-70" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" /></svg>
-                            Média Mensal Est.
+                            MÃ©dia Mensal Est.
                         </span>
                         <span class="text-sm font-bold" style="color: ${txtColor};">${mensalFmt}</span>
                     </div>
@@ -13317,7 +13395,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
             raioxTitleB.textContent = tB;
 
             const rows = [
-                { label: 'Cotação', a: valA.cotacao, b: valB.cotacao, type: 'money', winner: 'none' },
+                { label: 'CotaÃ§Ã£o', a: valA.cotacao, b: valB.cotacao, type: 'money', winner: 'none' },
                 { label: 'Setor', a: valA.segmento, b: valB.segmento, type: 'string', winner: 'none' },
                 { label: 'P/VP', a: valA.pvp, b: valB.pvp, type: 'number', winner: 'lower' },
                 { label: 'P/L', a: valA.pl, b: valB.pl, type: 'number', winner: 'lower' },
@@ -13327,15 +13405,15 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
                 { label: 'VPA', a: valA.vpa, b: valB.vpa, type: 'number', winner: 'none' },
                 { label: 'Margem Bruta', a: valA.margem_bruta, b: valB.margem_bruta, type: 'percent', winner: 'higher' },
                 { label: 'Margem EBIT', a: valA.margem_ebit, b: valB.margem_ebit, type: 'percent', winner: 'higher' },
-                { label: 'Margem Líq', a: valA.margem_liquida, b: valB.margem_liquida, type: 'percent', winner: 'higher' },
+                { label: 'Margem LÃ­q', a: valA.margem_liquida, b: valB.margem_liquida, type: 'percent', winner: 'higher' },
                 { label: 'EV/EBITDA', a: valA.ev_ebitda, b: valB.ev_ebitda, type: 'number', winner: 'lower' },
-                { label: 'Dív. / EBITDA', a: valA.divida_liquida_ebitda, b: valB.divida_liquida_ebitda, type: 'number', winner: 'lower' },
-                { label: 'Dívida Líq/PL', a: valA.divida_liquida_pl, b: valB.divida_liquida_pl, type: 'number', winner: 'lower' },
+                { label: 'DÃ­v. / EBITDA', a: valA.divida_liquida_ebitda, b: valB.divida_liquida_ebitda, type: 'number', winner: 'lower' },
+                { label: 'DÃ­vida LÃ­q/PL', a: valA.divida_liquida_pl, b: valB.divida_liquida_pl, type: 'number', winner: 'lower' },
                 { label: 'Payout', a: valA.payout, b: valB.payout, type: 'percent', winner: 'none' },
                 { label: 'CAGR Rec. 5A', a: valA.cagr_receita_5a, b: valB.cagr_receita_5a, type: 'percent', winner: 'higher' },
                 { label: 'CAGR Lucros 5A', a: valA.cagr_lucros_5a, b: valB.cagr_lucros_5a, type: 'percent', winner: 'higher' },
-                { label: 'Vacância', a: valA.vacancia, b: valB.vacancia, type: 'percent', winner: 'lower' },
-                { label: 'Gestão', a: valA.tipo_gestao, b: valB.tipo_gestao, type: 'string', winner: 'none' },
+                { label: 'VacÃ¢ncia', a: valA.vacancia, b: valB.vacancia, type: 'percent', winner: 'lower' },
+                { label: 'GestÃ£o', a: valA.tipo_gestao, b: valB.tipo_gestao, type: 'string', winner: 'none' },
                 { label: 'Fundo', a: valA.tipo_fundo, b: valB.tipo_fundo, type: 'string', winner: 'none' },
                 { label: 'Mandato', a: valA.mandato, b: valB.mandato, type: 'string', winner: 'none' }
             ];
@@ -13378,7 +13456,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
         }
     }
 
-    // --- Helper para garantir dados de patrimônio para o IPCA ---
+    // --- Helper para garantir dados de patrimÃ´nio para o IPCA ---
     async function obterPatrimonioHistoricoMaximo() {
         if (window.cachedPatrimonioHistorico) return window.cachedPatrimonioHistorico;
         const calcCacheKey = `patrimonio_calc_ALL`;
@@ -13390,7 +13468,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
             }
         } catch (_) { }
 
-        // Calcula "ALL" sob demanda (caso o usuário não tenha aberto o gráfico de rentabilidade ainda)
+        // Calcula "ALL" sob demanda (caso o usuÃ¡rio nÃ£o tenha aberto o grÃ¡fico de rentabilidade ainda)
         try {
             const historicoPrecosMap = await buscarHistoricoPrecosCarteira('ALL');
             const dadosPatrimonio = calcularPatrimonioHistorico(historicoPrecosMap);
@@ -13416,13 +13494,13 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
 
         window.location.hash = 'modal-ipca';
 
-        // Garante que a matriz de patrimônio foi calculada e populada
+        // Garante que a matriz de patrimÃ´nio foi calculada e populada
         if (!window.cachedPatrimonioHistorico) {
-            // Mostra o skeleton ou indicativo que está sendo preparado enquanto o gráfico IPCA já poderia loadar
+            // Mostra o skeleton ou indicativo que estÃ¡ sendo preparado enquanto o grÃ¡fico IPCA jÃ¡ poderia loadar
             await obterPatrimonioHistoricoMaximo();
         }
 
-        // Se já tiver cache, renderiza direto. Senão busca.
+        // Se jÃ¡ tiver cache, renderiza direto. SenÃ£o busca.
         if (ipcaCacheData) {
             renderizarGraficoIpca(ipcaCacheData);
         } else {
@@ -13438,23 +13516,23 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
         document.body.style.overflow = '';
     }
 
-    // --- FUNÇÃO DE BUSCA OTIMIZADA DO IPCA (COM CACHE DE 24H) ---
+    // --- FUNÃ‡ÃƒO DE BUSCA OTIMIZADA DO IPCA (COM CACHE DE 24H) ---
     async function buscarDadosIpca(force = false) {
         const CACHE_KEY = 'vesto_ipca_data';
         const CACHE_DURATION = 1000 * 60 * 60 * 24; // 24 Horas
 
-        // 1. Tenta pegar do Cache primeiro (se não for forçado)
+        // 1. Tenta pegar do Cache primeiro (se nÃ£o for forÃ§ado)
         if (!force) {
             const cached = await getCache(CACHE_KEY);
             if (cached) {
-                // Se achou no cache, usa imediatamente e não chama a API
+                // Se achou no cache, usa imediatamente e nÃ£o chama a API
                 atualizarInterfaceIpca(cached);
                 ipcaCacheData = cached;
                 return;
             }
         }
 
-        // 2. Se não tem cache ou expirou, busca na API (Scraper)
+        // 2. Se nÃ£o tem cache ou expirou, busca na API (Scraper)
         try {
             // Mostra estado de carregamento no widget se estiver vazio
             const elValor12m = document.getElementById('ipca-valor-12m');
@@ -13474,7 +13552,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
                 // Salva no Cache por 24 horas
                 await setCache(CACHE_KEY, data.json, CACHE_DURATION);
 
-                // Atualiza Interface e Variável Global
+                // Atualiza Interface e VariÃ¡vel Global
                 ipcaCacheData = data.json;
                 atualizarInterfaceIpca(data.json);
             }
@@ -13499,7 +13577,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
         const elBadgeMes = document.getElementById('ipca-mes-badge');
 
         if (elValor12m) {
-            // Animação simples de transição
+            // AnimaÃ§Ã£o simples de transiÃ§Ã£o
             elValor12m.style.opacity = '0';
             setTimeout(() => {
                 elValor12m.textContent = dados.acumulado_12m || '--';
@@ -13507,23 +13585,23 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
             }, 150);
         }
 
-        // Pega o último mês disponível para o Badge
+        // Pega o Ãºltimo mÃªs disponÃ­vel para o Badge
         if (dados.historico && dados.historico.length > 0) {
-            const ultimo = dados.historico[dados.historico.length - 1]; // O array vem cronológico (Jan->Dez)
+            const ultimo = dados.historico[dados.historico.length - 1]; // O array vem cronolÃ³gico (Jan->Dez)
             // Se vier invertido do scraper, ajustamos:
-            // No seu scraper atual: reverse() foi usado, então o último item é o mês mais recente.
+            // No seu scraper atual: reverse() foi usado, entÃ£o o Ãºltimo item Ã© o mÃªs mais recente.
 
             if (elBadgeMes) {
-                // Ex: "Último: 0,56% (Jan)"
+                // Ex: "Ãšltimo: 0,56% (Jan)"
                 let mesCurto = ultimo.mes.split('/')[0];
                 // Se vier nome completo "Janeiro", corta para "Jan"
                 if (mesCurto.length > 3) mesCurto = mesCurto.substring(0, 3);
 
-                elBadgeMes.textContent = `Último: ${ultimo.valor}% (${mesCurto})`;
+                elBadgeMes.textContent = `Ãšltimo: ${ultimo.valor}% (${mesCurto})`;
             }
         }
 
-        // 2. Se o modal estiver aberto (ou para deixar pronto), renderiza o gráfico
+        // 2. Se o modal estiver aberto (ou para deixar pronto), renderiza o grÃ¡fico
         renderizarGraficoIpca(dados);
     }
 
@@ -13534,7 +13612,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
 
         if (!dados || !dados.historico) return;
 
-        // Helper para formatar ano/mês
+        // Helper para formatar ano/mÃªs
         const getYearMonthKey = (mesStr) => {
             if (!mesStr) return null;
             const parts = mesStr.includes('/') ? mesStr.split('/') : [mesStr];
@@ -13546,7 +13624,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
             const monthMap = {
                 'jan': '01', 'fev': '02', 'mar': '03', 'abr': '04', 'mai': '05', 'jun': '06',
                 'jul': '07', 'ago': '08', 'set': '09', 'out': '10', 'nov': '11', 'dez': '12',
-                'janeiro': '01', 'fevereiro': '02', 'março': '03', 'abril': '04', 'maio': '05', 'junho': '06',
+                'janeiro': '01', 'fevereiro': '02', 'marÃ§o': '03', 'abril': '04', 'maio': '05', 'junho': '06',
                 'julho': '07', 'agosto': '08', 'setembro': '09', 'outubro': '10', 'novembro': '11', 'dezembro': '12'
             };
 
@@ -13577,7 +13655,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
             });
         }
 
-        // Encontra a data de início da carteira (o menor ano-mês com saldo ou provento)
+        // Encontra a data de inÃ­cio da carteira (o menor ano-mÃªs com saldo ou provento)
         let earliestKey = null;
         const allKeys = [...Object.keys(mapPatrimonio), ...Object.keys(mapProventos)];
 
@@ -13586,7 +13664,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
             earliestKey = allKeys[0].trim();
         }
 
-        // Filtra o histórico para conter apenas dados retroativos até a criação da carteira
+        // Filtra o histÃ³rico para conter apenas dados retroativos atÃ© a criaÃ§Ã£o da carteira
         let historicoClean = [...dados.historico];
         if (earliestKey) {
             const tempFiltrado = [];
@@ -13645,13 +13723,13 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
 
                     erosaoPatHtml = `
                     <div class="flex items-center gap-3 justify-end mt-1" >
-                        <span class="text-[10px] text-gray-500 font-medium tracking-wide">Patrimônio</span>
+                        <span class="text-[10px] text-gray-500 font-medium tracking-wide">PatrimÃ´nio</span>
                         <span class="text-xs font-bold ${corErosao} w-20 text-right tabular-nums">${sinal} ${Math.abs(impactoReais).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
                     </div>`;
                 } else {
                     erosaoPatHtml = `
                     <div class="flex items-center gap-3 justify-end mt-1 opacity-40" >
-                        <span class="text-[10px] text-gray-500 font-medium tracking-wide">Patrimônio</span>
+                        <span class="text-[10px] text-gray-500 font-medium tracking-wide">PatrimÃ´nio</span>
                         <span class="text-xs font-bold text-gray-500 w-20 text-right tabular-nums">--</span>
                     </div>`;
                 }
@@ -13720,18 +13798,18 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
             });
         }
 
-        // 3. Renderizar o Gráfico
+        // 3. Renderizar o GrÃ¡fico
         if (!canvas) return;
         if (ipcaChartInstance) ipcaChartInstance.destroy();
 
         const ctx = canvas.getContext('2d');
-        const historicoReverso = [...historicoClean].reverse(); // Cronológico para o gráfico
+        const historicoReverso = [...historicoClean].reverse(); // CronolÃ³gico para o grÃ¡fico
         const labels = historicoReverso.map(d => d.mes.split('/')[0].substring(0, 3));
         const values = historicoReverso.map(d => d.valor);
         
-        // Cores do gráfico de Barras
+        // Cores do grÃ¡fico de Barras
         const backgroundColors = values.map(v => {
-            if (v < 0) return '#10B981'; // Deflação (Verde)
+            if (v < 0) return '#10B981'; // DeflaÃ§Ã£o (Verde)
             if (v >= 0.5) return '#EF4444'; // Alta (Vermelho)
             return '#F97316'; // Normal (Laranja)
         });
@@ -13803,7 +13881,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
     }
 
     if (patrimonioPageContent) {
-        // Removido Swipe customizado a pedido do usuário (estava ativando no scroll).
+        // Removido Swipe customizado a pedido do usuÃ¡rio (estava ativando no scroll).
 
 
 
@@ -13830,7 +13908,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
         const scrollContainerProv = proventosPageContent.querySelector('.overflow-y-auto');
 
         proventosPageContent.addEventListener('touchstart', (e) => {
-            // CORREÇÃO: Se tocar no gráfico, não inicia o arrasto do modal
+            // CORREÃ‡ÃƒO: Se tocar no grÃ¡fico, nÃ£o inicia o arrasto do modal
             if (e.target.tagName === 'CANVAS') return;
 
             if (scrollContainerProv && scrollContainerProv.scrollTop === 0) {
@@ -13890,7 +13968,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
         const scrollContainerAloc = alocacaoPageContent.querySelector('.overflow-y-auto');
 
         alocacaoPageContent.addEventListener('touchstart', (e) => {
-            // CORREÇÃO: Se tocar no gráfico, não inicia o arrasto do modal
+            // CORREÃ‡ÃƒO: Se tocar no grÃ¡fico, nÃ£o inicia o arrasto do modal
             if (e.target.tagName === 'CANVAS') return;
 
             if (scrollContainerAloc && scrollContainerAloc.scrollTop === 0) {
@@ -14059,7 +14137,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
         if (listaEl && todosPagamentos) {
             listaEl.innerHTML = '';
 
-            // 1. Cálculos
+            // 1. CÃ¡lculos
             let totalGeral = 0;
             const dadosCalculados = todosPagamentos.map(p => {
                 const parts = p.paymentDate.split('-');
@@ -14085,11 +14163,11 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
                 grupos[chave].push(item);
             });
 
-            // 3. Renderização
+            // 3. RenderizaÃ§Ã£o
             Object.keys(grupos).forEach((mes) => {
                 const itensMes = grupos[mes];
 
-                // Título do Mês
+                // TÃ­tulo do MÃªs
                 const wrapper = document.createElement('div');
                 wrapper.innerHTML = `
                     <div class="flex items-center gap-3 mb-3 pl-2 mt-4">
@@ -14126,7 +14204,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
                         <div class="absolute left-0 top-0 bottom-0 w-1 ${barraLateral}"></div>
                         <div class="flex items-center w-full p-2.5">
                             
-                            <!-- Bloco de Data (Estilo Calendário) -->
+                            <!-- Bloco de Data (Estilo CalendÃ¡rio) -->
                             <div class="flex flex-col items-center justify-center w-14 h-14 rounded-xl relative overflow-hidden flex-shrink-0 ${isLight ? 'bg-white border border-gray-200 shadow-sm' : 'bg-[#1a1a1c] border border-white/5 shadow-md'}">
                                 <div class="absolute top-0 w-full h-3.5 ${barraLateral} flex items-center justify-center">
                                     <span class="text-[8px] font-black tracking-widest text-[#111] uppercase mix-blend-overlay opacity-80">${sem}</span>
@@ -14134,7 +14212,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
                                 <span class="text-xl font-bold ${txtTitle} leading-none mt-2 tracking-tighter">${dia}</span>
                             </div>
 
-                            <!-- Informações do Ativo -->
+                            <!-- InformaÃ§Ãµes do Ativo -->
                             <div class="flex-1 min-w-0 pl-3">
                                 <div class="flex items-center gap-2 mb-0.5">
                                     <span class="text-[13px] font-bold ${txtTitle} tracking-wide">${prov.symbol}</span>
@@ -14192,7 +14270,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
     let touchStartPagamentosY = 0;
     let touchMovePagamentosY = 0;
 
-    // 1. Fechar ao clicar no botão "X"
+    // 1. Fechar ao clicar no botÃ£o "X"
     if (btnVoltarPagamentos) {
         btnVoltarPagamentos.addEventListener('click', closePagamentosModal);
     }
@@ -14204,7 +14282,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
         });
     }
 
-    // 3. Lógica do Gesto (Arrastar para baixo)
+    // 3. LÃ³gica do Gesto (Arrastar para baixo)
     if (contentPagamentosRef) {
         const scrollContainerPag = contentPagamentosRef.querySelector('.overflow-y-auto');
 
@@ -14223,7 +14301,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
             touchMovePagamentosY = e.touches[0].clientY;
             const diff = touchMovePagamentosY - touchStartPagamentosY;
 
-            // Só move se for para baixo
+            // SÃ³ move se for para baixo
             if (diff > 0) {
                 if (e.cancelable) e.preventDefault();
                 contentPagamentosRef.style.transform = `translateY(${diff}px)`;
@@ -14238,7 +14316,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
             const contentEl = contentPagamentosRef;
             const modalEl = modalPagamentosRef;
 
-            // Restaura a transição suave
+            // Restaura a transiÃ§Ã£o suave
             contentEl.style.transition = 'transform 0.3s ease-out';
 
             if (diff > 100) {
@@ -14250,24 +14328,24 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
                 modalEl.style.transition = 'opacity 0.3s ease-out';
                 modalEl.style.opacity = '0';
 
-                // 3. Aguarda a animação terminar para limpar tudo e destravar a tela
+                // 3. Aguarda a animaÃ§Ã£o terminar para limpar tudo e destravar a tela
                 setTimeout(() => {
-                    // Chama a função OFICIAL para destravar o scroll do body e limpar estados
+                    // Chama a funÃ§Ã£o OFICIAL para destravar o scroll do body e limpar estados
                     if (typeof closePagamentosModal === 'function') {
                         closePagamentosModal();
                     } else {
-                        // Fallback de segurança
+                        // Fallback de seguranÃ§a
                         modalEl.classList.remove('visible');
                         document.body.style.overflow = '';
                     }
 
-                    // Limpa os estilos inline injetados pelo JS para não quebrar a próxima abertura
+                    // Limpa os estilos inline injetados pelo JS para nÃ£o quebrar a prÃ³xima abertura
                     contentEl.style.transform = '';
                     contentEl.style.transition = '';
                     modalEl.style.transition = '';
                     modalEl.style.opacity = '';
 
-                }, 300); // Tempo da animação CSS
+                }, 300); // Tempo da animaÃ§Ã£o CSS
 
             } else {
                 contentEl.style.transform = 'translateY(0)';
@@ -14304,7 +14382,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
         // 2. Faz o modal deslizar para cima
         setTimeout(() => {
             objetivosContent.style.transform = 'translateY(0)';
-        }, 50); // Pequeno delay para o navegador renderizar a animação
+        }, 50); // Pequeno delay para o navegador renderizar a animaÃ§Ã£o
 
         document.body.style.overflow = 'hidden';
 
@@ -14324,7 +14402,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
         objetivosModal.style.opacity = '0';
         objetivosModal.style.pointerEvents = 'none';
 
-        // 3. Aguarda a animação terminar para limpar
+        // 3. Aguarda a animaÃ§Ã£o terminar para limpar
         setTimeout(() => {
             objetivosModal.classList.remove('visible');
             document.body.style.overflow = '';
@@ -14332,10 +14410,10 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
         }, 50);
     }
 
-    // Variável global para rastrear meta atual (padrão Cota Grátis)
+    // VariÃ¡vel global para rastrear meta atual (padrÃ£o Cota GrÃ¡tis)
     let currentObjetivoTarget = 'cota_gratis';
 
-    // Lógica Principal de Renderização (VERSÃO COM MÉDIA E METAS PERSONALIZÁVEIS)
+    // LÃ³gica Principal de RenderizaÃ§Ã£o (VERSÃƒO COM MÃ‰DIA E METAS PERSONALIZÃVEIS)
     async function renderizarObjetivos() {
         if (!objetivosLista) return;
 
@@ -14368,14 +14446,14 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
         let htmlFinal = '';
         let somaTotalInvestir = 0; // Inicializa a soma global
 
-        // 2. Data de 1 ano atrás para média 12M
+        // 2. Data de 1 ano atrÃ¡s para mÃ©dia 12M
         const umAnoAtras = new Date();
         umAnoAtras.setFullYear(umAnoAtras.getFullYear() - 1);
 
-        // 3. Iteração e Cálculos Reais
+        // 3. IteraÃ§Ã£o e CÃ¡lculos Reais
         for (const ativo of fiisCarteira) {
             const symbol = ativo.symbol;
-            // PREÇO ATUAL ou PREÇO MÉDIO: para objetivos de cota grátis o investidor olha para o preço a mercado de tela hoje.
+            // PREÃ‡O ATUAL ou PREÃ‡O MÃ‰DIO: para objetivos de cota grÃ¡tis o investidor olha para o preÃ§o a mercado de tela hoje.
             const precoAtual = precosAtuais.find(p => p.symbol === symbol)?.regularMarketPrice || 0;
             let mediaRendimentos = 0;
 
@@ -14399,7 +14477,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
 
                 if (ultimos12Meses.length > 0) {
                     const soma12Meses = ultimos12Meses.reduce((acc, curr) => acc + curr.value, 0);
-                    // Divide por 12 se pagou todos os meses, se pagou menos dividimos pela qtd pra não distorcer negativamente tanto
+                    // Divide por 12 se pagou todos os meses, se pagou menos dividimos pela qtd pra nÃ£o distorcer negativamente tanto
                     const denom = ultimos12Meses.length > 6 ? 12 : ultimos12Meses.length;
                     mediaRendimentos = soma12Meses / denom;
                 } else {
@@ -14409,7 +14487,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
                 }
             }
 
-            // CÁLCULO GERAL DA META
+            // CÃLCULO GERAL DA META
             if (precoAtual > 0 && mediaRendimentos > 0) {
                 let metaCotasEsperada = 0;
 
@@ -14436,7 +14514,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
                 const corTexto = atingiu ? 'text-yellow-500' : (isLight ? 'text-gray-800' : 'text-white');
 
                 const msgStatus = atingiu ? 'Concluido!' : `Faltam <b class="${corValue}">${formatCurrencyShort(cotasFaltantes)}</b> cotas`;
-                const msgInvest = atingiu ? 'Objetivo alcançado.' : `Falta investir <b class="${corValue}">${formatBRL(investimentoNecessario)}</b> `;
+                const msgInvest = atingiu ? 'Objetivo alcanÃ§ado.' : `Falta investir <b class="${corValue}">${formatBRL(investimentoNecessario)}</b> `;
 
                 htmlFinal += `
                 <div class="${bgCard} p-4 rounded-3xl relative overflow-hidden" >
@@ -14447,7 +14525,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
                             </div>
                             <div>
                                 <h4 class="text-base font-bold ${corTitle} leading-none">${symbol}</h4>
-                                <span class="text-[10px] text-gray-500 font-medium mt-1 block">Preço: ${formatBRL(precoAtual)} • Média.Div/Mês: ${formatBRL(mediaRendimentos)}</span>
+                                <span class="text-[10px] text-gray-500 font-medium mt-1 block">PreÃ§o: ${formatBRL(precoAtual)} â€¢ MÃ©dia.Div/MÃªs: ${formatBRL(mediaRendimentos)}</span>
                             </div>
                         </div>
                         <div class="text-right">
@@ -14462,7 +14540,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
                     </div>
 
                     <div class="flex justify-between items-center text-[10px] font-bold tracking-wider">
-                        <span class="text-gray-500">${Math.floor(progresso)}% CONCLUÍDO</span>
+                        <span class="text-gray-500">${Math.floor(progresso)}% CONCLUÃDO</span>
                         <span class="${corTexto}">${formatCurrencyShort(cotasAtuais)} / ${formatCurrencyShort(metaCotasEsperada)}</span>
                     </div>
 
@@ -14482,7 +14560,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
                         </div>
                         <div>
                             <h4 class="text-base font-bold ${corTitle} leading-none">${symbol}</h4>
-                            <span class="text-[10px] text-red-400 font-medium mt-1 block">Dados insuficientes para calcular média</span>
+                            <span class="text-[10px] text-red-400 font-medium mt-1 block">Dados insuficientes para calcular mÃ©dia</span>
                         </div>
                     </div>
                 </div> `;
@@ -14496,7 +14574,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
         }
     }
 
-    // Escutadores dos Botões de Filtro de Meta 
+    // Escutadores dos BotÃµes de Filtro de Meta 
     const objetivoFilterBtns = document.querySelectorAll('.objetivo-filter-btn');
     const objetivosTabIndicator = document.getElementById('objetivos-tab-indicator');
     if (objetivoFilterBtns.length > 0) {
@@ -14561,11 +14639,11 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
     window.openObjetivosModal = openObjetivosModal;
 
     window.renderizarListaImoveis = function (imoveis) {
-        // O container agora é estático no HTML, dentro da tab Portfólio
+        // O container agora Ã© estÃ¡tico no HTML, dentro da tab PortfÃ³lio
         let container = document.getElementById('detalhes-imoveis-container');
 
         if (!container) {
-            console.warn('renderizarListaImoveis: container não encontrado');
+            console.warn('renderizarListaImoveis: container nÃ£o encontrado');
             return;
         }
 
@@ -14609,7 +14687,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
     `;
         }).join('');
 
-        // 3. Lógica do "Ver Mais" (Lista de Imóveis)
+        // 3. LÃ³gica do "Ver Mais" (Lista de ImÃ³veis)
         const LIMIT = 4;
         const temMais = totalImoveis > LIMIT;
         const imoveisIniciais = imoveis.slice(0, LIMIT);
@@ -14642,7 +14720,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
 
         const btnVerMaisHtml = temMais ? `
     <button id="btn-toggle-imoveis" onclick="window.toggleListaImoveis(this)" class="w-full mt-2 py-3 ${bgCard} hover:${isLight ? 'bg-gray-200' : 'bg-[#1c1c1e]'} text-gray-400 text-[10px] font-bold uppercase tracking-widest rounded-xl transition-colors flex items-center justify-center gap-2 cursor-pointer border ${isLight ? 'border-gray-200' : 'border-transparent'}">
-        Ver todos os ${totalImoveis} imóveis
+        Ver todos os ${totalImoveis} imÃ³veis
             <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 transition-transform duration-300" id="icon-toggle-imoveis" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"> <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" /></svg>
         </button>
     ` : '';
@@ -14650,7 +14728,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
         // 4. Injeta o HTML completo
         container.innerHTML = `
     <div class="border-t ${isLight ? 'border-gray-200' : 'border-[#2C2C2E]'} pt-8 mb-10 mt-8" >
-            <h4 class="text-[10px] font-bold ${isLight ? 'text-gray-500' : 'text-gray-300'} uppercase tracking-widest mb-3 pl-1">Portfólio de Imóveis</h4>
+            <h4 class="text-[10px] font-bold ${isLight ? 'text-gray-500' : 'text-gray-300'} uppercase tracking-widest mb-3 pl-1">PortfÃ³lio de ImÃ³veis</h4>
 
             <div class="${bgCard} rounded-xl p-4 shadow-sm mb-4">
                 <div class="flex flex-col items-center">
@@ -14684,7 +14762,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
         </div>
     `;
 
-        // 5. Renderizar o Gráfico com Chart.js
+        // 5. Renderizar o GrÃ¡fico com Chart.js
         const canvas = document.getElementById('imoveis-chart');
         if (!canvas) return;
 
@@ -14719,7 +14797,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
                         borderWidth: 1,
                         padding: 10,
                         bodyFont: { size: 12, weight: 'bold' },
-                        callbacks: { label: function (context) { return ' ' + context.label + ': ' + context.raw + ' imóvel(is)'; } }
+                        callbacks: { label: function (context) { return ' ' + context.label + ': ' + context.raw + ' imÃ³vel(is)'; } }
                     }
                 }
             }
@@ -14749,14 +14827,14 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
             const total = document.querySelectorAll('#lista-imoveis-wrapper .bg-\\[\\#151515\\]').length;
 
             btn.innerHTML = `
-            Ver todos os ${total} imóveis
+            Ver todos os ${total} imÃ³veis
     <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 transition-transform duration-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"> <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" /></svg>
         `;
         }
     };
 
-    // --- SUPPORT PARA NAVEGAÇÃO DE GESTOS (SWIPE BACK) VIA HASH ROUTING ---
-    // Inserido NO MESMO ESCOPO das funções principais
+    // --- SUPPORT PARA NAVEGAÃ‡ÃƒO DE GESTOS (SWIPE BACK) VIA HASH ROUTING ---
+    // Inserido NO MESMO ESCOPO das funÃ§Ãµes principais
     window.addEventListener('hashchange', () => {
         if (!window.location.hash || window.location.hash === '' || window.location.hash === '#') {
             const possibleModals = [
@@ -14788,7 +14866,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
     await init();
 });
 
-// ─── Calculadora de Juros Compostos ───────────────────────────────────────────
+// â”€â”€â”€ Calculadora de Juros Compostos â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 document.addEventListener('DOMContentLoaded', () => {
     const _fmtBRL = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
     const fmt = (v) => _fmtBRL.format(Number.isFinite(v) ? v : 0);
@@ -14949,9 +15027,9 @@ document.addEventListener('DOMContentLoaded', () => {
     calcularMetaPrazo();
 });
 
-// ─── Perfil de Usuário ────────────────────────────────────────────────────────
-// Self-contained module — não depende de vestoDB nem showToast (ambos estão
-// dentro da closure principal e são inacessíveis neste escopo).
+// â”€â”€â”€ Perfil de UsuÃ¡rio â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Self-contained module â€” nÃ£o depende de vestoDB nem showToast (ambos estÃ£o
+// dentro da closure principal e sÃ£o inacessÃ­veis neste escopo).
 
 const profileDB = {
     _db: null,
@@ -15024,7 +15102,7 @@ window.openProfileModal = function () {
     modal.classList.add('visible');
     modal.classList.remove('hidden'); // Just in case it has hidden from previous code
 
-    // Opcional: reativar animação
+    // Opcional: reativar animaÃ§Ã£o
     const c = modal.querySelector('.modal-content');
     if (c) {
         c.classList.remove('modal-out');
@@ -15051,7 +15129,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     let currentSelectedImage = null;
 
-    // ── Close ────────────────────────────────────────────────────────────────
+    // â”€â”€ Close â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     function closeProfileModal() {
         if (!modal) return;
         const c = modal.querySelector('.modal-content');
@@ -15078,7 +15156,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Fecha no backdrop
     if (modal) modal.addEventListener('click', (e) => { if (e.target === modal) closeProfileModal(); });
 
-    // ── Upload (max 2 MB) ────────────────────────────────────────────────────
+    // â”€â”€ Upload (max 2 MB) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     if (btnUpload && fileInput) {
         btnUpload.addEventListener('click', () => fileInput.click());
         fileInput.addEventListener('change', (e) => {
@@ -15096,10 +15174,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
 
-    // ── Preset Avatars ───────────────────────────────────────────────────────
+    // â”€â”€ Preset Avatars â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     presetBtns.forEach(btn => {
         btn.addEventListener('click', () => {
-            // Remove seleção visual anterior
+            // Remove seleÃ§Ã£o visual anterior
             presetBtns.forEach(b => b.classList.remove('border-purple-500'));
             btn.classList.add('border-purple-500');
             currentSelectedImage = btn.dataset.avatar;
@@ -15107,7 +15185,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     });
 
-    // ── Remover Foto ─────────────────────────────────────────────────────────
+    // â”€â”€ Remover Foto â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     if (btnDelete) {
         btnDelete.addEventListener('click', () => {
             currentSelectedImage = null;
@@ -15116,7 +15194,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
 
-    // ── Helpers visuais ──────────────────────────────────────────────────────
+    // â”€â”€ Helpers visuais â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     function updatePreview() {
         if (currentSelectedImage) {
             previewImg.src = currentSelectedImage;
@@ -15143,7 +15221,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
 
-    // ── Salvar ───────────────────────────────────────────────────────────────
+    // â”€â”€ Salvar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     if (btnSave) {
         btnSave.addEventListener('click', async () => {
             try {
@@ -15164,7 +15242,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     window.closeProfileModal = closeProfileModal;
 
-    // ── Carregar perfil salvo ────────────────────────────────────────────────
+    // â”€â”€ Carregar perfil salvo â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     try {
         const stored = await profileDB.get('profilePicture');
         if (stored && stored.data) {
@@ -15173,6 +15251,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             updatePreview();
         }
     } catch (e) {
-        console.log('[Profile] Sem foto salva ou DB indisponível.');
+        console.log('[Profile] Sem foto salva ou DB indisponÃ­vel.');
     }
 });

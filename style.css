@@ -839,10 +839,14 @@ body.light-mode .btn-cancel:hover {
     border: 1px solid rgba(192, 132, 252, 0.36);
     box-shadow: 0 1px 8px rgba(192, 132, 252, 0.22);
     transform: translate3d(0, 0, 0);
-    transition: transform 320ms cubic-bezier(0.22, 1, 0.36, 1), width 320ms cubic-bezier(0.22, 1, 0.36, 1);
+    transition: none;
     will-change: transform, width;
     pointer-events: none;
     z-index: 0;
+}
+
+.bottom-nav-pill.is-animating {
+    transition: transform 280ms cubic-bezier(0.22, 1, 0.36, 1), width 280ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .tab-button {
@@ -884,6 +888,24 @@ body.light-mode .btn-cancel:hover {
     background: transparent;
     box-shadow: none;
     transform: none;
+}
+
+@keyframes tab-button-bounce {
+    0% {
+        transform: translateY(0) scale(1);
+    }
+
+    35% {
+        transform: translateY(-4px) scale(1.08);
+    }
+
+    100% {
+        transform: translateY(0) scale(1);
+    }
+}
+
+.tab-button.tab-bounce .tab-button-icon-wrapper {
+    animation: tab-button-bounce 280ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .tab-button span {

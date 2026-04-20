@@ -1,4 +1,4 @@
-import * as supabaseDB from './supabase.js';
+﻿import * as supabaseDB from './supabase.js';
 
 window.dismissNotificationGlobal = function (id, btnElement) {
     // Usa o Set em RAM â€” localStorage sÃ³ Ã© escrito aqui, nunca relido
@@ -145,19 +145,19 @@ const isPrivacyModeActive = () => document.body.classList.contains('privacy-mode
 
 const formatBRL = (value) => {
     if (value == null) return 'N/A';
-    if (isPrivacyModeActive()) return 'R$ â€¢â€¢â€¢â€¢';
+    if (isPrivacyModeActive()) return 'R$ ••••';
     return _fmtBRL.format(value);
 };
 
 const formatNumber = (value) => {
     if (value == null) return 'N/A';
-    if (isPrivacyModeActive()) return 'â€¢â€¢â€¢â€¢';
+    if (isPrivacyModeActive()) return '••••';
     return _fmtNumber.format(value);
 };
 
 const formatCurrencyShort = (value) => {
     if (value == null) return 'N/A';
-    if (isPrivacyModeActive()) return 'R$ â€¢â€¢â€¢â€¢';
+    if (isPrivacyModeActive()) return 'R$ ••••';
     return _fmtNumber.format(value);
 };
 
@@ -821,7 +821,7 @@ function criarCardElemento(ativo, dados) {
                         </div>
                         <div class="text-[11px] text-gray-500 mt-0.5 flex items-center">
                             <span data-field="cota-qtd">${ativo.quantity} cotas</span>
-                            <span class="mx-1">â€¢</span>
+                            <span class="mx-1">•</span>
                             <span data-field="preco-unitario" class="font-medium text-gray-400">${precoFormatado}</span>
                         </div>
                     </div>
@@ -2862,7 +2862,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                             </div>
                         <div class="flex items-center gap-1.5 mt-1 text-[11px] text-gray-500 leading-none">
                             <span class="font-medium text-gray-400">${diaStr}</span>
-                            <span>â€¢</span>
+                            <span>•</span>
                             <span>${t.quantity} cotas</span>
                         </div>
                     </div>
@@ -3004,7 +3004,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                         </div>
                         <div class="flex items-center gap-1.5 mt-1 text-[11px] text-gray-500 leading-none">
                             <span class="font-medium text-gray-400">${diaStr}</span>
-                            <span>â€¢</span>
+                            <span>•</span>
                             <span>${qtd} cotas</span>
                         </div>
                     </div>
@@ -4396,7 +4396,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
                         </div>
                         <div class="flex items-center gap-1.5 mt-1 text-[11px] text-gray-500 leading-none">
                             <span class="font-medium text-gray-400">Dia ${dia}</span>
-                            <span>â€¢</span>
+                            <span>•</span>
                             <span>${item.qtd} cotas</span>
                         </div>
                     </div>
@@ -6225,7 +6225,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
 
         if (elTime) {
             const lastDate = new Date(dataPoints[dataPoints.length - 1].date);
-            elTime.textContent = `Hoje â€¢ ${lastDate.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`;
+            elTime.textContent = `Hoje • ${lastDate.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`;
         }
 
         // Cores e gradiente
@@ -6246,7 +6246,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
                         updateIntradayHeader(defaultEndValue);
                         if (elTime) {
                             const lastDate = new Date(dataPoints[dataPoints.length - 1].date);
-                            elTime.textContent = `Hoje â€¢ ${lastDate.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`;
+                            elTime.textContent = `Hoje • ${lastDate.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`;
                         }
                         chart._lastIntradayUpdate = 'end';
                     }
@@ -6262,7 +6262,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
                 if (chart._lastIntradayIdx !== idx) {
                     updateIntradayHeader(focusedValue);
                     if (elTime) {
-                        elTime.textContent = `${focusedDate.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })} â€¢ ${focusedDate.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`;
+                        elTime.textContent = `${focusedDate.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })} • ${focusedDate.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`;
                     }
                     chart._lastIntradayIdx = idx;
                     chart._lastIntradayUpdate = 'active';
@@ -7175,7 +7175,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
 
             const props = getProps(p);
             count++;
-            const msg = `Data Com de <strong class="text-white">${escapeHtml(p.symbol)}</strong> hoje (${fmtDia(hojeLocal)}).<br>Valor: <strong class="text-white">${formatBRL(p.value)}</strong> â€¢ Paga em: ${fmtDia(props.paymentDate)}`;
+            const msg = `Data Com de <strong class="text-white">${escapeHtml(p.symbol)}</strong> hoje (${fmtDia(hojeLocal)}).<br>Valor: <strong class="text-white">${formatBRL(p.value)}</strong> • Paga em: ${fmtDia(props.paymentDate)}`;
             const icon = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>`;
             list.appendChild(createCard(notifId, 'datacom', 'Data de Corte', msg, icon));
         });
@@ -7195,7 +7195,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
             if (dismissed.has(notifId)) return;
             const props = getProps(p);
             count++;
-            const msg = `<strong class="text-white">${escapeHtml(p.symbol)}</strong> anunciou <strong class="text-white">${formatBRL(p.value)}</strong>.<br>Com: ${fmtDia(props.dataCom)} â€¢ Pag: ${fmtDia(props.paymentDate)}`;
+            const msg = `<strong class="text-white">${escapeHtml(p.symbol)}</strong> anunciou <strong class="text-white">${formatBRL(p.value)}</strong>.<br>Com: ${fmtDia(props.dataCom)} • Pag: ${fmtDia(props.paymentDate)}`;
             const icon = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>`;
             list.appendChild(createCard(notifId, 'news', 'Novo AnÃºncio', msg, icon));
         });
@@ -7219,7 +7219,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
                     let dataPub = '';
                     if (noticia.pubDate) {
                         const d = new Date(noticia.pubDate);
-                        dataPub = !isNaN(d) ? ` â€¢ ${d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : '';
+                        dataPub = !isNaN(d) ? ` • ${d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : '';
                     }
 
                     const msg = `NotÃ­cia sobre <strong class="text-white">${escapeHtml(tickerEncontrado)}</strong> saiu no mercado.${dataPub}<br><span class="text-gray-400 italic">"${escapeHtml(rawTitle.slice(0, 50))}..."</span>`;
@@ -11031,7 +11031,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
             if (privacyIcon) privacyIcon.innerHTML = '<use href="#ico-eye" />';
         }
 
-        // Force UI re-renders to apply the formatBRL R$ â€¢â€¢â€¢â€¢ masking
+        // Force UI re-renders to apply the formatBRL R$ •••• masking
         if (typeof window.renderizarCarteiraGlobal === 'function') window.renderizarCarteiraGlobal();
         if (typeof window.renderizarHistoricoGlobal === 'function') window.renderizarHistoricoGlobal();
         if (typeof window.renderizarHistoricoProventosGlobal === 'function') window.renderizarHistoricoProventosGlobal();
@@ -11309,7 +11309,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
                                     <span>${p.symbol}</span>
                                     <span style="font-size: 10px; color: #4ade80; display: inline-flex; align-items: center; height: 14px; margin-top: 1px;">PROVENTO</span>
                                 </div>
-                                <div style="font-size: 11px; color: #71717a; margin-top: 3px;">${qtd} cotas â€¢ ${formatBRL(valUni)}</div>
+                                <div style="font-size: 11px; color: #71717a; margin-top: 3px;">${qtd} cotas • ${formatBRL(valUni)}</div>
                             </div>
                         </div>
                     `;
@@ -11340,7 +11340,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
                                     <span>${t.symbol}</span> 
                                     <span style="font-size: 10px; color: ${isVenda ? '#f87171' : '#4ade80'}; display: inline-flex; align-items: center; height: 14px; margin-top: 1px;">${isVenda ? 'VENDA' : 'COMPRA'}</span>
                                 </div>
-                                <div style="font-size: 11px; color: #71717a; margin-top: 3px;">${t.quantity} cotas â€¢ ${formatBRL(t.price)}</div>
+                                <div style="font-size: 11px; color: #71717a; margin-top: 3px;">${t.quantity} cotas • ${formatBRL(t.price)}</div>
                             </div>
                         </div>
                     `;
@@ -14525,7 +14525,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
                             </div>
                             <div>
                                 <h4 class="text-base font-bold ${corTitle} leading-none">${symbol}</h4>
-                                <span class="text-[10px] text-gray-500 font-medium mt-1 block">PreÃ§o: ${formatBRL(precoAtual)} â€¢ MÃ©dia.Div/MÃªs: ${formatBRL(mediaRendimentos)}</span>
+                                <span class="text-[10px] text-gray-500 font-medium mt-1 block">PreÃ§o: ${formatBRL(precoAtual)} • MÃ©dia.Div/MÃªs: ${formatBRL(mediaRendimentos)}</span>
                             </div>
                         </div>
                         <div class="text-right">
@@ -15254,3 +15254,4 @@ document.addEventListener('DOMContentLoaded', async () => {
         console.log('[Profile] Sem foto salva ou DB indisponÃ­vel.');
     }
 });
+

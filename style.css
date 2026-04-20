@@ -16,6 +16,15 @@
     box-shadow: none !important;
 }
 
+/* Remove halo roxo apenas dos botões de fechar/voltar dos modais */
+.page-content button[aria-label="Voltar"]:focus-visible,
+.page-content button[id$="voltar-btn"]:focus-visible,
+.page-content button[aria-label^="Fechar"]:focus-visible,
+.modal-content button[aria-label^="Fechar"]:focus-visible {
+    outline: none !important;
+    box-shadow: none !important;
+}
+
 /* =========================================
    CONCENTRATION BADGE
    ========================================= */

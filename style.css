@@ -1135,7 +1135,7 @@ body.light-mode .custom-modal.visible .modal-content {
 .premium-divider {
     width: 1px;
     height: 35%;
-    background: #27272a;
+    background: rgba(255, 255, 255, 0.03);
 }
 
 .premium-value-lg {

@@ -878,10 +878,10 @@ function criarCardElemento(ativo, dados) {
                      <button class="flex-1 py-2 text-xs font-bold rounded-lg border ${btnDetalhesClass}" onclick="window.abrirDetalhesAtivo('${ativo.symbol}')">
                         Ver Detalhes
                      </button>
-                     <button class="py-2 px-3 text-gray-400 bg-white/5 border border-white/10 rounded-lg hover:bg-white/10 transition-colors" onclick="window.compartilharAtivoDireto('${ativo.symbol}')" title="Compartilhar">
+                     <button class="py-2 px-3 text-gray-400 bg-white/5 rounded-lg hover:bg-white/10 transition-colors" onclick="window.compartilharAtivoDireto('${ativo.symbol}')" title="Compartilhar">
                         <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7.217 10.907a2.25 2.25 0 100 2.186m0-2.186c.18.324.283.696.283 1.093s-.103.77-.283 1.093m0-2.186l9.566-5.314m-9.566 7.5l9.566 5.314m0 0a2.25 2.25 0 103.935 2.186 2.25 2.25 0 00-3.935-2.186zm0-12.814a2.25 2.25 0 103.933-2.185 2.25 2.25 0 00-3.933 2.185z" /></svg>
                      </button>
-                     <button class="py-2 px-3 text-red-500 bg-red-100 dark:bg-red-900/10 border border-red-500/20 dark:border-red-900/20 rounded-lg hover:bg-red-200 dark:hover:bg-red-900/20 transition-colors" onclick="window.confirmarExclusao('${ativo.symbol}')">
+                     <button class="py-2 px-3 text-red-500 bg-red-100 dark:bg-red-900/10 rounded-lg hover:bg-red-200 dark:hover:bg-red-900/20 transition-colors" onclick="window.confirmarExclusao('${ativo.symbol}')">
                         <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                      </button>
                 </div>
@@ -6937,7 +6937,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
                 let skeletonHtml = '';
                 for (let i = 0; i < 4; i++) {
                     skeletonHtml += `
-                        <div class="px-3 py-1.5 rounded-full bg-[#151515] border border-white/5 flex items-center gap-2 shadow-sm flex-shrink-0">
+                        <div class="px-3 py-1.5 rounded-full bg-[#151515] border flex items-center gap-2 shadow-sm flex-shrink-0" style="border-color:rgba(255,255,255,0.05)">
                             <div class="w-8 h-3 skeleton rounded-full"></div>
                             <div class="w-10 h-3 skeleton rounded-full"></div>
                         </div>`;
@@ -6973,19 +6973,22 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
             const pillsHtml = data.map(item => {
                 const isPositive = item.variacao.startsWith('+');
                 const isNegative = item.variacao.startsWith('-');
-                let colorClass = 'text-gray-400 border-white/5 bg-[#1A1A1C]';
+                let colorClass = 'text-gray-400 bg-[#1A1A1C]';
+                let borderTone = 'rgba(255, 255, 255, 0.05)';
                 let iconHtml = '';
 
                 if (isPositive) {
-                    colorClass = 'text-emerald-400 border-emerald-500/20 bg-emerald-500/5';
+                    colorClass = 'text-emerald-400 bg-emerald-500/5';
+                    borderTone = 'rgba(16, 185, 129, 0.14)';
                     iconHtml = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-2.5 h-2.5 mb-0.5"><path fill-rule="evenodd" d="M10 17a.75.75 0 01-.75-.75V5.612L5.29 9.77a.75.75 0 01-1.08-1.04l5.25-5.5a.75.75 0 011.08 0l5.25 5.5a.75.75 0 11-1.08 1.04l-3.96-4.158V16.25A.75.75 0 0110 17z" clip-rule="evenodd" /></svg>`;
                 } else if (isNegative) {
-                    colorClass = 'text-red-400 border-red-500/20 bg-red-500/5';
+                    colorClass = 'text-red-400 bg-red-500/5';
+                    borderTone = 'rgba(239, 68, 68, 0.14)';
                     iconHtml = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-2.5 h-2.5 mt-0.5"><path fill-rule="evenodd" d="M10 3a.75.75 0 01.75.75v10.638l3.96-4.158a.75.75 0 111.08 1.04l-5.25 5.5a.75.75 0 01-1.08 0l-5.25-5.5a.75.75 0 111.08-1.04l3.96 4.158V3.75A.75.75 0 0110 3z" clip-rule="evenodd" /></svg>`;
                 }
 
                 return `
-                    <div class="px-3 py-1.5 rounded-full border ${colorClass} flex items-center justify-center gap-2 shadow-sm whitespace-nowrap flex-shrink-0 cursor-default">
+                    <div class="px-3 py-1.5 rounded-full border ${colorClass} flex items-center justify-center gap-2 shadow-sm whitespace-nowrap flex-shrink-0 cursor-default" style="border-color:${borderTone}">
                         <span class="text-[10px] font-bold tracking-wider text-gray-400">${item.nome}</span>
                         <div class="flex items-center gap-1.5">
                             <span class="text-[11px] font-bold text-gray-200 tracking-wide">${item.valor}</span>
